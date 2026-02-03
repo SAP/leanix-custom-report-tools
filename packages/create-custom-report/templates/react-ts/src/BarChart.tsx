@@ -10,10 +10,10 @@ import { useEffect, useRef } from 'react';
 
 interface BarChartProps {
   data: {
-    labels: string[]
-    values: number[]
-    colors?: string[]
-  }
+    labels: string[];
+    values: number[];
+    colors?: string[];
+  };
 }
 
 export function BarChart({ data }: BarChartProps) {
@@ -41,7 +41,9 @@ export function BarChart({ data }: BarChartProps) {
         datasets: [
           {
             data: data.values,
-            backgroundColor: data.colors
+            backgroundColor: data.colors,
+            borderColor: '#c2c9d6',
+            borderWidth: 1
           }
         ]
       },

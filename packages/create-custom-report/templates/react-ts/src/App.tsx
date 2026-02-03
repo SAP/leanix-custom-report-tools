@@ -22,15 +22,23 @@ import './App.css';
 const FACT_SHEET_TYPE = 'Application';
 const FIELD_NAME = 'lifecycle';
 
-interface LifecycleConfig {
-  order: string[]
-  colors: Record<string, string>
-  labels: Record<string, string>
+interface ApplicationData extends lxr.FactSheet {
+  lifecycle?: {
+    phases?: Array<{
+      phase?: string;
+    }>;
+  };
+}
+
+interface PhaseConfig {
+  order: string[];
+  colors: Record<string, string>;
+  labels: Record<string, string>;
 }
 
 function App() {
-  const [factSheets, setFactSheets] = useState<lxr.FactSheet[]>([]);
-  const [lifecycleConfig, setLifecycleConfig] = useState<LifecycleConfig>({
+  const [applications, setApplications] = useState<ApplicationData[]>([]);
+  const [phaseConfig, setPhaseConfig] = useState<PhaseConfig>({
     order: [],
     colors: {},
     labels: {}
@@ -41,10 +49,11 @@ function App() {
       const setup = await lx.init();
       const settings = setup.settings;
 
-      const config: LifecycleConfig = {
+      // Get lifecycle phase configuration from data model
+      const config: PhaseConfig = {
         order: [],
-        colors: { 'n/a': '#CCCCCC' },
-        labels: { 'n/a': 'n/a' }
+        colors: {},
+        labels: {}
       };
 
       const lifecycleField = settings.dataModel.factSheets[FACT_SHEET_TYPE]?.fields?.[FIELD_NAME];
@@ -55,21 +64,21 @@ function App() {
       const metadata = lx.getFactSheetFieldMetaData(FACT_SHEET_TYPE, FIELD_NAME);
       if (metadata && 'values' in metadata) {
         for (const [key, value] of Object.entries(metadata.values)) {
-          config.colors[key] = value.bgColor || '#4A90E2';
+          config.colors[key] = value.bgColor || '#ffffff';
           config.labels[key] = lx.translateFieldValue(FACT_SHEET_TYPE, FIELD_NAME, key);
         }
       }
 
-      setLifecycleConfig(config);
+      setPhaseConfig(config);
 
       lx.ready({
         facets: [
           {
             key: 'main',
             fixedFactSheetType: FACT_SHEET_TYPE,
-            attributes: ['id', 'displayName', `${FIELD_NAME} { asString }`],
+            attributes: ['id', 'displayName', `${FIELD_NAME} { phases { phase } }`],
             callback: (data) => {
-              setFactSheets(data || []);
+              setApplications((data || []) as ApplicationData[]);
             }
           }
         ]
@@ -79,36 +88,44 @@ function App() {
     initReport();
   }, []);
 
-  const lifecycleCounts = useMemo(() => {
+  const phaseCounts = useMemo(() => {
     const counts: Record<string, number> = {};
 
-    for (const factSheet of factSheets) {
-      const rawKey = factSheet[FIELD_NAME]?.asString;
-      const key = !rawKey || rawKey === '-' ? 'n/a' : rawKey;
-      counts[key] = (counts[key] || 0) + 1;
+    for (const app of applications) {
+      const phases = app.lifecycle?.phases;
+      if (phases && phases.length > 0) {
+        // Count each unique phase
+        const uniquePhases = new Set(phases.map((p) => p.phase).filter(Boolean));
+        for (const phase of uniquePhases) {
+          counts[phase!] = (counts[phase!] || 0) + 1;
+        }
+      } else {
+        // No lifecycle data
+        counts['n/a'] = (counts['n/a'] || 0) + 1;
+      }
     }
 
     return counts;
-  }, [factSheets]);
+  }, [applications]);
 
   const chartData = useMemo(() => {
-    const orderedKeys = [...lifecycleConfig.order, 'n/a'];
+    // Include all configured phases plus any found in data that aren't configured
+    const configuredPhases = phaseConfig.order;
+    const foundPhases = Object.keys(phaseCounts);
+    const allPhases = [...new Set([...configuredPhases, ...foundPhases])];
+
+    // Filter to only show phases that have data
+    const phasesWithData = allPhases.filter((phase) => (phaseCounts[phase] || 0) > 0);
 
     return {
-      labels: orderedKeys.map(key => lifecycleConfig.labels[key] || key),
-      values: orderedKeys.map(key => lifecycleCounts[key] || 0),
-      colors: orderedKeys.map(key => lifecycleConfig.colors[key] || '#4A90E2')
+      labels: phasesWithData.map((phase) => phaseConfig.labels[phase] || phase),
+      values: phasesWithData.map((phase) => phaseCounts[phase] || 0),
+      colors: phasesWithData.map((phase) => phaseConfig.colors[phase] || '#ffffff')
     };
-  }, [lifecycleCounts, lifecycleConfig]);
+  }, [phaseCounts, phaseConfig]);
 
   return (
     <div className="app">
-      <p>
-        Total:
-        {factSheets.length}
-        {' '}
-        fact sheets
-      </p>
       <div className="chart-container">
         <BarChart data={chartData} />
       </div>
