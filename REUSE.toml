@@ -9,3 +9,17 @@ path = "**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 SAP SE or an SAP affiliate company and leanix-custom-report-tools contributors"
 SPDX-License-Identifier = "Apache-2.0"
+
+# MIT licensed code derived from Vite create templates
+# https://github.com/vitejs/vite/tree/main/packages/create-vite
+[[annotations]]
+path = [
+  "packages/create-lxr/src/utils/deepMerge.ts",
+  "packages/create-lxr/src/utils/directoryTraverse.ts",
+  "packages/create-lxr/src/utils/generateReadme.ts",
+  "packages/create-lxr/src/utils/renderTemplate.ts",
+  "packages/create-lxr/src/helpers.ts"
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2019-present, VoidZero Inc. and Vite contributors"
+SPDX-License-Identifier = "MIT"
