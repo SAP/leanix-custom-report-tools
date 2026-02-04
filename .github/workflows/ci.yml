@@ -29,6 +29,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Build
+        run: npm run build
+
       # apitoken for tests, issued in test-app-1.leanix.net/TeamCompassDemo, set as a repo secret
       - name: Create lxr.json
         env:
@@ -39,6 +42,3 @@ jobs:
 
       - name: Test
         run: npm test
-
-      - name: Build
-        run: npm run build
