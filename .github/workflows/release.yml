@@ -1,0 +1,44 @@
+name: Release to npmjs
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    name: Publish to npmjs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # id-token: write is required for the automatic generation of provenance statements
+      id-token: write
+    # The GitHub Actions Environment configured for the trusted publisher
+    environment: npmjs:@sap/leanix-custom-report-tools
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+          # registry-url is required for releasing packages
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install latest npm cli
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Publish @sap/vite-plugin-lxr
+        working-directory: ./packages/vite-plugin-lxr
+        run: npm publish --provenance --access public
+
+      - name: Publish @sap/create-lxr
+        working-directory: ./packages/create-lxr
+        run: npm publish --provenance --access public
