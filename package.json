@@ -22,8 +22,8 @@
   "scripts": {
     "clean:all": "npm run clean & rimraf \"**/node_modules\"",
     "clean": "rimraf \"packages/**/dist\" \"**/*.tsbuildinfo\" \"**/*.tgz\" \"**/.temp\"",
-    "build:vite-plugin-lxr": "npm run build -w=vite-plugin-lxr",
-    "build:create-lxr": "npm run build -w=create-lxr",
+    "build:vite-plugin-lxr": "npm run build -w=@sap/vite-plugin-lxr",
+    "build:create-lxr": "npm run build -w=@sap/create-lxr",
     "build": "npm run build:vite-plugin-lxr & npm run build:create-lxr",
     "test:core": "jest --selectProjects @lxr/core",
     "test:vite-plugin-lxr": "jest --selectProjects @lxr/core",
