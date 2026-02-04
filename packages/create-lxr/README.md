@@ -1,26 +1,26 @@
-# create-lxr
+# @sap/create-lxr
 
-## Scaffolding Your First LeanIX Custom Report
+## Scaffolding Your First SAP LeanIX Custom Report
 
 > **Compatibility Note:**
-> Requires [Node.js](https://nodejs.org/en/) version >=12.0.0.
+> Requires [Node.js](https://nodejs.org/en/) version >=24.0.0.
 
 With NPM:
 
 ```bash
-$ npm init lxr@latest
+$ npm create @sap/lxr@latest
 ```
 
 With Yarn:
 
 ```bash
-$ yarn create lxr
+$ yarn create @sap/lxr
 ```
 
 With PNPM:
 
 ```bash
-$ pnpx create-lxr
+$ pnpm create @sap/lxr
 ```
 
 Then follow the prompts!
@@ -29,13 +29,13 @@ You can also directly specify the project name via command line:
 
 ```bash
 # npm
-npm init lxr@latest my-custom-report
+npm create @sap/lxr@latest my-custom-report
 
 # yarn
-yarn create lxr my-custom-report
+yarn create @sap/lxr my-custom-report
 
 # pnpm
-pnpx create-lxr my-custom-report
+pnpm create @sap/lxr my-custom-report
 ```
 
 All projects are scaffolded using **React with TypeScript**, providing a modern, type-safe development experience with excellent IDE support and maintainability.

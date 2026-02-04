@@ -6,9 +6,9 @@
 
 SAP LeanIX custom report tools: command line interface to initialize, develop and upload custom reports for LeanIX Enterprise Architecture Management.
 
-- **`@lxr/core`** - Core utilities and types for LeanIX reporting
-- **`create-lxr`** - Scaffolding tool to quickly bootstrap new custom reports
-- **`vite-plugin-lxr`** - Vite plugin for fast development with hot reload and seamless deployment
+- **`@lxr/core`** - Core utilities and types for SAP LeanIX reporting
+- **`@sap/create-lxr`** - Scaffolding tool to quickly bootstrap new SAP LeanIX custom reports
+- **`@sap/vite-plugin-lxr`** - Vite plugin for fast development with hot reload and seamless deployment
 
 ### Features
 
@@ -22,14 +22,14 @@ SAP LeanIX custom report tools: command line interface to initialize, develop an
 
 For detailed documentation on each package see:
 
-- [vite-plugin-lxr](./packages/vite-plugin-lxr/README.md) - Vite plugin documentation
-- [create-lxr](./packages/create-lxr/README.md) - Project scaffolding documentation
+- [@sap/vite-plugin-lxr](./packages/vite-plugin-lxr/README.md) - Vite plugin documentation
+- [@sap/create-lxr](./packages/create-lxr/README.md) - Project scaffolding documentation
 
 ## Requirements and Setup
 
 - Node.js 24+ and npm/yarn/pnpm
-- A LeanIX workspace with API access
-- A valid LeanIX API token
+- A SAP LeanIX workspace with API access
+- A valid SAP LeanIX API token
 
 You can either use published artifacts (on [npmjs.com](https://www.npmjs.com/)) or build and use the tools manually.
 
@@ -44,8 +44,8 @@ npm run create-lxr-local
 This script will:
 
 1. Build all packages
-2. Run the create-lxr scaffolding tool (and create a scaffolded report in `../REPORT_NAME`)
-3. Automatically link the local vite-plugin-lxr to your new project
+2. Run the @sap/create-lxr scaffolding tool (and create a scaffolded report in `../REPORT_NAME`)
+3. Automatically link the local @sap/vite-plugin-lxr to your new project
 
 ### Using published artifacts
 
@@ -53,13 +53,13 @@ Create a folder/repository and install the tools from [npmjs.com](https://www.np
 
 ```bash
 # npm
-npm init lxr@latest
+npm create @sap/lxr@latest
 
 # yarn
-yarn create lxr
+yarn create @sap/lxr
 
 # pnpm
-pnpx create-lxr
+pnpm create @sap/lxr
 ```
 
 to scaffold the report.

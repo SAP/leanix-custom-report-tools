@@ -1,6 +1,6 @@
-# vite-plugin-lxr
+# @sap/vite-plugin-lxr
 
-A Vite plugin for developing LeanIX Custom Reports with hot reload, TypeScript support, and seamless deployment.
+A Vite plugin for developing SAP LeanIX Custom Reports with hot reload, TypeScript support, and seamless deployment.
 
 ## Features
 
@@ -13,47 +13,49 @@ A Vite plugin for developing LeanIX Custom Reports with hot reload, TypeScript s
 ## Prerequisites
 
 - Node.js 16+ and npm/yarn/pnpm
-- A LeanIX workspace with API access
-- A valid LeanIX API token
+- A SAP LeanIX workspace with API access
+- A valid SAP LeanIX API token
 
 ## Get Started
 
 1. Install vite and this plugin with your favorite package manager, here use npm as example:
 
 ```bash
-npm install vite vite-plugin-lxr
+npm install vite @sap/vite-plugin-lxr
 ```
 
 2. Create a `vite.config.ts` file in your project root to config vite to actually use this plugin:
+
 ```ts
-import { fileURLToPath, URL } from 'node:url'
-import { defineConfig } from 'vite'
-import leanix from 'vite-plugin-lxr'
+import { fileURLToPath, URL } from "node:url";
+import { defineConfig } from "vite";
+import leanix from "@sap/vite-plugin-lxr";
 
 export default defineConfig({
   plugins: [leanix()],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    }
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
   },
   build: {
     rollupOptions: {
       input: {
-        app: './index.html'
-      }
-    }
-  }
-})
+        app: "./index.html",
+      },
+    },
+  },
+});
 ```
 
 3. Create an `./index.html` file that will be the entry point to you app:
+
 ```html
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vite App</title>
   </head>
   <body>
@@ -66,6 +68,7 @@ export default defineConfig({
 4. Create an `./src/main.js` file that you can use to add some behavior to your HTML page and/or import a framework such as Vue, React, etc.
 
 5. Add the "upload" command to the "script" section of your `package.json` file:
+
 ```json
 {
   "scripts": {
@@ -75,6 +78,7 @@ export default defineConfig({
 ```
 
 6. Make sure that the package.json file contains both "author" and "description", and add the "leanixReport" section as follows:
+
 ```json
 {
   "author": "The report author",
@@ -88,6 +92,7 @@ export default defineConfig({
 ```
 
 7. Finally add a `lxr.json` file into your project root folder with the following contents:
+
 ```json
 {
   "host": "<your workspace instance here, e.g. demo-eu.leanix.net>",
@@ -98,6 +103,7 @@ export default defineConfig({
 ⚠️ **Security Note**: Add `lxr.json` to your `.gitignore` to avoid committing sensitive credentials.
 
 8. You are now ready to start developing your report by issuing the following command
+
 ```bash
 npm run dev
 ```
