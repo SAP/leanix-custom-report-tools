@@ -1,0 +1,7 @@
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Team Members
+* @SAP/leanix-custom-report-tools-team
+
+# Only people defined as admins
+/.github/ @SAP/leanix-custom-report-tools-admin
