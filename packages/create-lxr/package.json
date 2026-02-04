@@ -1,7 +1,21 @@
 {
-  "name": "create-lxr",
+  "name": "@sap/create-lxr",
   "type": "module",
-  "version": "1.1.4",
+  "version": "2.0.0",
+  "description": "Scaffolding tool to quickly bootstrap new SAP LeanIX custom reports",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SAP/leanix-custom-report-tools.git",
+    "directory": "packages/create-lxr"
+  },
+  "keywords": [
+    "sap",
+    "leanix",
+    "custom-reports",
+    "scaffolding",
+    "cli"
+  ],
   "main": "dist/index.cjs",
   "bin": "dist/index.cjs",
   "files": [

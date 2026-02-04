@@ -1,7 +1,7 @@
 import react from '@vitejs/plugin-react'
 // @ts-check
 import { defineConfig } from 'vite'
-import leanix from 'vite-plugin-lxr'
+import leanix from '@sap/vite-plugin-lxr'
 
 // https://vitejs.dev/config/
 export default defineConfig({
