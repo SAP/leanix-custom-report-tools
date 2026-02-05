@@ -169,7 +169,7 @@ export const init = async (): Promise<void> => {
   if (overwrite === true) {
     emptyDir(root)
   }
-  else if (!existsSync(root)) {
+  if (!existsSync(root)) {
     mkdirSync(root)
   }
 
