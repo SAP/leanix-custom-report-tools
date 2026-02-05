@@ -1,4 +1,4 @@
-# @sap/create-lxr
+# @sap/create-leanix-custom-report
 
 ## Scaffolding Your First SAP LeanIX Custom Report
 

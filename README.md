@@ -7,8 +7,8 @@
 SAP LeanIX custom report tools: command line interface to initialize, develop and upload custom reports for LeanIX Enterprise Architecture Management.
 
 - **`@lxr/core`** - Core utilities and types for SAP LeanIX reporting
-- **`@sap/create-lxr`** - Scaffolding tool to quickly bootstrap new SAP LeanIX custom reports
-- **`@sap/vite-plugin-lxr`** - Vite plugin for fast development with hot reload and seamless deployment
+- **`@sap/create-leanix-custom-report`** - Scaffolding tool to quickly bootstrap new SAP LeanIX custom reports
+- **`@sap/vite-plugin-leanix-custom-report`** - Vite plugin for fast development with hot reload and seamless deployment
 
 ### Features
 
@@ -22,8 +22,8 @@ SAP LeanIX custom report tools: command line interface to initialize, develop an
 
 For detailed documentation on each package see:
 
-- [@sap/vite-plugin-lxr](./packages/vite-plugin-lxr/README.md) - Vite plugin documentation
-- [@sap/create-lxr](./packages/create-lxr/README.md) - Project scaffolding documentation
+- [@sap/vite-plugin-leanix-custom-report](./packages/vite-plugin/README.md) - Vite plugin documentation
+- [@sap/create-leanix-custom-report](./packages/create-custom-report/README.md) - Project scaffolding documentation
 
 ## Requirements and Setup
 
@@ -38,14 +38,14 @@ You can either use published artifacts (on [npmjs.com](https://www.npmjs.com/)) 
 Install all depepdencies using `npm install` and
 
 ```bash
-npm run create-lxr-local
+npm run create-custom-report-local
 ```
 
 This script will:
 
 1. Build all packages
-2. Run the @sap/create-lxr scaffolding tool (and create a scaffolded report in `../REPORT_NAME`)
-3. Automatically link the local @sap/vite-plugin-lxr to your new project
+2. Run the @sap/create-leanix-custom-report scaffolding tool (and create a scaffolded report in `../REPORT_NAME`)
+3. Automatically link the local @sap/vite-plugin-leanix-custom-report to your new project
 
 ### Using published artifacts
 

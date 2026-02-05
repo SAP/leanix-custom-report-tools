@@ -22,16 +22,16 @@
   "scripts": {
     "clean:all": "npm run clean & rimraf \"**/node_modules\"",
     "clean": "rimraf \"packages/**/dist\" \"**/*.tsbuildinfo\" \"**/*.tgz\" \"**/.temp\"",
-    "build:vite-plugin-lxr": "npm run build -w=@sap/vite-plugin-lxr",
-    "build:create-lxr": "npm run build -w=@sap/create-lxr",
-    "build": "npm run build:vite-plugin-lxr & npm run build:create-lxr",
+    "build:vite-plugin": "npm run build -w=@sap/vite-plugin-leanix-custom-report",
+    "build:create-custom-report": "npm run build -w=@sap/create-leanix-custom-report",
+    "build": "npm run build:vite-plugin && npm run build:create-custom-report",
     "test:core": "jest --selectProjects @lxr/core",
-    "test:vite-plugin-lxr": "jest --selectProjects @lxr/core",
-    "test:create-lxr": "jest --selectProjects @lxr/core create-lxr",
+    "test:vite-plugin": "jest --selectProjects @lxr/core vite-plugin",
+    "test:create-custom-report": "jest --selectProjects @lxr/core create-custom-report",
     "test": "jest",
     "lint": "eslint --fix",
     "update": "npx npm-check-updates@latest -u",
-    "create-lxr-local": "./scripts/create-lxr-local.sh"
+    "create-custom-report-local": "./scripts/create-custom-report-local.sh"
   },
   "dependencies": {
     "tsup": "8.5.1",

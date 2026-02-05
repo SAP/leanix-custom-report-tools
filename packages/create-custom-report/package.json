@@ -1,5 +1,5 @@
 {
-  "name": "@sap/create-lxr",
+  "name": "@sap/create-leanix-custom-report",
   "type": "module",
   "version": "2.0.0",
   "description": "Scaffolding tool to quickly bootstrap new SAP LeanIX custom reports",
@@ -7,7 +7,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/SAP/leanix-custom-report-tools.git",
-    "directory": "packages/create-lxr"
+    "directory": "packages/create-custom-report"
   },
   "keywords": [
     "sap",

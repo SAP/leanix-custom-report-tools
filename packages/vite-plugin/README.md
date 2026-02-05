@@ -1,4 +1,4 @@
-# @sap/vite-plugin-lxr
+# @sap/vite-plugin-leanix-custom-report
 
 A Vite plugin for developing SAP LeanIX Custom Reports with hot reload, TypeScript support, and seamless deployment.
 
@@ -21,14 +21,14 @@ A Vite plugin for developing SAP LeanIX Custom Reports with hot reload, TypeScri
 1. Install vite and this plugin with your favorite package manager, here use npm as example:
 
 ```bash
-npm install vite @sap/vite-plugin-lxr
+npm install vite @sap/vite-plugin-leanix-custom-report
 ```
 
 2. Create a `vite.config.ts` file in your project root to config vite to actually use this plugin:
 
 ```ts
 import { fileURLToPath, URL } from 'node:url';
-import leanix from '@sap/vite-plugin-lxr';
+import leanix from '@sap/vite-plugin-leanix-custom-report';
 import { defineConfig } from 'vite';
 
 export default defineConfig({

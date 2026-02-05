@@ -1,4 +1,4 @@
-import leanix from '@sap/vite-plugin-lxr';
+import leanix from '@sap/vite-plugin-leanix-custom-report';
 import react from '@vitejs/plugin-react';
 // @ts-check
 import { defineConfig } from 'vite';

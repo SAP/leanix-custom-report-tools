@@ -19,7 +19,7 @@ import { ZodError } from 'zod';
 import { resolveHostname } from './helpers';
 
 export interface LeanIXPluginOptions {
-  packageJsonPath?: string
+  packageJsonPath?: string;
 }
 
 // https://vitejs.dev/guide/migration.html#automatic-https-certificate-generation
@@ -35,8 +35,7 @@ export async function getCertificate(cacheDir: string): Promise<any> {
     }
 
     return content;
-  }
-  catch {
+  } catch {
     const content = (await import('./certificate')).createCertificate();
     fsp
       .mkdir(cacheDir, { recursive: true })
@@ -61,7 +60,7 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
   const defaultCacheDir = 'node_modules/.vite';
 
   const lxrPlugin: Plugin = {
-    name: 'vite-plugin-lxr',
+    name: 'vite-plugin-leanix-custom-report',
     enforce: 'post',
     apply: undefined,
     async config(config, env) {
@@ -81,14 +80,12 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
         }
         try {
           credentials = await readLxrJson();
-        }
-        catch (error) {
+        } catch (error) {
           logger = logger ?? console;
           const code = (error as { code: string })?.code ?? null;
           if (code === 'ENOENT') {
             logger.error('💥 Error: "lxr.json" file not found in your project root');
-          }
-          else {
+          } else {
             logger?.error(error as string);
           }
 
@@ -108,8 +105,7 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
           if (claims !== null) {
             logger?.info(`🔥 Your workspace is ${claims.principal.permission.workspaceName}`);
           }
-        }
-        catch (err) {
+        } catch (err) {
           logger?.error(err === 401 ? '💥 Invalid LeanIX API token' : `${err}`);
           process.exit(1);
         }
@@ -132,8 +128,7 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
             setTimeout(() => {
               logger?.info(`🚀 Your development server is available here => ${launchUrl}`);
             }, 1);
-          }
-          else {
+          } else {
             throw new Error('💥 Could not get launch url, no accessToken...');
           }
         });
@@ -143,14 +138,12 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
       let metadata: CustomReportMetadata | undefined;
       try {
         metadata = await readMetadataJson(pluginOptions?.packageJsonPath);
-      }
-      catch (err: any) {
+      } catch (err: any) {
         if (err?.code === 'ENOENT') {
           const path: string = err.patßh;
           logger?.error(`💥 Could not find metadata file at "${path}"`);
           logger?.warn('🙋 Have you initialized this project?"');
-        }
-        else if (err instanceof ZodError) {
+        } else if (err instanceof ZodError) {
           const issues = err.issues;
           logger.error(`\n💥 Found ${issues.length} errors while validating metadata`);
           let i = 0;
@@ -159,14 +152,12 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
             if (issue.code === 'invalid_type') {
               const { code, expected, path, message } = issue;
               logger?.error(`💥 #${i} ${message} ${path} - ${code}, expected ${expected}`);
-            }
-            else {
+            } else {
               const { code, path, message } = issue;
               logger?.error(`💥 #${i} ${message} ${path} - ${code}`);
             }
           }
-        }
-        else {
+        } else {
           logger.error(`💥 Unknown error`, err);
         }
         process.exit(1);
@@ -175,8 +166,7 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
       if (metadata !== undefined && options?.dir !== undefined) {
         const bundlePath = await createBundle(metadata, options?.dir);
         bundle = await openAsBlob(bundlePath);
-      }
-      else {
+      } else {
         logger?.error('💥 Error while create project bundle file.');
         process.exit(1);
       }
@@ -188,8 +178,7 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
           if (claims !== null) {
             if (typeof store?.assetId === 'string') {
               logger.info(`😅 Deploying asset id ${store.assetId} to ${store.host ?? 'store.leanix.net'}...`);
-            }
-            else {
+            } else {
               logger.info(
                 `😅 Uploading report ${id} with version "${version}" to workspace "${claims.principal.permission.workspaceName}"...`
               );
@@ -203,14 +192,12 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
           }
           if (typeof store?.assetId === 'string') {
             logger.info(`😅 Asset id ${store.assetId} has been deployed to ${store.host ?? 'store.leanix.net'}...`);
-          }
-          else if (claims !== null) {
+          } else if (claims !== null) {
             logger?.info(
               `🥳 Report "${id}" with version "${version}" was uploaded to workspace "${claims.principal.permission.workspaceName}"!`
             );
           }
-        }
-        catch (err: any) {
+        } catch (err: any) {
           logger?.error('💥 Error while uploading project to workpace...');
           logger?.error(`💣 ${err}`);
           process.exit(1);

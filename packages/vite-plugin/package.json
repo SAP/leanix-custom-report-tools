@@ -1,5 +1,5 @@
 {
-  "name": "@sap/vite-plugin-lxr",
+  "name": "@sap/vite-plugin-leanix-custom-report",
   "type": "module",
   "version": "8.0.0",
   "description": "Vite plugin for developing SAP LeanIX Custom Reports",
@@ -7,7 +7,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/SAP/leanix-custom-report-tools.git",
-    "directory": "packages/vite-plugin-lxr"
+    "directory": "packages/vite-plugin"
   },
   "keywords": [
     "vite-plugin",

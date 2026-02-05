@@ -35,10 +35,10 @@ jobs:
       - name: Build packages
         run: npm run build
 
-      - name: Publish @sap/vite-plugin-lxr
-        working-directory: ./packages/vite-plugin-lxr
+      - name: Publish @sap/vite-plugin-leanix-custom-report
+        working-directory: ./packages/vite-plugin
         run: npm publish --provenance --access public
 
-      - name: Publish @sap/create-lxr
-        working-directory: ./packages/create-lxr
+      - name: Publish @sap/create-leanix-custom-report
+        working-directory: ./packages/create-custom-report
         run: npm publish --provenance --access public

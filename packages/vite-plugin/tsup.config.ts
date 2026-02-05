@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  name: 'vite-plugin-lxr',
+  name: 'vite-plugin',
   entry: ['src/index.ts'],
   format: ['cjs', 'esm'],
   clean: true,
