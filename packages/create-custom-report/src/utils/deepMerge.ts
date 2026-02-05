@@ -8,16 +8,19 @@ const mergeArrayWithDedupe = (a: any, b: any): any => Array.from(new Set([...a, 
  */
 function deepMerge(target: any, obj: any): any {
   for (const key of Object.keys(obj)) {
+    // Prevent prototype pollution by ignoring dangerous keys
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+      continue;
+    }
+
     const oldVal = target[key];
     const newVal = obj[key];
 
     if (Array.isArray(oldVal) && Array.isArray(newVal)) {
       target[key] = mergeArrayWithDedupe(oldVal, newVal);
-    }
-    else if (isObject(oldVal) && isObject(newVal)) {
+    } else if (isObject(oldVal) && isObject(newVal)) {
       target[key] = deepMerge(oldVal, newVal);
-    }
-    else {
+    } else {
       target[key] = newVal;
     }
   }
