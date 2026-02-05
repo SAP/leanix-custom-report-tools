@@ -53,13 +53,13 @@ Create a folder/repository and install the tools from [npmjs.com](https://www.np
 
 ```bash
 # npm
-npm create @sap/lxr@latest
+npm create @sap/leanix-custom-report@latest
 
 # yarn
-yarn create @sap/lxr
+yarn create @sap/leanix-custom-report
 
 # pnpm
-pnpm create @sap/lxr
+pnpm create @sap/leanix-custom-report
 ```
 
 to scaffold the report.

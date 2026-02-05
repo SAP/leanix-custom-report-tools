@@ -8,19 +8,19 @@
 With NPM:
 
 ```bash
-$ npm create @sap/lxr@latest
+$ npm create @sap/leanix-custom-report@latest
 ```
 
 With Yarn:
 
 ```bash
-$ yarn create @sap/lxr
+$ yarn create @sap/leanix-custom-report
 ```
 
 With PNPM:
 
 ```bash
-$ pnpm create @sap/lxr
+$ pnpm create @sap/leanix-custom-report
 ```
 
 Then follow the prompts!
@@ -29,13 +29,13 @@ You can also directly specify the project name via command line:
 
 ```bash
 # npm
-npm create @sap/lxr@latest my-custom-report
+npm create @sap/leanix-custom-report@latest my-custom-report
 
 # yarn
-yarn create @sap/lxr my-custom-report
+yarn create @sap/leanix-custom-report my-custom-report
 
 # pnpm
-pnpm create @sap/lxr my-custom-report
+pnpm create @sap/leanix-custom-report my-custom-report
 ```
 
 All projects are scaffolded using **React with TypeScript**, providing a modern, type-safe development experience with excellent IDE support and maintainability.
