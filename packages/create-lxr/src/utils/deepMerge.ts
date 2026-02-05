@@ -1,5 +1,5 @@
-const isObject = (val: unknown): boolean => val !== null && typeof val === 'object'
-const mergeArrayWithDedupe = (a: any, b: any): any => Array.from(new Set([...a, ...b]))
+const isObject = (val: unknown): boolean => val !== null && typeof val === 'object';
+const mergeArrayWithDedupe = (a: any, b: any): any => Array.from(new Set([...a, ...b]));
 
 /**
  * Recursively merge the content of the new object to the existing one
@@ -8,21 +8,21 @@ const mergeArrayWithDedupe = (a: any, b: any): any => Array.from(new Set([...a, 
  */
 function deepMerge(target: any, obj: any): any {
   for (const key of Object.keys(obj)) {
-    const oldVal = target[key]
-    const newVal = obj[key]
+    const oldVal = target[key];
+    const newVal = obj[key];
 
     if (Array.isArray(oldVal) && Array.isArray(newVal)) {
-      target[key] = mergeArrayWithDedupe(oldVal, newVal)
+      target[key] = mergeArrayWithDedupe(oldVal, newVal);
     }
     else if (isObject(oldVal) && isObject(newVal)) {
-      target[key] = deepMerge(oldVal, newVal)
+      target[key] = deepMerge(oldVal, newVal);
     }
     else {
-      target[key] = newVal
+      target[key] = newVal;
     }
   }
 
-  return target
+  return target;
 }
 
-export default deepMerge
+export default deepMerge;

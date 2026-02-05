@@ -27,24 +27,24 @@ npm install vite @sap/vite-plugin-lxr
 2. Create a `vite.config.ts` file in your project root to config vite to actually use this plugin:
 
 ```ts
-import { fileURLToPath, URL } from "node:url";
-import { defineConfig } from "vite";
-import leanix from "@sap/vite-plugin-lxr";
+import { fileURLToPath, URL } from 'node:url';
+import leanix from '@sap/vite-plugin-lxr';
+import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [leanix()],
   resolve: {
     alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
-    },
+      '@': fileURLToPath(new URL('./src', import.meta.url))
+    }
   },
   build: {
     rollupOptions: {
       input: {
-        app: "./index.html",
-      },
-    },
-  },
+        app: './index.html'
+      }
+    }
+  }
 });
 ```
 

@@ -72,7 +72,7 @@ This builds and uploads the report using credentials from `lxr.json`.
 Edit the `attributes` array in `src/App.tsx`:
 
 ```typescript
-attributes: ['id', 'displayName', 'lifecycle { asString }']
+attributes: ['id', 'displayName', 'lifecycle { asString }'];
 ```
 
 ### Modify the Visualization
@@ -86,7 +86,7 @@ Edit `src/BarChart.tsx` to customize the Chart.js configuration.
 Change `fixedFactSheetType` in `src/App.tsx`:
 
 ```typescript
-fixedFactSheetType: 'BusinessCapability' // or 'Project', 'ITComponent', etc.
+fixedFactSheetType: 'BusinessCapability'; // or 'Project', 'ITComponent', etc.
 ```
 
 ## Learn More

@@ -33,26 +33,26 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-import forge from 'node-forge/lib/forge'
-import 'node-forge/lib/pki'
+import forge from 'node-forge/lib/forge';
+import 'node-forge/lib/pki';
 
 // a hexString is considered negative if it's most significant bit is 1
 // because serial numbers use ones' complement notation
 // this RFC in section 4.1.2.2 requires serial numbers to be positive
 // http://www.ietf.org/rfc/rfc5280.txt
 const toPositiveHex = (hexString: string): string => {
-  let mostSignificativeHexAsInt = Number.parseInt(hexString[0], 16)
+  let mostSignificativeHexAsInt = Number.parseInt(hexString[0], 16);
   if (mostSignificativeHexAsInt < 8) {
-    return hexString
+    return hexString;
   }
 
-  mostSignificativeHexAsInt -= 8
-  return mostSignificativeHexAsInt.toString() + hexString.substring(1)
-}
+  mostSignificativeHexAsInt -= 8;
+  return mostSignificativeHexAsInt.toString() + hexString.substring(1);
+};
 
 export function createCertificate(): string {
-  const days = 30
-  const keySize = 2048
+  const days = 30;
+  const keySize = 2048;
 
   const extensions = [
     // {
@@ -109,7 +109,7 @@ export function createCertificate(): string {
         }
       ]
     }
-  ]
+  ];
 
   const attrs = [
     {
@@ -136,32 +136,30 @@ export function createCertificate(): string {
       shortName: 'OU',
       value: 'Test'
     }
-  ]
+  ];
 
-  const keyPair = forge.pki.rsa.generateKeyPair(keySize)
+  const keyPair = forge.pki.rsa.generateKeyPair(keySize);
 
-  const cert = forge.pki.createCertificate()
+  const cert = forge.pki.createCertificate();
 
-  cert.serialNumber = toPositiveHex(
-    forge.util.bytesToHex(forge.random.getBytesSync(9))
-  ) // the serial number can be decimal or hex (if preceded by 0x)
+  cert.serialNumber = toPositiveHex(forge.util.bytesToHex(forge.random.getBytesSync(9))); // the serial number can be decimal or hex (if preceded by 0x)
 
-  cert.validity.notBefore = new Date()
-  cert.validity.notAfter = new Date()
-  cert.validity.notAfter.setDate(cert.validity.notBefore.getDate() + days)
+  cert.validity.notBefore = new Date();
+  cert.validity.notAfter = new Date();
+  cert.validity.notAfter.setDate(cert.validity.notBefore.getDate() + days);
 
-  cert.setSubject(attrs)
-  cert.setIssuer(attrs)
+  cert.setSubject(attrs);
+  cert.setIssuer(attrs);
 
-  cert.publicKey = keyPair.publicKey
+  cert.publicKey = keyPair.publicKey;
 
-  cert.setExtensions(extensions)
+  cert.setExtensions(extensions);
 
-  const algorithm = forge.md.sha256.create()
-  cert.sign(keyPair.privateKey, algorithm)
+  const algorithm = forge.md.sha256.create();
+  cert.sign(keyPair.privateKey, algorithm);
 
-  const privateKeyPem = forge.pki.privateKeyToPem(keyPair.privateKey)
-  const certPem = forge.pki.certificateToPem(cert)
+  const privateKeyPem = forge.pki.privateKeyToPem(keyPair.privateKey);
+  const certPem = forge.pki.certificateToPem(cert);
 
-  return privateKeyPem + certPem
+  return privateKeyPem + certPem;
 }

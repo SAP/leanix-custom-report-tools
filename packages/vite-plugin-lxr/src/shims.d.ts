@@ -1,1 +1,1 @@
-declare module 'node-forge/lib/forge'
+declare module 'node-forge/lib/forge';

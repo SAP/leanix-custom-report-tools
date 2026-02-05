@@ -22,9 +22,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "24.x"
+          node-version: 24.x
           # registry-url is required for releasing packages
-          registry-url: "https://registry.npmjs.org"
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install latest npm cli
         run: npm install -g npm@latest

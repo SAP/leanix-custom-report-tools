@@ -1,1 +1,1 @@
-declare module 'transparent-proxy'
+declare module 'transparent-proxy';

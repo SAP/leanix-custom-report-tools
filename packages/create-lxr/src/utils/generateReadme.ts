@@ -1,4 +1,4 @@
-import getCommand from './getCommand'
+import getCommand from './getCommand';
 
 const sfcTypeSupportDoc = [
   '',
@@ -13,7 +13,7 @@ const sfcTypeSupportDoc = [
   '    2) Find `TypeScript and JavaScript Language Features`, right click and select `Disable (Workspace)`',
   '2. Reload the VSCode window by running `Developer: Reload Window` from the command palette.',
   ''
-].join('\n')
+].join('\n');
 
 export interface IGenerateReadmeParams {
   projectName: string
@@ -27,7 +27,7 @@ export interface IGenerateReadmeParams {
 }
 
 export default function generateReadme(params: IGenerateReadmeParams): string {
-  const commandFor = (scriptName: string, args?: string): string => getCommand(params.packageManager, scriptName, args)
+  const commandFor = (scriptName: string, args?: string): string => getCommand(params.packageManager, scriptName, args);
 
   let readme = `# ${params.projectName}
 
@@ -43,7 +43,7 @@ See [Vite Configuration Reference](https://vitejs.dev/config/).
 
 ## Project Setup
 
-`
+`;
 
   let npmScriptsDescriptions = `\`\`\`sh
 ${commandFor('install')}
@@ -60,7 +60,7 @@ ${commandFor('dev')}
 \`\`\`sh
 ${commandFor('build')}
 \`\`\`
-`
+`;
 
   if (params.needsJest ?? false) {
     npmScriptsDescriptions += `
@@ -69,7 +69,7 @@ ${commandFor('build')}
 \`\`\`sh
 ${commandFor('test:unit')}
 \`\`\`
-`
+`;
   }
 
   if (params.needsCypressCT ?? false) {
@@ -79,7 +79,7 @@ ${commandFor('test:unit')}
 \`\`\`sh
 ${commandFor('test:unit:dev')} # or \`${commandFor('test:unit')}\` for headless testing
 \`\`\`
-`
+`;
   }
 
   if (params?.needsCypress ?? false) {
@@ -99,10 +99,10 @@ But it's still recommended to test the production build with \`test:e2e\` before
 ${commandFor('build')}
 ${commandFor('test:e2e')}
 \`\`\`
-`
+`;
   }
 
-  if ((params?.needsPlaywright) ?? false) {
+  if (params?.needsPlaywright ?? false) {
     npmScriptsDescriptions += `
 ### Run End-to-End Tests with [Playwright](https://playwright.dev)
 
@@ -122,20 +122,20 @@ ${commandFor('test:e2e', 'tests/example.spec.ts')}
 # Runs the tests in debug mode
 ${commandFor('test:e2e', '--debug')}
 \`\`\`
-`
+`;
   }
 
-  if ((params?.needsEslint) ?? false) {
+  if (params?.needsEslint ?? false) {
     npmScriptsDescriptions += `
 ### Lint with [ESLint](https://eslint.org/)
 
 \`\`\`sh
 ${commandFor('lint')}
 \`\`\`
-`
+`;
   }
 
-  readme += npmScriptsDescriptions
+  readme += npmScriptsDescriptions;
 
-  return readme
+  return readme;
 }

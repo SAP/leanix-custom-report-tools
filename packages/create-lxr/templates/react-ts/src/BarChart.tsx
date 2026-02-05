@@ -38,19 +38,21 @@ export function BarChart({ data }: BarChartProps) {
       type: 'bar',
       data: {
         labels: data.labels,
-        datasets: [{
-          data: data.values,
-          backgroundColor: data.colors,
-        }],
+        datasets: [
+          {
+            data: data.values,
+            backgroundColor: data.colors
+          }
+        ]
       },
       options: {
         maintainAspectRatio: false,
         plugins: {
           legend: {
-            display: false,
-          },
-        },
-      },
+            display: false
+          }
+        }
+      }
     });
 
     return () => {

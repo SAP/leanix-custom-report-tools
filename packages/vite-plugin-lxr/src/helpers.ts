@@ -5,34 +5,25 @@ export interface Hostname {
   name: string
 }
 
-export function resolveHostname(
-  optionsHost: string | boolean | undefined
-): Hostname {
-  let host: string | undefined
-  if (
-    optionsHost === undefined
-    || optionsHost === false
-    || optionsHost === 'localhost'
-  ) {
+export function resolveHostname(optionsHost: string | boolean | undefined): Hostname {
+  let host: string | undefined;
+  if (optionsHost === undefined || optionsHost === false || optionsHost === 'localhost') {
     // Use a secure default
-    host = '127.0.0.1'
+    host = '127.0.0.1';
   }
   else if (optionsHost === true) {
     // If passed --host in the CLI without arguments
-    host = undefined // undefined typically means 0.0.0.0 or :: (listen on all IPs)
+    host = undefined; // undefined typically means 0.0.0.0 or :: (listen on all IPs)
   }
   else {
-    host = optionsHost
+    host = optionsHost;
   }
 
   // Set host name to localhost when possible, unless the user explicitly asked for '127.0.0.1'
   const name
-    = (optionsHost !== '127.0.0.1' && host === '127.0.0.1')
-      || host === '0.0.0.0'
-      || host === '::'
-      || host === undefined
+    = (optionsHost !== '127.0.0.1' && host === '127.0.0.1') || host === '0.0.0.0' || host === '::' || host === undefined
       ? 'localhost'
-      : host
+      : host;
 
-  return { host, name }
+  return { host, name };
 }

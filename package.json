@@ -1,8 +1,8 @@
 {
   "name": "@sap/leanix-custom-report-tools",
   "version": "1.0.0",
-  "description": "Monorepo for SAP LeanIX custom report development tools",
   "private": true,
+  "description": "Monorepo for SAP LeanIX custom report development tools",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

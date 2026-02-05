@@ -1,4 +1,4 @@
-import antfu from '@antfu/eslint-config'
+import antfu from '@antfu/eslint-config';
 
 export default antfu({
   lessOpinionated: true,
@@ -7,7 +7,9 @@ export default antfu({
       'n/prefer-global/process': ['error', 'always'],
       'node/prefer-global/buffer': ['error', 'always'],
       'style/comma-dangle': ['error', 'never'],
+      'style/semi': ['error', 'always'],
       'no-console': 'warn'
     }
-  }
-})
+  },
+  ignores: ['**/test-app/**', '**/test-app']
+});

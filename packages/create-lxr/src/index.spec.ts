@@ -1,20 +1,17 @@
-import type { ExecaSyncReturnValue, SyncOptions } from "execa";
-import { existsSync, readFileSync, rmSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { execaCommandSync } from "execa";
-import { mkdirpSync, readdirSync, statSync, writeFileSync } from "fs-extra";
-import { generate as uuid } from "short-uuid";
-import pkg from "../package.json" with { type: "json" };
+import type { ExecaSyncReturnValue, SyncOptions } from 'execa';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { execaCommandSync } from 'execa';
+import { mkdirpSync, readdirSync, statSync, writeFileSync } from 'fs-extra';
+import { generate as uuid } from 'short-uuid';
+import pkg from '../package.json' with { type: 'json' };
 
-const CLI_PATH = resolve(__dirname, "..", pkg.bin);
-const projectName = "test-app";
+const CLI_PATH = resolve(__dirname, '..', pkg.bin);
+const projectName = 'test-app';
 const genPath = resolve(__dirname, projectName);
 
-const run = (
-  args: string[],
-  options: SyncOptions = {},
-): ExecaSyncReturnValue => {
-  return execaCommandSync(`node ${CLI_PATH} ${args.join(" ")}`, options);
+const run = (args: string[], options: SyncOptions = {}): ExecaSyncReturnValue => {
+  return execaCommandSync(`node ${CLI_PATH} ${args.join(' ')}`, options);
 };
 
 // Helper to create a non-empty directory
@@ -23,15 +20,12 @@ const createNonEmptyDir = (): void => {
   mkdirpSync(genPath);
 
   // Create a package.json file
-  const pkgJson = join(genPath, "package.json");
+  const pkgJson = join(genPath, 'package.json');
   writeFileSync(pkgJson, '{ "foo": "bar" }');
 };
 
 // Get all file names in a directory, recursively
-const getAllFiles = (
-  dirPath: string,
-  arrayOfFiles: string[] = [],
-): string[] => {
+const getAllFiles = (dirPath: string, arrayOfFiles: string[] = []): string[] => {
   readdirSync(dirPath).forEach((file) => {
     statSync(`${dirPath}/${file}`).isDirectory()
       ? (arrayOfFiles = getAllFiles(`${dirPath}/${file}`, arrayOfFiles))
@@ -40,15 +34,11 @@ const getAllFiles = (
   return arrayOfFiles;
 };
 
-const getPackageJson = (dirPath: string): any =>
-  JSON.parse(readFileSync(join(dirPath, "package.json")).toString());
+const getPackageJson = (dirPath: string): any => JSON.parse(readFileSync(join(dirPath, 'package.json')).toString());
 
 // React TypeScript template plus 1 generated file: 'lxr.json'
-const templateFiles = [
-  ...getAllFiles(resolve(CLI_PATH, "..", "templates", "react-ts")),
-  "lxr.json",
-]
-  .map((file) => (file === "_gitignore" ? ".gitignore" : file))
+const templateFiles = [...getAllFiles(resolve(CLI_PATH, '..', 'templates', 'react-ts')), 'lxr.json']
+  .map(file => (file === '_gitignore' ? '.gitignore' : file))
   .sort();
 
 beforeEach(() => {
@@ -56,40 +46,35 @@ beforeEach(() => {
     rmSync(genPath, { recursive: true });
   }
 });
+
 afterAll(() => {
   if (existsSync(genPath)) {
     rmSync(genPath, { recursive: true });
   }
 });
 
-it("prompts for the project name if none supplied", () => {
+it('prompts for the project name if none supplied', () => {
   const { stdout } = run([]);
-  expect((stdout as string)?.includes("Project name:")).toBe(true);
+  expect((stdout as string)?.includes('Project name:')).toBe(true);
 });
 
-it("asks to overwrite non-empty target directory", () => {
+it('asks to overwrite non-empty target directory', () => {
   createNonEmptyDir();
   const { stdout } = run([projectName], { cwd: __dirname });
-  expect(
-    (stdout as string)?.includes(
-      `Target directory "${projectName}" is not empty.`,
-    ),
-  ).toBe(true);
+  expect((stdout as string)?.includes(`Target directory "${projectName}" is not empty.`)).toBe(true);
 });
 
-it("asks to overwrite non-empty current directory", () => {
+it('asks to overwrite non-empty current directory', () => {
   createNonEmptyDir();
-  const { stdout } = run(["."], {
+  const { stdout } = run(['.'], {
     cwd: genPath,
-    input: "test-app\n",
-    reject: false,
+    input: 'test-app\n',
+    reject: false
   });
-  expect((stdout as string)?.includes("Current directory is not empty.")).toBe(
-    true,
-  );
+  expect((stdout as string)?.includes('Current directory is not empty.')).toBe(true);
 });
 
-it("successfully scaffolds a project based on react-ts template", async () => {
+it('successfully scaffolds a project based on react-ts template', async () => {
   const reportId = uuid();
   const author = uuid();
   const title = uuid();
@@ -99,46 +84,42 @@ it("successfully scaffolds a project based on react-ts template", async () => {
   const proxyURL = uuid();
 
   const args = [
-    "--overwrite",
-    "--id",
+    '--overwrite',
+    '--id',
     reportId,
-    "--author",
+    '--author',
     author,
-    "--title",
+    '--title',
     title,
-    "--description",
+    '--description',
     description,
-    "--host",
+    '--host',
     host,
-    "--apitoken",
+    '--apitoken',
     apitoken,
-    "--proxyURL",
-    proxyURL,
+    '--proxyURL',
+    proxyURL
   ];
 
   const { stdout, stderr } = run([projectName, ...args], {
-    cwd: resolve(__dirname, ".."),
+    cwd: resolve(__dirname, '..')
   });
-  expect(typeof stderr).toEqual("string");
+  expect(typeof stderr).toEqual('string');
 
-  const targetPath = resolve(__dirname, "..", projectName);
+  const targetPath = resolve(__dirname, '..', projectName);
   const generatedFiles = getAllFiles(targetPath).sort();
 
   // Assertions
-  expect(
-    (stdout as string)?.includes(`Scaffolding project in ${targetPath}`),
-  ).toBe(true);
-  expect(
-    (stdout as string)?.includes(`Using React + TypeScript template`),
-  ).toBe(true);
+  expect((stdout as string)?.includes(`Scaffolding project in ${targetPath}`)).toBe(true);
+  expect((stdout as string)?.includes('Using React + TypeScript template')).toBe(true);
   expect(generatedFiles).toEqual(templateFiles);
 
   const pkg = getPackageJson(targetPath);
   expect(pkg.name).toEqual(projectName);
   expect(pkg.author).toEqual(author);
   expect(pkg.description).toEqual(description);
-  expect(pkg.version).toEqual("0.0.0");
+  expect(pkg.version).toEqual('0.0.0');
   expect(pkg?.leanixReport?.id).toEqual(reportId);
   expect(pkg?.leanixReport?.title).toEqual(title);
-  expect(typeof pkg?.leanixReport.defaultConfig).toEqual("object");
+  expect(typeof pkg?.leanixReport.defaultConfig).toEqual('object');
 });

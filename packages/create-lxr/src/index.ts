@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
-import { existsSync, mkdirSync } from 'node:fs'
-import { join, relative } from 'node:path'
-import { red } from 'kolorist'
-import minimist from 'minimist'
-import prompts from 'prompts'
-import { canSkipEmptying, emptyDir, isValidPackageName, pkgFromUserAgent, toValidPackageName } from './helpers'
-import banner from './utils/banner'
-import { deployTemplate } from './utils/deployTemplate'
-import { generateLeanIXFiles } from './utils/leanix'
+import { existsSync, mkdirSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import { red } from 'kolorist';
+import minimist from 'minimist';
+import prompts from 'prompts';
+import { canSkipEmptying, emptyDir, isValidPackageName, pkgFromUserAgent, toValidPackageName } from './helpers';
+import banner from './utils/banner';
+import { deployTemplate } from './utils/deployTemplate';
+import { generateLeanIXFiles } from './utils/leanix';
 
 export interface IProjectOptions {
   packageName?: string
@@ -30,12 +30,14 @@ export interface IPromptResult extends IProjectOptions, ILeanIXOptions {
   projectName?: string
 }
 
-const cwd = process.cwd()
+const cwd = process.cwd();
 
 // Fixed template: React with TypeScript
-const TEMPLATE = 'react-ts'
+const TEMPLATE = 'react-ts';
 
-const getLeanIXQuestions = (argv: minimist.ParsedArgs): Array<prompts.PromptObject<keyof ILeanIXOptions | 'behindProxy'>> => ([
+const getLeanIXQuestions = (
+  argv: minimist.ParsedArgs
+): Array<prompts.PromptObject<keyof ILeanIXOptions | 'behindProxy'>> => [
   {
     type: argv?.id === undefined ? 'text' : null,
     name: 'id',
@@ -65,7 +67,8 @@ const getLeanIXQuestions = (argv: minimist.ParsedArgs): Array<prompts.PromptObje
   {
     type: argv?.apitoken === undefined ? 'text' : null,
     name: 'apitoken',
-    message: 'API-Token for Authentication (see: https://dev.leanix.net/docs/authentication#section-generate-api-tokens)'
+    message:
+      'API-Token for Authentication (see: https://dev.leanix.net/docs/authentication#section-generate-api-tokens)'
   },
   {
     type: argv?.proxyURL === undefined ? 'toggle' : null,
@@ -80,25 +83,25 @@ const getLeanIXQuestions = (argv: minimist.ParsedArgs): Array<prompts.PromptObje
     name: 'proxyURL',
     message: 'Proxy URL?'
   }
-])
+];
 
 export const init = async (): Promise<void> => {
-  console.log(`\n${banner}\n`)
+  console.log(`\n${banner}\n`);
   const argv = minimist(process.argv.slice(2), {
     string: ['reportId', 'author', 'title', 'description', 'host', 'apitoken', 'proxyUrl'],
     boolean: ['overwrite'],
     default: {
       overwrite: false
     }
-  })
+  });
 
-  let targetDir = argv?._?.[0] ?? null
-  const defaultProjectName = targetDir ?? 'leanix-custom-report'
+  let targetDir = argv?._?.[0] ?? null;
+  const defaultProjectName = targetDir ?? 'leanix-custom-report';
 
   // leanix-specific answers
-  let { id, author, title, description, host, apitoken, proxyURL, overwrite = false } = argv
+  let { id, author, title, description, host, apitoken, proxyURL, overwrite = false } = argv;
 
-  let result: IPromptResult = {}
+  let result: IPromptResult = {};
   try {
     result = await prompts(
       [
@@ -111,19 +114,19 @@ export const init = async (): Promise<void> => {
         },
         {
           name: 'overwrite',
-          type: () => canSkipEmptying(targetDir) || overwrite ? null : 'confirm',
+          type: () => (canSkipEmptying(targetDir) || overwrite ? null : 'confirm'),
           message: () => {
-            const dirForPrompt = targetDir === '.' ? 'Current directory' : `Target directory "${targetDir}"`
-            return `${dirForPrompt} is not empty. Remove existing files and continue?`
+            const dirForPrompt = targetDir === '.' ? 'Current directory' : `Target directory "${targetDir}"`;
+            return `${dirForPrompt} is not empty. Remove existing files and continue?`;
           }
         },
         {
           name: 'overwriteChecker',
           type: (_, { overwrite }: { overwrite?: boolean }) => {
             if (overwrite === false) {
-              throw new Error(`${red('✖')} Operation cancelled`)
+              throw new Error(`${red('✖')} Operation cancelled`);
             }
-            return null
+            return null;
           }
         },
         {
@@ -137,14 +140,14 @@ export const init = async (): Promise<void> => {
       ],
       {
         onCancel: () => {
-          throw new Error(`${red('✖')} Operation cancelled`)
+          throw new Error(`${red('✖')} Operation cancelled`);
         }
       }
-    )
+    );
   }
   catch (cancelled: any) {
-    console.log(cancelled?.message)
-    process.exit(1)
+    console.log(cancelled?.message);
+    process.exit(1);
   }
 
   // leanix-specific answers
@@ -157,44 +160,52 @@ export const init = async (): Promise<void> => {
     apitoken = apitoken,
     proxyURL = proxyURL,
     overwrite = overwrite
-  } = result)
-  const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent) ?? null
-  const pkgManager = (pkgInfo != null) ? pkgInfo.name : 'npm'
+  } = result);
+  const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent) ?? null;
+  const pkgManager = pkgInfo != null ? pkgInfo.name : 'npm';
 
-  const root = join(cwd, targetDir ?? '')
+  const root = join(cwd, targetDir ?? '');
 
-  console.log(`🚀Scaffolding project in ${root}...`)
-  console.log(`Using React + TypeScript template`)
+  console.log(`🚀Scaffolding project in ${root}...`);
+  console.log(`Using React + TypeScript template`);
 
   if (overwrite === true) {
-    emptyDir(root)
+    emptyDir(root);
   }
   if (!existsSync(root)) {
-    mkdirSync(root)
+    mkdirSync(root);
   }
 
-  deployTemplate({ defaultProjectName, targetDir: root, template: TEMPLATE, result: { id, author, title, description, host, apitoken, proxyURL, overwrite } })
-  await generateLeanIXFiles({ targetDir: root, result: { packageName: defaultProjectName, id, author, title, description, host, apitoken, proxyURL, overwrite } })
+  deployTemplate({
+    defaultProjectName,
+    targetDir: root,
+    template: TEMPLATE,
+    result: { id, author, title, description, host, apitoken, proxyURL, overwrite }
+  });
+  await generateLeanIXFiles({
+    targetDir: root,
+    result: { packageName: defaultProjectName, id, author, title, description, host, apitoken, proxyURL, overwrite }
+  });
 
-  console.log('\n🔥Done. Now run:\n')
+  console.log('\n🔥Done. Now run:\n');
   if (root !== cwd) {
-    console.log(`  cd ${relative(cwd, root)}`)
+    console.log(`  cd ${relative(cwd, root)}`);
   }
   switch (pkgManager) {
     case 'yarn':
-      console.log('  yarn')
-      console.log('  yarn dev')
-      break
+      console.log('  yarn');
+      console.log('  yarn dev');
+      break;
     default:
-      console.log(`  ${pkgManager} install`)
-      console.log(`  ${pkgManager} run dev`)
-      break
+      console.log(`  ${pkgManager} install`);
+      console.log(`  ${pkgManager} run dev`);
+      break;
   }
-  console.log()
-}
+  console.log();
+};
 
 init().catch((e) => {
-  console.error(e)
-})
+  console.error(e);
+});
 
-export default init
+export default init;

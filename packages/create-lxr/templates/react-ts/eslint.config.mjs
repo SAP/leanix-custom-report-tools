@@ -5,13 +5,13 @@ export default antfu({
   react: true,
   typescript: true,
   rules: {
-    'no-console': 'warn',
+    'no-console': 'warn'
   },
   stylistic: {
     overrides: {
       'style/comma-dangle': ['error', 'always-multiline'],
       'style/semi': ['error', 'always'],
-      'style/jsx-one-expression-per-line': ['error', { allow: 'non-jsx' }],
-    },
-  },
+      'style/jsx-one-expression-per-line': ['error', { allow: 'non-jsx' }]
+    }
+  }
 });

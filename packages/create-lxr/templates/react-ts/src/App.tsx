@@ -33,7 +33,7 @@ function App() {
   const [lifecycleConfig, setLifecycleConfig] = useState<LifecycleConfig>({
     order: [],
     colors: {},
-    labels: {},
+    labels: {}
   });
 
   useEffect(() => {
@@ -44,27 +44,19 @@ function App() {
       const config: LifecycleConfig = {
         order: [],
         colors: { 'n/a': '#CCCCCC' },
-        labels: { 'n/a': 'n/a' },
+        labels: { 'n/a': 'n/a' }
       };
 
-      const lifecycleField
-        = settings.dataModel.factSheets[FACT_SHEET_TYPE]?.fields?.[FIELD_NAME];
+      const lifecycleField = settings.dataModel.factSheets[FACT_SHEET_TYPE]?.fields?.[FIELD_NAME];
       if (lifecycleField && 'values' in lifecycleField) {
         config.order = lifecycleField.values as string[];
       }
 
-      const metadata = lx.getFactSheetFieldMetaData(
-        FACT_SHEET_TYPE,
-        FIELD_NAME,
-      );
+      const metadata = lx.getFactSheetFieldMetaData(FACT_SHEET_TYPE, FIELD_NAME);
       if (metadata && 'values' in metadata) {
         for (const [key, value] of Object.entries(metadata.values)) {
           config.colors[key] = value.bgColor || '#4A90E2';
-          config.labels[key] = lx.translateFieldValue(
-            FACT_SHEET_TYPE,
-            FIELD_NAME,
-            key,
-          );
+          config.labels[key] = lx.translateFieldValue(FACT_SHEET_TYPE, FIELD_NAME, key);
         }
       }
 
@@ -78,9 +70,9 @@ function App() {
             attributes: ['id', 'displayName', `${FIELD_NAME} { asString }`],
             callback: (data) => {
               setFactSheets(data || []);
-            },
-          },
-        ],
+            }
+          }
+        ]
       });
     };
 
@@ -92,7 +84,7 @@ function App() {
 
     for (const factSheet of factSheets) {
       const rawKey = factSheet[FIELD_NAME]?.asString;
-      const key = (!rawKey || rawKey === '-') ? 'n/a' : rawKey;
+      const key = !rawKey || rawKey === '-' ? 'n/a' : rawKey;
       counts[key] = (counts[key] || 0) + 1;
     }
 
@@ -105,15 +97,18 @@ function App() {
     return {
       labels: orderedKeys.map(key => lifecycleConfig.labels[key] || key),
       values: orderedKeys.map(key => lifecycleCounts[key] || 0),
-      colors: orderedKeys.map(
-        key => lifecycleConfig.colors[key] || '#4A90E2',
-      ),
+      colors: orderedKeys.map(key => lifecycleConfig.colors[key] || '#4A90E2')
     };
   }, [lifecycleCounts, lifecycleConfig]);
 
   return (
     <div className="app">
-      <p>Total: {factSheets.length} fact sheets</p>
+      <p>
+        Total:
+        {factSheets.length}
+        {' '}
+        fact sheets
+      </p>
       <div className="chart-container">
         <BarChart data={chartData} />
       </div>

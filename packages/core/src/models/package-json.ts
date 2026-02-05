@@ -1,4 +1,4 @@
-import zod from 'zod'
+import zod from 'zod';
 
 export const packageJsonLxrSchema = zod.object({
   name: zod.string(),
@@ -10,6 +10,6 @@ export const packageJsonLxrSchema = zod.object({
     title: zod.string(),
     defaultConfig: zod.record(zod.string(), zod.any()).optional()
   })
-})
+});
 
-export type PackageJsonLXR = zod.infer<typeof packageJsonLxrSchema>
+export type PackageJsonLXR = zod.infer<typeof packageJsonLxrSchema>;
