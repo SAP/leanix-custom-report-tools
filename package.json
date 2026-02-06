@@ -38,7 +38,7 @@
     "zod": "4.3.6"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "5.4.1",
+    "@antfu/eslint-config": "7.2.0",
     "@babel/preset-env": "7.28.3",
     "@babel/preset-typescript": "7.27.1",
     "@jest/types": "30.0.5",
@@ -46,7 +46,7 @@
     "@types/jest": "30.0.0",
     "@types/node": "24.10.9",
     "babel-jest": "30.0.5",
-    "eslint": "9.34.0",
+    "eslint": "9.39.2",
     "jest": "30.0.5",
     "rimraf": "6.1.2",
     "shx": "0.4.0",
