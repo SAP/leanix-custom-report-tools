@@ -1,4 +1,4 @@
-import zod from 'zod'
+import zod from 'zod';
 
 export const customReportMetadataSchema = zod.object({
   id: zod.string(),
@@ -8,6 +8,6 @@ export const customReportMetadataSchema = zod.object({
   author: zod.string(),
   description: zod.string(),
   defaultConfig: zod.record(zod.string(), zod.any()).optional()
-})
+});
 
-export type CustomReportMetadata = zod.infer<typeof customReportMetadataSchema>
+export type CustomReportMetadata = zod.infer<typeof customReportMetadataSchema>;

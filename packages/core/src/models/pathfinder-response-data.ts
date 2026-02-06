@@ -1,4 +1,4 @@
-export type ResponseStatus = 'OK' | 'ERROR'
+export type ResponseStatus = 'OK' | 'ERROR';
 
 export interface PathfinderReportUploadError {
   value: 'error'

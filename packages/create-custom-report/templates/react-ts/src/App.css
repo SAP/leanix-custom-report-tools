@@ -1,0 +1,22 @@
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  color: rgb(42, 48, 61);
+}
+
+.app {
+  height: 100vh;
+  margin-right: 16px;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-container {
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 16px;
+}

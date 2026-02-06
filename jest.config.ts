@@ -1,4 +1,4 @@
-import type { Config } from '@jest/types'
+import type { Config } from '@jest/types';
 
 const config: Config.InitialOptions = {
   verbose: true,
@@ -16,19 +16,17 @@ const config: Config.InitialOptions = {
     {
       displayName: '@lxr/core',
       testMatch: ['<rootDir>/packages/core/src/**/*.spec.ts'],
-      // TODO: // line 12 => https://stackoverflow.com/questions/69383514/node-fetch-3-0-0-and-jest-gives-syntaxerror-cannot-use-import-statement-outside
       transformIgnorePatterns: []
     },
     {
-      displayName: 'vite-plugin-lxr',
-      testMatch: ['<rootDir>/packages/vite-plugin-lxr/src/**/*.spec.ts']
+      displayName: 'vite-plugin',
+      testMatch: ['<rootDir>/packages/vite-plugin/src/**/*.spec.ts']
     },
     {
-      displayName: 'create-lxr',
-      testMatch: ['<rootDir>/packages/create-lxr/src/**/*.spec.ts'],
-      // TODO: // line 12 => https://stackoverflow.com/questions/69383514/node-fetch-3-0-0-and-jest-gives-syntaxerror-cannot-use-import-statement-outside
+      displayName: 'create-custom-report',
+      testMatch: ['<rootDir>/packages/create-custom-report/src/**/*.spec.ts'],
       transformIgnorePatterns: []
     }
   ]
-}
-export default config
+};
+export default config;

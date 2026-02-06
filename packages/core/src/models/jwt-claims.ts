@@ -1,5 +1,5 @@
-import zod from 'zod'
-import { permissionSchema as permission } from './permission'
+import zod from 'zod';
+import { permissionSchema as permission } from './permission';
 
 export const jwtClaimsSchema = zod.object({
   exp: zod.number(),
@@ -10,6 +10,6 @@ export const jwtClaimsSchema = zod.object({
   principal: zod.object({
     permission
   })
-})
+});
 
-export type JwtClaims = zod.infer<typeof jwtClaimsSchema>
+export type JwtClaims = zod.infer<typeof jwtClaimsSchema>;

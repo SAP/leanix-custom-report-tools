@@ -1,4 +1,4 @@
-import zod from 'zod'
+import zod from 'zod';
 
 export const accessTokenSchema = zod.object({
   accessToken: zod.string(),
@@ -6,6 +6,6 @@ export const accessTokenSchema = zod.object({
   expiresIn: zod.number(),
   scope: zod.string(),
   tokenType: zod.string()
-})
+});
 
-export type AccessToken = zod.infer<typeof accessTokenSchema>
+export type AccessToken = zod.infer<typeof accessTokenSchema>;
