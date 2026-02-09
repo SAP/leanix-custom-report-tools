@@ -22,7 +22,6 @@
     "dist"
   ],
   "scripts": {
-    "preinstall": "mkdir dist && [[ -f dist/index.js ]] || npx touch dist/index.js",
     "clean": "rimraf dist",
     "build": "tsup && shx cp -r ./templates/ ./dist && chmod -R 777 ./dist/",
     "test": "jest"
