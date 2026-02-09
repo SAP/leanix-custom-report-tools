@@ -20,10 +20,6 @@ import './App.css';
 const FACT_SHEET_TYPE = 'Application';
 const FIELD_NAME = 'businessCriticality';
 
-interface ApplicationData extends lxr.FactSheet {
-  businessCriticality?: string;
-}
-
 interface CriticalityConfig {
   order: string[];
   colors: Record<string, string>;
@@ -31,7 +27,7 @@ interface CriticalityConfig {
 }
 
 function App() {
-  const [applications, setApplications] = useState<ApplicationData[]>([]);
+  const [applications, setApplications] = useState<lxr.FactSheet[]>([]);
   const [criticalityConfig, setCriticalityConfig] = useState<CriticalityConfig>({
     order: [],
     colors: {},
@@ -71,8 +67,14 @@ function App() {
             key: 'main',
             fixedFactSheetType: FACT_SHEET_TYPE,
             attributes: ['id', 'displayName', FIELD_NAME],
+            defaultFilters: [
+              {
+                facetKey: 'lxState',
+                keys: [] // Empty array = no quality seal filtering
+              }
+            ],
             callback: (data) => {
-              setApplications((data || []) as ApplicationData[]);
+              setApplications(data || []);
             }
           }
         ]
@@ -86,8 +88,9 @@ function App() {
     const counts: Record<string, number> = {};
 
     for (const app of applications) {
-      const criticality = app.businessCriticality;
-      // Use business criticality value, or 'n/a' if not set
+      // Use dynamic field access to get the field value
+      const criticality = app[FIELD_NAME] as string | undefined;
+      // Use the field value, or 'n/a' if not set
       const key = criticality || 'n/a';
       counts[key] = (counts[key] || 0) + 1;
     }
