@@ -44,6 +44,10 @@ fi
 
 # Create a symbolic link from globally-installed vite-plugin to node_modules/
 cd "$PROJECT_NAME"
+
+# Replace file: reference (invalid after copy) with latest so npm install works if needed
+npm pkg set devDependencies.@sap/vite-plugin-leanix-custom-report=latest
+
 if ! LINK_OUTPUT=$(npm link @sap/vite-plugin-leanix-custom-report 2>&1); then
     echo "$LINK_OUTPUT"
     exit 1

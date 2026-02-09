@@ -32,6 +32,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Sync template versions with vite-plugin
+        run: |
+          VERSION=$(node -p "require('./packages/vite-plugin/package.json').version")
+          cd packages/create-custom-report/templates/react-ts
+          npm pkg set devDependencies.@sap/vite-plugin-leanix-custom-report=^$VERSION
+
       - name: Build packages
         run: npm run build
 
