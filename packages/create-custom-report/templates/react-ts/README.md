@@ -5,7 +5,7 @@ A minimal custom report starter template showcasing LeanIX Reporting SDK basics.
 ## Features
 
 - Fetches Applications from LeanIX workspace
-- Groups applications by lifecycle phase
+- Groups applications by business criticality level
 - Displays interactive bar chart with Chart.js
 - Clean separation of concerns (UI, visualization)
 - TypeScript for type safety
@@ -72,8 +72,10 @@ This builds and uploads the report using credentials from `lxr.json`.
 Edit the `attributes` array in `src/App.tsx`:
 
 ```typescript
-attributes: ['id', 'displayName', 'lifecycle { asString }'];
+attributes: ['id', 'displayName', 'businessCriticality'];
 ```
+
+To use a different field, update the `FIELD_NAME` constant in `src/App.tsx`.
 
 ### Modify the Visualization
 
