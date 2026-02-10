@@ -8,7 +8,7 @@
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
-    "@leanix/reporting": "0.4.170",
+    "@leanix/reporting": "0.4.171",
     "chart.js": "4.5.1",
     "react": "19.2.3",
     "react-dom": "19.2.3"

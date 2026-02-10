@@ -1,16 +1,14 @@
 /**
  * Demo LeanIX Custom Report
  *
- * This demonstrates a basic LeanIX custom report that visualizes fact sheet lifecycle data.
+ * This demonstrates a basic LeanIX custom report that visualizes Applications by Business Criticality.
+ * The report displays a bar chart showing the distribution of applications across different criticality levels:
+ * - Administrative Service
+ * - Business Operational
+ * - Business Critical
+ * - Mission Critical
+ *
  * Feel free to customize this example or start from scratch with your own implementation.
- *
- * Some ideas to customize this report:
- * - Change FACT_SHEET_TYPE (e.g., 'Project', 'ITComponent')
- *   or remove fixedFactSheetType to query all fact sheet types
- * - Modify the attributes array to fetch different fields
- * - Update the visualization components to display your data as needed
- *
- * Replace or remove this comment block once you've customized your report
  */
 
 import type { lxr } from '@leanix/reporting';
@@ -20,17 +18,17 @@ import { BarChart } from './BarChart';
 import './App.css';
 
 const FACT_SHEET_TYPE = 'Application';
-const FIELD_NAME = 'lifecycle';
+const FIELD_NAME = 'businessCriticality';
 
-interface LifecycleConfig {
-  order: string[]
-  colors: Record<string, string>
-  labels: Record<string, string>
+interface CriticalityConfig {
+  order: string[];
+  colors: Record<string, string>;
+  labels: Record<string, string>;
 }
 
 function App() {
-  const [factSheets, setFactSheets] = useState<lxr.FactSheet[]>([]);
-  const [lifecycleConfig, setLifecycleConfig] = useState<LifecycleConfig>({
+  const [applications, setApplications] = useState<lxr.FactSheet[]>([]);
+  const [criticalityConfig, setCriticalityConfig] = useState<CriticalityConfig>({
     order: [],
     colors: {},
     labels: {}
@@ -41,35 +39,42 @@ function App() {
       const setup = await lx.init();
       const settings = setup.settings;
 
-      const config: LifecycleConfig = {
+      // Get business criticality configuration from data model
+      const config: CriticalityConfig = {
         order: [],
-        colors: { 'n/a': '#CCCCCC' },
-        labels: { 'n/a': 'n/a' }
+        colors: {},
+        labels: {}
       };
 
-      const lifecycleField = settings.dataModel.factSheets[FACT_SHEET_TYPE]?.fields?.[FIELD_NAME];
-      if (lifecycleField && 'values' in lifecycleField) {
-        config.order = lifecycleField.values as string[];
+      const criticalityField = settings.dataModel.factSheets[FACT_SHEET_TYPE]?.fields?.[FIELD_NAME];
+      if (criticalityField && 'values' in criticalityField) {
+        config.order = criticalityField.values as string[];
       }
 
       const metadata = lx.getFactSheetFieldMetaData(FACT_SHEET_TYPE, FIELD_NAME);
       if (metadata && 'values' in metadata) {
         for (const [key, value] of Object.entries(metadata.values)) {
-          config.colors[key] = value.bgColor || '#4A90E2';
+          config.colors[key] = value.bgColor || '#ffffff';
           config.labels[key] = lx.translateFieldValue(FACT_SHEET_TYPE, FIELD_NAME, key);
         }
       }
 
-      setLifecycleConfig(config);
+      setCriticalityConfig(config);
 
       lx.ready({
         facets: [
           {
             key: 'main',
             fixedFactSheetType: FACT_SHEET_TYPE,
-            attributes: ['id', 'displayName', `${FIELD_NAME} { asString }`],
+            attributes: ['id', 'displayName', FIELD_NAME],
+            defaultFilters: [
+              {
+                facetKey: 'lxState',
+                keys: [] // Empty array = no quality seal filtering
+              }
+            ],
             callback: (data) => {
-              setFactSheets(data || []);
+              setApplications(data || []);
             }
           }
         ]
@@ -79,36 +84,38 @@ function App() {
     initReport();
   }, []);
 
-  const lifecycleCounts = useMemo(() => {
+  const criticalityCounts = useMemo(() => {
     const counts: Record<string, number> = {};
 
-    for (const factSheet of factSheets) {
-      const rawKey = factSheet[FIELD_NAME]?.asString;
-      const key = !rawKey || rawKey === '-' ? 'n/a' : rawKey;
+    for (const app of applications) {
+      // Use dynamic field access to get the field value
+      const criticality = app[FIELD_NAME] as string | undefined;
+      // Use the field value, or 'n/a' if not set
+      const key = criticality || 'n/a';
       counts[key] = (counts[key] || 0) + 1;
     }
 
     return counts;
-  }, [factSheets]);
+  }, [applications]);
 
   const chartData = useMemo(() => {
-    const orderedKeys = [...lifecycleConfig.order, 'n/a'];
+    // Include all configured criticality levels plus any found in data that aren't configured
+    const configuredLevels = criticalityConfig.order;
+    const foundLevels = Object.keys(criticalityCounts);
+    const allLevels = [...new Set([...configuredLevels, ...foundLevels])];
+
+    // Filter to only show levels that have data
+    const levelsWithData = allLevels.filter((level) => (criticalityCounts[level] || 0) > 0);
 
     return {
-      labels: orderedKeys.map(key => lifecycleConfig.labels[key] || key),
-      values: orderedKeys.map(key => lifecycleCounts[key] || 0),
-      colors: orderedKeys.map(key => lifecycleConfig.colors[key] || '#4A90E2')
+      labels: levelsWithData.map((level) => criticalityConfig.labels[level] || level),
+      values: levelsWithData.map((level) => criticalityCounts[level] || 0),
+      colors: levelsWithData.map((level) => criticalityConfig.colors[level] || '#ffffff')
     };
-  }, [lifecycleCounts, lifecycleConfig]);
+  }, [criticalityCounts, criticalityConfig]);
 
   return (
     <div className="app">
-      <p>
-        Total:
-        {factSheets.length}
-        {' '}
-        fact sheets
-      </p>
       <div className="chart-container">
         <BarChart data={chartData} />
       </div>
