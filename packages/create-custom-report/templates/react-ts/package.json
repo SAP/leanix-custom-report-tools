@@ -10,14 +10,14 @@
   "dependencies": {
     "@leanix/reporting": "0.4.171",
     "chart.js": "4.5.1",
-    "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@antfu/eslint-config": "7.2.0",
     "@eslint-react/eslint-plugin": "2.7.2",
     "@sap/vite-plugin-leanix-custom-report": "^8.1.0",
-    "@types/react": "19.2.7",
+    "@types/react": "19.2.13",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.2",
     "eslint": "9.39.2",
