@@ -116,11 +116,12 @@ export const getAccessToken = async (credentials: LeanIXCredentials): Promise<Ac
 
 export const getAccessTokenClaims = (accessToken: AccessToken): JwtClaims => jwtDecode(accessToken.accessToken);
 
-export const getLaunchUrl = (devServerUrl: string, bearerToken: string): string => {
+export const getLaunchUrl = (devServerUrl: string, bearerToken: string, relayUrl: string, name?: string): string => {
   const decodedToken: JwtClaims = jwtDecode(bearerToken);
-  const urlEncoded
-    = devServerUrl === decodeURIComponent(devServerUrl) ? encodeURIComponent(devServerUrl) : devServerUrl;
-  const baseLaunchUrl = `${decodedToken.instanceUrl}/${decodedToken.principal.permission.workspaceName}/reporting/dev?url=${urlEncoded}#access_token=${bearerToken}`;
+  const urlEncoded =
+    devServerUrl === decodeURIComponent(devServerUrl) ? encodeURIComponent(devServerUrl) : devServerUrl;
+  const nameParam = name ? `&name=${encodeURIComponent(name)}` : '';
+  const baseLaunchUrl = `${relayUrl}/${decodedToken.principal.permission.workspaceName}/reporting/dev?url=${urlEncoded}${nameParam}#access_token=${bearerToken}`;
   return baseLaunchUrl;
 };
 
@@ -167,8 +168,8 @@ export const uploadBundle = async (params: {
   const storeHost = store?.host ?? 'store.leanix.net';
   const assetId = store?.assetId ?? null;
   const decodedToken: JwtClaims = jwtDecode(bearerToken);
-  const url
-    = assetId !== null
+  const url =
+    assetId !== null
       ? `https://${storeHost}/services/torg/v1/assetversions/${assetId}/payload`
       : `${decodedToken.instanceUrl}/services/pathfinder/v1/reports/upload`;
   const headers = { Authorization: `Bearer ${bearerToken}` };

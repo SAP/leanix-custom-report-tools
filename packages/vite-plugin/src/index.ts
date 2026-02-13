@@ -4,7 +4,8 @@ import type { JwtClaims } from '@lxr/core/models/jwt-claims';
 import type { LeanIXCredentials } from '@lxr/core/models/leanix-credentials';
 import type { AddressInfo } from 'node:net';
 import type { Logger, Plugin, ResolvedConfig } from 'vite';
-import { promises as fsp, openAsBlob } from 'node:fs';
+import { openAsBlob } from 'node:fs';
+import { createServer as createHttpServer } from 'node:http';
 import { join } from 'node:path';
 import {
   createBundle,
@@ -15,36 +16,13 @@ import {
   readMetadataJson,
   uploadBundle
 } from '@lxr/core/index';
+import { createProxyMiddleware } from 'http-proxy-middleware';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import { ZodError } from 'zod';
 import { resolveHostname } from './helpers';
 
 export interface LeanIXPluginOptions {
   packageJsonPath?: string;
-}
-
-// https://vitejs.dev/guide/migration.html#automatic-https-certificate-generation
-// https://github.com/vitejs/vite-plugin-basic-ssl
-export async function getCertificate(cacheDir: string): Promise<any> {
-  const cachePath = join(cacheDir, '_cert.pem');
-
-  try {
-    const [stat, content] = await Promise.all([fsp.stat(cachePath), fsp.readFile(cachePath, 'utf8')]);
-
-    if (Date.now() - stat.ctime.valueOf() > 30 * 24 * 60 * 60 * 1000) {
-      throw new Error('cache is outdated.');
-    }
-
-    return content;
-  } catch {
-    const content = (await import('./certificate')).createCertificate();
-    fsp
-      .mkdir(cacheDir, { recursive: true })
-      .then(async () => {
-        await fsp.writeFile(cachePath, content);
-      })
-      .catch(() => {});
-    return content;
-  }
 }
 
 export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugin[] {
@@ -56,28 +34,20 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
   let credentials: LeanIXCredentials = { host: '', apitoken: '' };
   let viteDevServerUrl: string;
   let launchUrl: string;
-
-  const defaultCacheDir = 'node_modules/.vite';
+  let relayServer: ReturnType<typeof createHttpServer> | null = null;
+  let devMetadata: CustomReportMetadata | null = null;
 
   const lxrPlugin: Plugin = {
     name: 'vite-plugin-leanix-custom-report',
     enforce: 'post',
     apply: undefined,
+
     async config(config, env) {
       shouldUpload = env.mode === 'upload';
       loadWorkspaceCredentials = env.command === 'serve' || shouldUpload;
       if (loadWorkspaceCredentials) {
-        const certificate = await getCertificate(`${config.cacheDir ?? defaultCacheDir}/basic-ssl`);
-        const https = (): any => ({ cert: certificate, key: certificate });
-
-        // server exposes host and runs in TLS + HTTPS2 mode
-        // required for serving the custom report files in LeanIX
         config.base = '';
-        config.server = { ...(config.server ?? {}), https: https(), host: true, cors: true };
-        config.preview = { ...(config.preview ?? {}), https: https() };
-        if (credentials.proxyURL !== undefined) {
-          config.server.proxy = { '*': credentials.proxyURL };
-        }
+        config.server = { ...(config.server ?? {}), host: true, cors: true };
         try {
           credentials = await readLxrJson();
         } catch (error) {
@@ -93,17 +63,19 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
         }
       }
     },
+
     async configResolved(resolvedConfig: ResolvedConfig) {
       logger = resolvedConfig.logger;
+      devMetadata = await readMetadataJson(join(resolvedConfig.root, 'package.json')).catch(() => null);
       if (loadWorkspaceCredentials) {
         try {
           if (typeof credentials.proxyURL === 'string' && credentials.proxyURL.length > 0) {
-            logger?.info(`👀 vite-plugin is using the following proxy: ${credentials.proxyURL}`);
+            logger?.info(`  Using proxy: ${credentials.proxyURL}`);
           }
           accessToken = await getAccessToken(credentials);
           claims = getAccessTokenClaims(accessToken);
           if (claims !== null) {
-            logger?.info(`🔥 Your workspace is ${claims.principal.permission.workspaceName}`);
+            logger?.info(`  Using workspace: ${claims.principal.permission.workspaceName}`);
           }
         } catch (err) {
           logger?.error(err === 401 ? '💥 Invalid LeanIX API token' : `${err}`);
@@ -111,36 +83,65 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
         }
       }
     },
-    configureServer({
-      config: {
-        server: { host, https = null }
-      },
-      httpServer
-    }) {
-      if (httpServer !== null) {
-        httpServer.on('listening', async () => {
-          const { port } = httpServer.address() as AddressInfo;
-          const { name: hostname } = resolveHostname(host);
-          const protocol = https !== null ? 'https' : 'http';
-          viteDevServerUrl = `${protocol}://${hostname}:${port}`;
-          if (accessToken !== null) {
-            launchUrl = getLaunchUrl(viteDevServerUrl, accessToken.accessToken);
-            setTimeout(() => {
-              logger?.info(`🚀 Your development server is available here => ${launchUrl}`);
-            }, 1);
-          } else {
-            throw new Error('💥 Could not get launch url, no accessToken...');
+
+    configureServer(viteDevServer) {
+      const { httpServer, config } = viteDevServer;
+
+      if (httpServer === null) {
+        return;
+      }
+
+      // Start HTTP relay server with proxy middleware
+      relayServer = createHttpServer(
+        createProxyMiddleware({
+          target: `https://${credentials.host}`,
+          changeOrigin: true,
+          secure: true,
+          agent: credentials.proxyURL ? new HttpsProxyAgent(credentials.proxyURL) : undefined
+        })
+      );
+
+      relayServer.listen(undefined, () => {
+        httpServer.once('listening', () => {
+          if (accessToken === null) {
+            throw new Error('Missing AccessToken');
           }
+
+          const { name: hostname } = resolveHostname(config.server.host);
+          const port = (httpServer.address() as AddressInfo).port;
+          viteDevServerUrl = `http://${hostname}:${port}`;
+
+          const relayPort = (relayServer!.address() as AddressInfo).port;
+          const relayUrl = `http://${hostname}:${relayPort}`;
+
+          launchUrl = getLaunchUrl(viteDevServerUrl, accessToken.accessToken, relayUrl, devMetadata?.title);
+
+          // Override Vite's resolved URLs BEFORE they are printed
+          viteDevServer.resolvedUrls = {
+            local: [launchUrl],
+            network: []
+          };
+          viteDevServer.printUrls = () => {
+            logger.info(`  Your LeanIX Custom Report is running at:\n  ${launchUrl}\n`);
+          };
         });
+      });
+    },
+
+    closeWatcher() {
+      if (relayServer) {
+        relayServer.close();
+        relayServer = null;
       }
     },
+
     async writeBundle(options, _outputBundle) {
       let metadata: CustomReportMetadata | undefined;
       try {
         metadata = await readMetadataJson(pluginOptions?.packageJsonPath);
       } catch (err: any) {
         if (err?.code === 'ENOENT') {
-          const path: string = err.patßh;
+          const path: string = err.path;
           logger?.error(`💥 Could not find metadata file at "${path}"`);
           logger?.warn('🙋 Have you initialized this project?"');
         } else if (err instanceof ZodError) {
