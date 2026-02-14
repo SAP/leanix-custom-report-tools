@@ -38,13 +38,13 @@
     "zod": "4.3.6"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "7.2.0",
+    "@antfu/eslint-config": "7.4.3",
     "@babel/preset-env": "7.28.3",
     "@babel/preset-typescript": "7.27.1",
     "@jest/types": "30.0.5",
     "@swc/core": "1.13.5",
     "@types/jest": "30.0.0",
-    "@types/node": "24.10.9",
+    "@types/node": "24.10.13",
     "babel-jest": "30.0.5",
     "eslint": "9.39.2",
     "jest": "30.0.5",
