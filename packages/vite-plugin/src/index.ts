@@ -91,13 +91,38 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
         return;
       }
 
+      const targetHost = credentials.host;
+      const targetOrigin = `https://${targetHost}`;
+
       // Start HTTP relay server with proxy middleware
       relayServer = createHttpServer(
         createProxyMiddleware({
-          target: `https://${credentials.host}`,
+          target: targetOrigin,
           changeOrigin: true,
           secure: true,
-          agent: credentials.proxyURL ? new HttpsProxyAgent(credentials.proxyURL) : undefined
+          agent: credentials.proxyURL ? new HttpsProxyAgent(credentials.proxyURL) : undefined,
+          on: {
+            proxyReq: (proxyReq, req) => {
+              // Rewrite Origin header: localhost -> LeanIX host
+              proxyReq.setHeader('Origin', targetOrigin);
+
+              // Rewrite Referer header: replace localhost prefix with LeanIX host
+              const referer = req.headers.referer;
+              if (referer) {
+                const refererUrl = new URL(referer);
+                const newReferer = `${targetOrigin}${refererUrl.pathname}${refererUrl.search}`;
+                proxyReq.setHeader('Referer', newReferer);
+              }
+            },
+            proxyRes: (proxyRes, req) => {
+              // Rewrite CORS headers to allow localhost origin
+              const requestOrigin = req.headers.origin;
+              if (requestOrigin) {
+                proxyRes.headers['access-control-allow-origin'] = requestOrigin;
+                proxyRes.headers['access-control-allow-credentials'] = 'true';
+              }
+            }
+          }
         })
       );
 
