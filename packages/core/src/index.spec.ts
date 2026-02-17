@@ -2,8 +2,9 @@ import type { CustomReportMetadata } from '@lxr/core/models/custom-report-metada
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { ReadEntry } from 'tar';
-import { createReadStream, existsSync, mkdirSync, openAsBlob, rmSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { createReadStream, mkdtempSync, openAsBlob, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { URL } from 'node:url';
 import {
   createBundle,
@@ -59,7 +60,7 @@ describe('the lxr core package', () => {
     await expect(async () => await validateDocument({ host: 'demo-us.leanix.net' }, 'lxr.json')).rejects.toThrow();
   });
 
-  it('readLxrJson throws error if json file doesn\'t have all required fields', async () => {
+  it("readLxrJson throws error if json file doesn't have all required fields", async () => {
     await readLxrJson(LXR_JSON_PATH);
   });
 
@@ -92,26 +93,21 @@ describe('the lxr core package', () => {
 
   it('getLaunchUrl returns a url', async () => {
     const devServerUrl = 'https://localhost:8080';
-    const expectedInstanceUrl = 'https://app.leanix.net';
+    const relayServerUrl = 'http://localhost:3000';
     const expectedWorkspaceName = 'bernharddemo';
-    const bearerToken
-      = 'eyJraWQiOiI0MDJjODg3NTBjZmJhOGQzZTQ0NjE0YzQ5YjBlYzg3NiIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiJwYXVsb0BmYXplbmRhZG9zb2Z0d2FyZS5jb20iLCJwcmluY2lwYWwiOnsiaWQiOiIyN2U0MjQyZS0xNWJiLTRlNDQtYjQxYi1hMDViYzFhMTEyMjIiLCJ1c2VybmFtZSI6InBhdWxvQGZhemVuZGFkb3NvZnR3YXJlLmNvbSIsInJvbGUiOiJBQ0NPVU5UVVNFUiIsInN0YXR1cyI6IkFDVElWRSIsImFjY291bnQiOnsiaWQiOiIzYWZhMjE2YS1hZTMxLTRjOWUtYTcyZi1hOTVjYzE4NDAxMmQiLCJuYW1lIjoiZmF6ZW5kYWRvc29mdHdhcmUifSwicGVybWlzc2lvbiI6eyJpZCI6ImQ0YmI0MTk5LTgxMmEtNDE2Ny05ZTlmLThmMGI3NWYxMTg0NCIsIndvcmtzcGFjZUlkIjoiZDBhMGEwNDQtMGQ5Ny00ZDhiLTllMmQtYzkzYTBiMTdhMWJhIiwid29ya3NwYWNlTmFtZSI6ImJlcm5oYXJkZGVtbyIsInJvbGUiOiJBRE1JTiIsImN1c3RvbWVyUm9sZXMiOm51bGwsImFjY2Vzc0NvbnRyb2xFbnRpdGllcyI6WyJCTFVFIl0sInN0YXR1cyI6IkFDVElWRSIsImFzVXNlciI6bnVsbH19LCJpc3MiOiJodHRwczovL2V1LXN2Yy5sZWFuaXgubmV0IiwianRpIjoiMTkyMGY1NzktMTU5MS00OTE2LTkzZTktYWQ5NWQyZDFkNzNkIiwiZXhwIjoxNjI5NjgwMzYwLCJpbnN0YW5jZVVybCI6Imh0dHBzOi8vYXBwLmxlYW5peC5uZXQifQ.UswqJIfuT6EG5haAt9WiOG8qRBybV62eHqIbvahZK38AafQ93QETVMbYxf3AySSAYtrElpl3N4mZHtfqJTEygVlQw9uxUQioaT6US-lR6DJK0a7HIK-ec7LHtaQXVu2IOEGgrc7frLYFJcL1zoQqxCuxzNGtgngZbVkSKInm5sQXMueTPkew20Km762a11Us0ralnzmXduIB-JGvjt-nrEgl7t7MpRD2wN9WjN-b3Yw-2sDLj8___bcVPChH93P-p6XMRne5hiHmr-JaY3w2HHQ6PLqU2cG1BMdnA6DpmStM8MRVSciBGPtgy0ovbUrxw862wK1na8F2nrFZpsf9dw';
-    const launchUrl = getLaunchUrl(devServerUrl, bearerToken);
+    const bearerToken =
+      'eyJraWQiOiI0MDJjODg3NTBjZmJhOGQzZTQ0NjE0YzQ5YjBlYzg3NiIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiJwYXVsb0BmYXplbmRhZG9zb2Z0d2FyZS5jb20iLCJwcmluY2lwYWwiOnsiaWQiOiIyN2U0MjQyZS0xNWJiLTRlNDQtYjQxYi1hMDViYzFhMTEyMjIiLCJ1c2VybmFtZSI6InBhdWxvQGZhemVuZGFkb3NvZnR3YXJlLmNvbSIsInJvbGUiOiJBQ0NPVU5UVVNFUiIsInN0YXR1cyI6IkFDVElWRSIsImFjY291bnQiOnsiaWQiOiIzYWZhMjE2YS1hZTMxLTRjOWUtYTcyZi1hOTVjYzE4NDAxMmQiLCJuYW1lIjoiZmF6ZW5kYWRvc29mdHdhcmUifSwicGVybWlzc2lvbiI6eyJpZCI6ImQ0YmI0MTk5LTgxMmEtNDE2Ny05ZTlmLThmMGI3NWYxMTg0NCIsIndvcmtzcGFjZUlkIjoiZDBhMGEwNDQtMGQ5Ny00ZDhiLTllMmQtYzkzYTBiMTdhMWJhIiwid29ya3NwYWNlTmFtZSI6ImJlcm5oYXJkZGVtbyIsInJvbGUiOiJBRE1JTiIsImN1c3RvbWVyUm9sZXMiOm51bGwsImFjY2Vzc0NvbnRyb2xFbnRpdGllcyI6WyJCTFVFIl0sInN0YXR1cyI6IkFDVElWRSIsImFzVXNlciI6bnVsbH19LCJpc3MiOiJodHRwczovL2V1LXN2Yy5sZWFuaXgubmV0IiwianRpIjoiMTkyMGY1NzktMTU5MS00OTE2LTkzZTktYWQ5NWQyZDFkNzNkIiwiZXhwIjoxNjI5NjgwMzYwLCJpbnN0YW5jZVVybCI6Imh0dHBzOi8vYXBwLmxlYW5peC5uZXQifQ.UswqJIfuT6EG5haAt9WiOG8qRBybV62eHqIbvahZK38AafQ93QETVMbYxf3AySSAYtrElpl3N4mZHtfqJTEygVlQw9uxUQioaT6US-lR6DJK0a7HIK-ec7LHtaQXVu2IOEGgrc7frLYFJcL1zoQqxCuxzNGtgngZbVkSKInm5sQXMueTPkew20Km762a11Us0ralnzmXduIB-JGvjt-nrEgl7t7MpRD2wN9WjN-b3Yw-2sDLj8___bcVPChH93P-p6XMRne5hiHmr-JaY3w2HHQ6PLqU2cG1BMdnA6DpmStM8MRVSciBGPtgy0ovbUrxw862wK1na8F2nrFZpsf9dw';
+    const launchUrl = getLaunchUrl(devServerUrl, bearerToken, relayServerUrl);
     expect(typeof launchUrl).toBe('string');
     const url = new URL(launchUrl);
-    expect(url.origin).toBe(expectedInstanceUrl);
+    expect(url.origin).toBe(relayServerUrl);
     expect(url.pathname).toBe(`/${expectedWorkspaceName}/reporting/dev`);
     expect(url.searchParams.get('url')).toBe(devServerUrl);
     expect(url.hash).toBe(`#access_token=${bearerToken}`);
   });
 
   it('createProjectBundle returns a readable stream', async () => {
-    const outDir = resolve(__dirname, '../.temp/createProjectBundle');
-
-    if (existsSync(outDir)) {
-      rmSync(outDir, { recursive: true });
-    }
-    mkdirSync(outDir, { recursive: true });
+    const outDir = mkdtempSync(join(tmpdir(), 'createProjectBundle-'));
 
     const projectFiles = {
       'index.js': 'console.log("hello world")',
@@ -129,7 +125,7 @@ describe('the lxr core package', () => {
 
     const bundleFiles = await new Promise<Set<string>>((resolve, reject) => {
       const entries: ReadEntry[] = [];
-      fileStream.on('open', () => fileStream.pipe(tarT()).on('entry', entry => entries.push(entry)));
+      fileStream.on('open', () => fileStream.pipe(tarT()).on('entry', (entry) => entries.push(entry)));
       fileStream.on('error', (err) => {
         reject(err);
       });
@@ -157,11 +153,9 @@ describe('the lxr core package', () => {
 
   it('uploadBundle', async () => {
     const credentials = await readLxrJson(LXR_JSON_PATH);
-    const outDir = resolve(__dirname, '../.temp/uploadBundle');
+    const outDir = mkdtempSync(join(tmpdir(), 'uploadBundle-'));
     const metadata = getDummyReportMetadata();
-    if (!existsSync(outDir)) {
-      mkdirSync(outDir, { recursive: true });
-    }
+
     writeFileSync(resolve(outDir, 'index.html'), '<html><body>Hi from demo project</body></html>');
     writeFileSync(resolve(outDir, 'index.js'), 'console.log("hello world")');
     const { accessToken: bearerToken } = await getAccessToken(credentials);
