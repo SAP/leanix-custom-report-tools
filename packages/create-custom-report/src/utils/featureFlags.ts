@@ -39,8 +39,7 @@ export async function checkFeatureFlag(options: {
   const fetchOptions: RequestInit = {
     method: 'GET',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json'
+      Authorization: `Bearer ${accessToken}`
     }
   };
 
