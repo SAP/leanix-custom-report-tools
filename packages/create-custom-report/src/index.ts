@@ -6,9 +6,11 @@ import { red } from 'kolorist';
 import minimist from 'minimist';
 import prompts from 'prompts';
 import { canSkipEmptying, emptyDir, isValidPackageName, pkgFromUserAgent, toValidPackageName } from './helpers';
+import { getAccessToken } from '@lxr/core/index';
 import banner from './utils/banner';
 import { deployTemplate } from './utils/deployTemplate';
 import { generateLeanIXFiles } from './utils/leanix';
+import { checkFeatureFlag } from './utils/featureFlags';
 
 export interface IProjectOptions {
   packageName?: string
@@ -35,6 +37,40 @@ const cwd = process.cwd();
 // Fixed template: React with TypeScript
 const TEMPLATE = 'react-ts';
 
+const getCredentialQuestions = (options?: {
+  host?: string;
+  apitoken?: string;
+  proxyURL?: string;
+  skipIfProvided?: boolean;
+}): Array<prompts.PromptObject<'host' | 'apitoken' | 'behindProxy' | 'proxyURL'>> => [
+  {
+    type: options?.skipIfProvided && options?.host !== undefined ? null : 'text',
+    name: 'host',
+    initial: options?.host ?? 'demo-eu.leanix.net',
+    message: 'Which host do you want to work with?'
+  },
+  {
+    type: options?.skipIfProvided && options?.apitoken !== undefined ? null : 'text',
+    name: 'apitoken',
+    message:
+      'API-Token for Authentication (see: https://dev.leanix.net/docs/authentication#section-generate-api-tokens)'
+  },
+  {
+    type: options?.skipIfProvided && options?.proxyURL !== undefined ? null : 'toggle',
+    name: 'behindProxy',
+    message: 'Are you behind a proxy?',
+    initial: !!options?.proxyURL,
+    active: 'Yes',
+    inactive: 'No'
+  },
+  {
+    type: (prev: boolean) => prev && 'text',
+    name: 'proxyURL',
+    message: 'Proxy URL?',
+    initial: options?.proxyURL
+  }
+];
+
 const getLeanIXQuestions = (
   argv: minimist.ParsedArgs
 ): Array<prompts.PromptObject<keyof ILeanIXOptions | 'behindProxy'>> => [
@@ -58,31 +94,12 @@ const getLeanIXQuestions = (
     name: 'description',
     message: 'Description of your project'
   },
-  {
-    type: argv?.host === undefined ? 'text' : null,
-    name: 'host',
-    initial: 'demo-eu.leanix.net',
-    message: 'Which host do you want to work with?'
-  },
-  {
-    type: argv?.apitoken === undefined ? 'text' : null,
-    name: 'apitoken',
-    message:
-      'API-Token for Authentication (see: https://dev.leanix.net/docs/authentication#section-generate-api-tokens)'
-  },
-  {
-    type: argv?.proxyURL === undefined ? 'toggle' : null,
-    name: 'behindProxy',
-    message: 'Are you behind a proxy?',
-    initial: false,
-    active: 'Yes',
-    inactive: 'No'
-  },
-  {
-    type: (prev: boolean) => prev && 'text',
-    name: 'proxyURL',
-    message: 'Proxy URL?'
-  }
+  ...getCredentialQuestions({
+    host: argv?.host,
+    apitoken: argv?.apitoken,
+    proxyURL: argv?.proxyURL,
+    skipIfProvided: true
+  })
 ];
 
 export const init = async (): Promise<void> => {
@@ -164,6 +181,39 @@ export const init = async (): Promise<void> => {
   const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent) ?? null;
   const pkgManager = pkgInfo != null ? pkgInfo.name : 'npm';
 
+  // Validate credentials by getting access token, retry if invalid
+  let tokenResponse = null;
+  while (!tokenResponse) {
+    try {
+      if (!host || !apitoken) {
+        throw new Error('Host and API token are required');
+      }
+      tokenResponse = await getAccessToken({ host, apitoken, proxyURL });
+      console.log('✓ Successfully authenticated with LeanIX');
+    } catch (error) {
+      console.log(`${red('✖')} Failed to authenticate: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.log('Please check your host, API token, and proxy settings and try again.\n');
+
+      const retryResult = await prompts(getCredentialQuestions({ host, apitoken, proxyURL }), {
+        onCancel: () => {
+          throw new Error(`${red('✖')} Operation cancelled`);
+        }
+      });
+
+      host = retryResult.host;
+      apitoken = retryResult.apitoken;
+      proxyURL = retryResult.proxyURL;
+    }
+  }
+
+  // Check feature flag from LeanIX workspace
+  const mcpCustomReportsEnabled = await checkFeatureFlag({
+    host,
+    tokenResponse,
+    featureFlagId: 'mcpserver.custom-reports',
+    proxyURL
+  });
+
   const root = join(cwd, targetDir ?? '');
 
   console.log(`🚀Scaffolding project in ${root}...`);
@@ -180,7 +230,8 @@ export const init = async (): Promise<void> => {
     defaultProjectName,
     targetDir: root,
     template: TEMPLATE,
-    result: { id, author, title, description, host, apitoken, proxyURL, overwrite }
+    result: { id, author, title, description, host, apitoken, proxyURL, overwrite },
+    mcpCustomReportsEnabled: mcpCustomReportsEnabled
   });
   await generateLeanIXFiles({
     targetDir: root,
