@@ -106,9 +106,10 @@ export const init = async (): Promise<void> => {
   console.log(`\n${banner}\n`);
   const argv = minimist(process.argv.slice(2), {
     string: ['reportId', 'author', 'title', 'description', 'host', 'apitoken', 'proxyUrl'],
-    boolean: ['overwrite'],
+    boolean: ['overwrite', 'skipAuth'],
     default: {
-      overwrite: false
+      overwrite: false,
+      skipAuth: false
     }
   });
 
@@ -183,36 +184,40 @@ export const init = async (): Promise<void> => {
 
   // Validate credentials by getting access token, retry if invalid
   let tokenResponse = null;
-  while (!tokenResponse) {
-    try {
-      if (!host || !apitoken) {
-        throw new Error('Host and API token are required');
-      }
-      tokenResponse = await getAccessToken({ host, apitoken, proxyURL });
-      console.log('✓ Successfully authenticated with LeanIX');
-    } catch (error) {
-      console.log(`${red('✖')} Failed to authenticate: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      console.log('Please check your host, API token, and proxy settings and try again.\n');
+  let mcpCustomReportsEnabled = false;
 
-      const retryResult = await prompts(getCredentialQuestions({ host, apitoken, proxyURL }), {
-        onCancel: () => {
-          throw new Error(`${red('✖')} Operation cancelled`);
+  if (!argv.skipAuth) {
+    while (!tokenResponse) {
+      try {
+        if (!host || !apitoken) {
+          throw new Error('Host and API token are required');
         }
-      });
+        tokenResponse = await getAccessToken({ host, apitoken, proxyURL });
+        console.log('✓ Successfully authenticated with LeanIX');
+      } catch (error) {
+        console.log(`${red('✖')} Failed to authenticate: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.log('Please check your host, API token, and proxy settings and try again.\n');
 
-      host = retryResult.host;
-      apitoken = retryResult.apitoken;
-      proxyURL = retryResult.proxyURL;
+        const retryResult = await prompts(getCredentialQuestions({ host, apitoken, proxyURL }), {
+          onCancel: () => {
+            throw new Error(`${red('✖')} Operation cancelled`);
+          }
+        });
+
+        host = retryResult.host;
+        apitoken = retryResult.apitoken;
+        proxyURL = retryResult.proxyURL;
+      }
     }
-  }
 
-  // Check feature flag from LeanIX workspace
-  const mcpCustomReportsEnabled = await checkFeatureFlag({
-    host,
-    tokenResponse,
-    featureFlagId: 'mcpserver.custom-reports',
-    proxyURL
-  });
+    // Check feature flag from LeanIX workspace
+    mcpCustomReportsEnabled = await checkFeatureFlag({
+      host,
+      tokenResponse,
+      featureFlagId: 'mcpserver.custom-reports',
+      proxyURL
+    });
+  }
 
   const root = join(cwd, targetDir ?? '');
 

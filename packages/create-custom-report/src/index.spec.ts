@@ -37,7 +37,9 @@ const getAllFiles = (dirPath: string, arrayOfFiles: string[] = []): string[] => 
 const getPackageJson = (dirPath: string): any => JSON.parse(readFileSync(join(dirPath, 'package.json')).toString());
 
 // React TypeScript template plus 1 generated file: 'lxr.json'
+// When --skipAuth is used, AGENTS.md is excluded (it requires mcpCustomReportsEnabled)
 const templateFiles = [...getAllFiles(resolve(CLI_PATH, '..', 'templates', 'react-ts')), 'lxr.json']
+  .filter(file => file !== 'AGENTS.md')
   .map(file => (file === '_gitignore' ? '.gitignore' : file))
   .sort();
 
@@ -85,6 +87,7 @@ it('successfully scaffolds a project based on react-ts template', async () => {
 
   const args = [
     '--overwrite',
+    '--skipAuth',
     '--id',
     reportId,
     '--author',
