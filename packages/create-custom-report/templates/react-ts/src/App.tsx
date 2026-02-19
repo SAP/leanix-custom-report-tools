@@ -13,8 +13,8 @@
 
 import type { lxr } from '@leanix/reporting';
 import { lx } from '@leanix/reporting';
-import { useEffect, useMemo, useState } from 'react';
-import { BarChart } from './BarChart';
+import Chart from 'chart.js/auto';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 
 const FACT_SHEET_TYPE = 'Application';
@@ -24,6 +24,69 @@ interface CriticalityConfig {
   order: string[];
   colors: Record<string, string>;
   labels: Record<string, string>;
+}
+
+interface BarChartProps {
+  data: {
+    labels: string[];
+    values: number[];
+    colors?: string[];
+  };
+}
+
+function BarChart({ data }: BarChartProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const chartRef = useRef<Chart | null>(null);
+
+  useEffect(() => {
+    if (!canvasRef.current || data.labels.length === 0) {
+      return;
+    }
+
+    if (chartRef.current) {
+      chartRef.current.destroy();
+    }
+
+    const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) {
+      return;
+    }
+
+    chartRef.current = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: data.labels,
+        datasets: [
+          {
+            data: data.values,
+            backgroundColor: data.colors,
+            borderColor: '#c2c9d6',
+            borderWidth: 1
+          }
+        ]
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        }
+      }
+    });
+
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.destroy();
+      }
+    };
+  }, [data]);
+
+  return (
+    <div style={{ width: '100%', height: '100%' }}>
+      <canvas ref={canvasRef} />
+    </div>
+  );
 }
 
 function App() {
