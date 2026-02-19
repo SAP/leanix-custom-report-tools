@@ -59,9 +59,7 @@ function BarChart({ data }: BarChartProps) {
         datasets: [
           {
             data: data.values,
-            backgroundColor: data.colors,
-            borderColor: '#c2c9d6',
-            borderWidth: 1
+            backgroundColor: data.colors
           }
         ]
       },
@@ -117,7 +115,7 @@ function App() {
       const metadata = lx.getFactSheetFieldMetaData(FACT_SHEET_TYPE, FIELD_NAME);
       if (metadata && 'values' in metadata) {
         for (const [key, value] of Object.entries(metadata.values)) {
-          config.colors[key] = value.bgColor || '#ffffff';
+          config.colors[key] = value.bgColor || '#555555';
           config.labels[key] = lx.translateFieldValue(FACT_SHEET_TYPE, FIELD_NAME, key);
         }
       }
@@ -173,7 +171,7 @@ function App() {
     return {
       labels: levelsWithData.map((level) => criticalityConfig.labels[level] || level),
       values: levelsWithData.map((level) => criticalityCounts[level] || 0),
-      colors: levelsWithData.map((level) => criticalityConfig.colors[level] || '#ffffff')
+      colors: levelsWithData.map((level) => criticalityConfig.colors[level] || '#555555')
     };
   }, [criticalityCounts, criticalityConfig]);
 
