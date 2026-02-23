@@ -42,7 +42,7 @@
     "@babel/preset-env": "7.29.0",
     "@babel/preset-typescript": "7.28.5",
     "@jest/types": "30.0.5",
-    "@swc/core": "1.13.5",
+    "@swc/core": "1.15.11",
     "@types/jest": "30.0.0",
     "@types/node": "24.10.9",
     "babel-jest": "30.0.5",
