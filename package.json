@@ -39,8 +39,8 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "7.2.0",
-    "@babel/preset-env": "7.28.3",
-    "@babel/preset-typescript": "7.27.1",
+    "@babel/preset-env": "7.29.0",
+    "@babel/preset-typescript": "7.28.5",
     "@jest/types": "30.0.5",
     "@swc/core": "1.13.5",
     "@types/jest": "30.0.0",
