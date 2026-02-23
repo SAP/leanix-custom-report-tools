@@ -54,8 +54,8 @@ export const deployTemplate = (params: IDeployTemplateParams): void => {
 
   const templateFiles = readdirSync(templateDir);
   for (const file of templateFiles /* .filter(f => f !== 'package.json') */) {
-    // Skip AGENTS.md if MCP custom reports feature is not enabled
-    if (file === 'AGENTS.md' && !mcpCustomReportsEnabled) {
+    // Skip AGENTS.md and CLAUDE.md if MCP custom reports feature is not enabled
+    if ((file === 'AGENTS.md' || file === 'CLAUDE.md') && !mcpCustomReportsEnabled) {
       continue;
     }
     write(file);
