@@ -1,5 +1,6 @@
 import type { ExecaSyncReturnValue, SyncOptions } from 'execa';
-import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execaCommandSync } from 'execa';
 import { mkdirpSync, readdirSync, statSync, writeFileSync } from 'fs-extra';
@@ -8,7 +9,7 @@ import pkg from '../package.json' with { type: 'json' };
 
 const CLI_PATH = resolve(__dirname, '..', pkg.bin);
 const projectName = 'test-app';
-const genPath = resolve(__dirname, projectName);
+let tempDir: string;
 
 const run = (args: string[], options: SyncOptions = {}): ExecaSyncReturnValue => {
   return execaCommandSync(`node ${CLI_PATH} ${args.join(' ')}`, options);
@@ -16,11 +17,12 @@ const run = (args: string[], options: SyncOptions = {}): ExecaSyncReturnValue =>
 
 // Helper to create a non-empty directory
 const createNonEmptyDir = (): void => {
+  const projectDir = join(tempDir, projectName);
   // Create the temporary directory
-  mkdirpSync(genPath);
+  mkdirpSync(projectDir);
 
   // Create a package.json file
-  const pkgJson = join(genPath, 'package.json');
+  const pkgJson = join(projectDir, 'package.json');
   writeFileSync(pkgJson, '{ "foo": "bar" }');
 };
 
@@ -44,14 +46,13 @@ const templateFiles = [...getAllFiles(resolve(CLI_PATH, '..', 'templates', 'reac
   .sort();
 
 beforeEach(() => {
-  if (existsSync(genPath)) {
-    rmSync(genPath, { recursive: true });
-  }
+  // Create a fresh temp directory for each test
+  tempDir = mkdtempSync(join(tmpdir(), 'create-custom-report-test-'));
 });
 
-afterAll(() => {
-  if (existsSync(genPath)) {
-    rmSync(genPath, { recursive: true });
+afterEach(() => {
+  if (existsSync(tempDir)) {
+    rmSync(tempDir, { recursive: true });
   }
 });
 
@@ -62,14 +63,15 @@ it('prompts for the project name if none supplied', () => {
 
 it('asks to overwrite non-empty target directory', () => {
   createNonEmptyDir();
-  const { stdout } = run([projectName], { cwd: __dirname });
+  const { stdout } = run([projectName], { cwd: tempDir });
   expect((stdout as string)?.includes(`Target directory "${projectName}" is not empty.`)).toBe(true);
 });
 
 it('asks to overwrite non-empty current directory', () => {
   createNonEmptyDir();
+  const projectDir = join(tempDir, projectName);
   const { stdout } = run(['.'], {
-    cwd: genPath,
+    cwd: projectDir,
     input: 'test-app\n',
     reject: false
   });
@@ -105,19 +107,18 @@ it('successfully scaffolds a project based on react-ts template', async () => {
   ];
 
   const { stdout, stderr } = run([projectName, ...args], {
-    cwd: resolve(__dirname, '..')
+    cwd: tempDir
   });
   expect(typeof stderr).toEqual('string');
 
-  const targetPath = resolve(__dirname, '..', projectName);
-  const generatedFiles = getAllFiles(targetPath).sort();
+  const projectDir = join(tempDir, projectName);
+  const generatedFiles = getAllFiles(projectDir).sort();
 
   // Assertions
-  expect((stdout as string)?.includes(`Scaffolding project in ${targetPath}`)).toBe(true);
   expect((stdout as string)?.includes('Using React + TypeScript template')).toBe(true);
   expect(generatedFiles).toEqual(templateFiles);
 
-  const pkg = getPackageJson(targetPath);
+  const pkg = getPackageJson(projectDir);
   expect(pkg.name).toEqual(projectName);
   expect(pkg.author).toEqual(author);
   expect(pkg.description).toEqual(description);

@@ -10,6 +10,5 @@ export default antfu({
       'style/semi': ['error', 'always'],
       'no-console': 'warn'
     }
-  },
-  ignores: ['**/test-app/**', '**/test-app']
+  }
 });
