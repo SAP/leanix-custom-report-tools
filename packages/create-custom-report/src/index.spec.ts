@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { mkdirpSync, readdirSync, statSync, writeFileSync } from 'fs-extra';
@@ -11,7 +11,7 @@ const genPath = resolve(__dirname, projectName);
 
 const run = (args: string[], options: { cwd?: string; input?: string; reject?: boolean } = {}) => {
   try {
-    const stdout = execSync(`node ${CLI_PATH} ${args.join(' ')}`, { ...options, encoding: 'utf8' });
+    const stdout = execFileSync('node', [CLI_PATH, ...args], { ...options, encoding: 'utf8' });
     return { stdout, stderr: '', exitCode: 0, failed: false };
   } catch (e: any) {
     return { stdout: e.stdout || '', stderr: e.stderr || '', exitCode: e.status || 1, failed: true };
