@@ -35,7 +35,7 @@
     "minimist": "1.2.8",
     "npm": "11.9.0",
     "prompts": "2.4.2",
-    "short-uuid": "5.2.0"
+    "short-uuid": "6.0.3"
   },
   "devDependencies": {
     "@types/fs-extra": "11.0.4",
