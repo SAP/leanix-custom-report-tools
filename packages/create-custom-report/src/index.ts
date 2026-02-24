@@ -194,7 +194,8 @@ export const init = async (): Promise<void> => {
         }
         tokenResponse = await getAccessToken({ host, apitoken, proxyURL });
         console.log('✓ Successfully authenticated with LeanIX');
-      } catch (error) {
+      }
+      catch (error) {
         console.log(`${red('✖')} Failed to authenticate: ${error instanceof Error ? error.message : 'Unknown error'}`);
         console.log('Please check your host, API token, and proxy settings and try again.\n');
 
@@ -218,14 +219,14 @@ export const init = async (): Promise<void> => {
         featureFlagId: 'mcpserver.custom-reports',
         proxyURL
       });
-    } catch (error) {
+    }
+    catch (error) {
       console.log(
         `${red('✖')} Could not check feature flags: ${error instanceof Error ? error?.message : 'Unknown error'}`
       );
       console.log('AGENTS.md will not be included in the generated project.\n');
       mcpCustomReportsEnabled = false;
     }
-
   }
 
   const root = join(cwd, targetDir ?? '');
