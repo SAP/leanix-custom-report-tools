@@ -1,8 +1,7 @@
-import type { ExecaSyncReturnValue, SyncOptions } from 'execa';
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { execaCommandSync } from 'execa';
 import { mkdirpSync, readdirSync, statSync, writeFileSync } from 'fs-extra';
 import { generate as uuid } from 'short-uuid';
 import pkg from '../package.json' with { type: 'json' };
@@ -11,8 +10,13 @@ const CLI_PATH = resolve(__dirname, '..', pkg.bin);
 const projectName = 'test-app';
 let tempDir: string;
 
-const run = (args: string[], options: SyncOptions = {}): ExecaSyncReturnValue => {
-  return execaCommandSync(`node ${CLI_PATH} ${args.join(' ')}`, options);
+const run = (args: string[], options: { cwd?: string; input?: string; reject?: boolean } = {}) => {
+  try {
+    const stdout = execFileSync('node', [CLI_PATH, ...args], { ...options, encoding: 'utf8' });
+    return { stdout, stderr: '', exitCode: 0, failed: false };
+  } catch (e: any) {
+    return { stdout: e.stdout || '', stderr: e.stderr || '', exitCode: e.status || 1, failed: true };
+  }
 };
 
 // Helper to create a non-empty directory
@@ -41,8 +45,8 @@ const getPackageJson = (dirPath: string): any => JSON.parse(readFileSync(join(di
 // React TypeScript template plus 1 generated file: 'lxr.json'
 // When --skipAuth is used, AGENTS.md and CLAUDE.md are excluded (they require mcpCustomReportsEnabled)
 const templateFiles = [...getAllFiles(resolve(CLI_PATH, '..', 'templates', 'react-ts')), 'lxr.json']
-  .filter(file => file !== 'AGENTS.md' && file !== 'CLAUDE.md')
-  .map(file => (file === '_gitignore' ? '.gitignore' : file))
+  .filter((file) => file !== 'AGENTS.md' && file !== 'CLAUDE.md')
+  .map((file) => (file === '_gitignore' ? '.gitignore' : file))
   .sort();
 
 beforeEach(() => {
