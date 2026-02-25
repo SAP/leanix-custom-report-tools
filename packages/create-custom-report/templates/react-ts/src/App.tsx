@@ -13,8 +13,8 @@
 
 import type { lxr } from '@leanix/reporting';
 import { lx } from '@leanix/reporting';
-import { useEffect, useMemo, useState } from 'react';
-import { BarChart } from './BarChart';
+import Chart from 'chart.js/auto';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 
 const FACT_SHEET_TYPE = 'Application';
@@ -24,6 +24,67 @@ interface CriticalityConfig {
   order: string[];
   colors: Record<string, string>;
   labels: Record<string, string>;
+}
+
+interface BarChartProps {
+  data: {
+    labels: string[];
+    values: number[];
+    colors?: string[];
+  };
+}
+
+function BarChart({ data }: BarChartProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const chartRef = useRef<Chart | null>(null);
+
+  useEffect(() => {
+    if (!canvasRef.current || data.labels.length === 0) {
+      return;
+    }
+
+    if (chartRef.current) {
+      chartRef.current.destroy();
+    }
+
+    const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) {
+      return;
+    }
+
+    chartRef.current = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: data.labels,
+        datasets: [
+          {
+            data: data.values,
+            backgroundColor: data.colors
+          }
+        ]
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        }
+      }
+    });
+
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.destroy();
+      }
+    };
+  }, [data]);
+
+  return (
+    <div style={{ width: '100%', height: '100%' }}>
+      <canvas ref={canvasRef} />
+    </div>
+  );
 }
 
 function App() {
@@ -54,7 +115,7 @@ function App() {
       const metadata = lx.getFactSheetFieldMetaData(FACT_SHEET_TYPE, FIELD_NAME);
       if (metadata && 'values' in metadata) {
         for (const [key, value] of Object.entries(metadata.values)) {
-          config.colors[key] = value.bgColor || '#ffffff';
+          config.colors[key] = value.bgColor || '#555555';
           config.labels[key] = lx.translateFieldValue(FACT_SHEET_TYPE, FIELD_NAME, key);
         }
       }
@@ -110,7 +171,7 @@ function App() {
     return {
       labels: levelsWithData.map((level) => criticalityConfig.labels[level] || level),
       values: levelsWithData.map((level) => criticalityCounts[level] || 0),
-      colors: levelsWithData.map((level) => criticalityConfig.colors[level] || '#ffffff')
+      colors: levelsWithData.map((level) => criticalityConfig.colors[level] || '#555555')
     };
   }, [criticalityCounts, criticalityConfig]);
 
