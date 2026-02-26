@@ -30,6 +30,7 @@
     "test:create-custom-report": "jest --selectProjects @lxr/core create-custom-report",
     "test": "jest",
     "lint": "eslint --fix",
+    "format": "prettier --write .",
     "update": "npx npm-check-updates@latest -u",
     "create-custom-report-local": "./scripts/create-custom-report-local.sh"
   },
@@ -38,9 +39,9 @@
     "zod": "4.3.6"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "7.2.0",
     "@babel/preset-env": "7.29.0",
     "@babel/preset-typescript": "7.28.5",
+    "@eslint/js": "9.39.3",
     "@jest/types": "30.2.0",
     "@swc/core": "1.15.11",
     "@types/jest": "30.0.0",
@@ -52,6 +53,7 @@
     "shx": "0.4.0",
     "ts-node": "10.9.2",
     "typescript": "5.9.3",
+    "typescript-eslint": "8.56.1",
     "vite": "7.3.1"
   }
 }

@@ -1,11 +1,16 @@
-import antfu from '@antfu/eslint-config';
+import eslint from '@eslint/js';
+import react from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
+import tseslint from 'typescript-eslint';
 
-export default antfu({
-  lessOpinionated: true,
-  react: true,
-  typescript: true,
-  stylistic: false,
-  rules: {
-    'no-console': 'warn'
+export default [
+  eslint.configs.recommended,
+  ...tseslint.configs.recommended,
+  react.configs.flat.recommended,
+  react.configs.flat['jsx-runtime'],
+  {
+    plugins: { 'react-hooks': reactHooks },
+    rules: { ...reactHooks.configs.recommended.rules },
+    settings: { react: { version: 'detect' } }
   }
-});
+];

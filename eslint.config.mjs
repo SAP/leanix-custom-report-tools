@@ -1,14 +1,15 @@
-import antfu from '@antfu/eslint-config';
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
 
-export default antfu({
-  lessOpinionated: true,
-  stylistic: {
-    overrides: {
-      'n/prefer-global/process': ['error', 'always'],
-      'node/prefer-global/buffer': ['error', 'always'],
-      'style/comma-dangle': ['error', 'never'],
-      'style/semi': ['error', 'always'],
-      'no-console': 'warn'
+export default [
+  eslint.configs.recommended,
+  ...tseslint.configs.recommended,
+  { ignores: ['**/test-app/**', '**/dist/**', '**/node_modules/**'] },
+  {
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-expressions': 'off'
     }
   }
-});
+];
