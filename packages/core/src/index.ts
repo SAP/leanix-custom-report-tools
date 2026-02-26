@@ -22,7 +22,8 @@ import { jwtDecode } from 'jwt-decode';
 import fetch from 'node-fetch';
 import { c } from 'tar';
 
-const snakeToCamel = (s: string): string => s.replace(/([-_]\w)/g, g => g[1].toUpperCase());
+const snakeToCamel = (s: string): string =>
+  s.replace(/([-_]\w)/g, (g) => g[1].toUpperCase());
 
 export const validateDocument = async (
   document: unknown,
@@ -51,7 +52,9 @@ export const validateDocument = async (
   return output;
 };
 
-export const readLxrJson = async (path?: string): Promise<LeanIXCredentials> => {
+export const readLxrJson = async (
+  path?: string
+): Promise<LeanIXCredentials> => {
   if ((path ?? '').length === 0) {
     path = join(process.cwd(), 'lxr.json');
   }
@@ -72,36 +75,58 @@ export const readLxrJson = async (path?: string): Promise<LeanIXCredentials> => 
   return credentials;
 };
 
-export const readMetadataJson = async (path = join(process.cwd(), 'package.json')): Promise<CustomReportMetadata> => {
+export const readMetadataJson = async (
+  path = join(process.cwd(), 'package.json')
+): Promise<CustomReportMetadata> => {
   const fileContent = readFileSync(path).toString();
   const pkg: PackageJsonLXR = JSON.parse(fileContent);
   await validateDocument(pkg, 'package.json');
   const { name, version, author, description, leanixReport } = pkg;
-  const metadata: CustomReportMetadata = { name, version, author, description, ...leanixReport };
+  const metadata: CustomReportMetadata = {
+    name,
+    version,
+    author,
+    description,
+    ...leanixReport
+  };
   await validateDocument(metadata, 'lxreport.json');
   return metadata;
 };
 
-export const createProxyAgent = (proxyURL: string): HttpsProxyAgent<string> => new HttpsProxyAgent(new URL(proxyURL));
+export const createProxyAgent = (proxyURL: string): HttpsProxyAgent<string> =>
+  new HttpsProxyAgent(new URL(proxyURL));
 
-export const getAccessToken = async (credentials: LeanIXCredentials): Promise<AccessToken> => {
+export const getAccessToken = async (
+  credentials: LeanIXCredentials
+): Promise<AccessToken> => {
   const uri = `https://${credentials.host}/services/mtm/v1/oauth2/token?grant_type=client_credentials`;
   const headers = {
     'Content-Type': 'application/x-www-form-urlencoded',
-    'Authorization': `Basic ${Buffer.from(`apitoken:${credentials.apitoken}`).toString('base64')}`
+    Authorization: `Basic ${Buffer.from(`apitoken:${credentials.apitoken}`).toString('base64')}`
   };
   const options: RequestInit = { method: 'post', headers };
-  if (typeof credentials.proxyURL === 'string' && credentials.proxyURL.length > 0) {
+  if (
+    typeof credentials.proxyURL === 'string' &&
+    credentials.proxyURL.length > 0
+  ) {
     options.agent = createProxyAgent(credentials.proxyURL);
   }
   const accessToken: AccessToken = await fetch(uri, options)
     .then(async (res) => {
-      const content = await res[res.headers.get('content-type') === 'application/json' ? 'json' : 'text']();
+      const content =
+        await res[
+          res.headers.get('content-type') === 'application/json'
+            ? 'json'
+            : 'text'
+        ]();
       return res.ok ? content : await Promise.reject(res.status);
     })
-    .then(accessToken =>
+    .then((accessToken) =>
       Object.entries(accessToken as AccessToken).reduce(
-        (accumulator, [key, value]) => ({ ...accumulator, [snakeToCamel(key)]: value }),
+        (accumulator, [key, value]) => ({
+          ...accumulator,
+          [snakeToCamel(key)]: value
+        }),
         {
           accessToken: '',
           expired: false,
@@ -114,18 +139,29 @@ export const getAccessToken = async (credentials: LeanIXCredentials): Promise<Ac
   return accessToken;
 };
 
-export const getAccessTokenClaims = (accessToken: AccessToken): JwtClaims => jwtDecode(accessToken.accessToken);
+export const getAccessTokenClaims = (accessToken: AccessToken): JwtClaims =>
+  jwtDecode(accessToken.accessToken);
 
-export const getLaunchUrl = (devServerUrl: string, bearerToken: string, relayUrl: string, name?: string): string => {
+export const getLaunchUrl = (
+  devServerUrl: string,
+  bearerToken: string,
+  relayUrl: string,
+  name?: string
+): string => {
   const decodedToken: JwtClaims = jwtDecode(bearerToken);
   const urlEncoded =
-    devServerUrl === decodeURIComponent(devServerUrl) ? encodeURIComponent(devServerUrl) : devServerUrl;
+    devServerUrl === decodeURIComponent(devServerUrl)
+      ? encodeURIComponent(devServerUrl)
+      : devServerUrl;
   const nameParam = name ? `&name=${encodeURIComponent(name)}` : '';
   const baseLaunchUrl = `${relayUrl}/${decodedToken.principal.permission.workspaceName}/reporting/dev?url=${urlEncoded}${nameParam}#access_token=${bearerToken}`;
   return baseLaunchUrl;
 };
 
-export const createBundle = async (metadata: CustomReportMetadata, outDir: string): Promise<string> => {
+export const createBundle = async (
+  metadata: CustomReportMetadata,
+  outDir: string
+): Promise<string> => {
   const metaFilename = 'lxreport.json';
   const bundleFilename = 'bundle.tgz';
   const targetFilePath = resolve(outDir, bundleFilename);
@@ -134,7 +170,12 @@ export const createBundle = async (metadata: CustomReportMetadata, outDir: strin
   }
   writeFileSync(resolve(outDir, metaFilename), JSON.stringify(metadata));
   await c(
-    { gzip: true, cwd: outDir, file: targetFilePath, filter: path => path !== bundleFilename },
+    {
+      gzip: true,
+      cwd: outDir,
+      file: targetFilePath,
+      filter: (path) => path !== bundleFilename
+    },
     readdirSync(outDir)
   );
 
@@ -142,27 +183,27 @@ export const createBundle = async (metadata: CustomReportMetadata, outDir: strin
 };
 
 type ReportsResponseData = {
-  data: CustomReportMetadata[]
-  total: number
-  endCursor: string
+  data: CustomReportMetadata[];
+  total: number;
+  endCursor: string;
 } & PathfinderResponseData;
 
 export interface ReportUploadResponseData {
-  type: string
-  status: ResponseStatus
-  data: { id: string }
-  errorMessage?: string
-  errors?: PathfinderReportUploadError[]
+  type: string;
+  status: ResponseStatus;
+  data: { id: string };
+  errorMessage?: string;
+  errors?: PathfinderReportUploadError[];
 }
 
 export const uploadBundle = async (params: {
-  bundle: Blob
-  bearerToken: string
-  proxyURL?: string
+  bundle: Blob;
+  bearerToken: string;
+  proxyURL?: string;
   store?: {
-    host?: string
-    assetId: string
-  }
+    host?: string;
+    assetId: string;
+  };
 }): Promise<ReportUploadResponseData> => {
   const { bundle, bearerToken, proxyURL, store } = params;
   const storeHost = store?.host ?? 'store.leanix.net';
@@ -180,9 +221,13 @@ export const uploadBundle = async (params: {
   if (typeof proxyURL === 'string' && proxyURL.length > 0) {
     options.agent = createProxyAgent(proxyURL);
   }
-  const reportResponseData: ReportUploadResponseData = await fetch(url, options).then(async (res) => {
+  const reportResponseData: ReportUploadResponseData = await fetch(
+    url,
+    options
+  ).then(async (res) => {
     const contentType: string | null = res.headers.get('content-type');
-    const content = contentType === 'application/json' ? await res.json() : await res.text();
+    const content =
+      contentType === 'application/json' ? await res.json() : await res.text();
     if (!res.ok) {
       throw new Error(JSON.stringify({ status: res.status, message: content }));
     }
@@ -197,7 +242,9 @@ export const fetchWorkspaceReports = async (
 ): Promise<CustomReportMetadata[]> => {
   const decodedToken: JwtClaims = jwtDecode(bearerToken);
   const headers = { Authorization: `Bearer ${bearerToken}` };
-  const fetchReportsPage = async (cursor: string | null = null): Promise<ReportsResponseData> => {
+  const fetchReportsPage = async (
+    cursor: string | null = null
+  ): Promise<ReportsResponseData> => {
     const url = new URL(
       `${decodedToken.instanceUrl}/services/pathfinder/v1/reports?sorting=updatedAt&sortDirection=DESC&pageSize=100`
     );
@@ -208,20 +255,25 @@ export const fetchWorkspaceReports = async (
     if (proxyURL !== undefined) {
       options.agent = createProxyAgent(proxyURL);
     }
-    const reportsPage: ReportsResponseData = await fetch(url.toString(), options).then(
-      async res => (await res.json()) as ReportsResponseData
-    );
+    const reportsPage: ReportsResponseData = await fetch(
+      url.toString(),
+      options
+    ).then(async (res) => (await res.json()) as ReportsResponseData);
     return reportsPage;
   };
   const reports: CustomReportMetadata[] = [];
   let cursor = null;
   do {
-    const reportResponseData: ReportsResponseData = await fetchReportsPage(cursor);
+    const reportResponseData: ReportsResponseData =
+      await fetchReportsPage(cursor);
     if (reportResponseData.status !== 'OK') {
       return await Promise.reject(reportResponseData);
     }
     reports.push(...reportResponseData.data);
-    cursor = reports.length < reportResponseData.total ? reportResponseData.endCursor : null;
+    cursor =
+      reports.length < reportResponseData.total
+        ? reportResponseData.endCursor
+        : null;
   } while (cursor !== null);
   return reports;
 };
@@ -233,11 +285,17 @@ export const deleteWorkspaceReportById = async (
 ): Promise<204 | number> => {
   const decodedToken: JwtClaims = jwtDecode(bearerToken);
   const headers = { Authorization: `Bearer ${bearerToken}` };
-  const url = new URL(`${decodedToken.instanceUrl}/services/pathfinder/v1/reports/${reportId}`);
+  const url = new URL(
+    `${decodedToken.instanceUrl}/services/pathfinder/v1/reports/${reportId}`
+  );
   const options: RequestInit = { method: 'delete', headers };
   if (proxyURL !== undefined) {
     options.agent = createProxyAgent(proxyURL);
   }
-  const status = await fetch(url.toString(), options).then(({ status }) => status);
-  return status === 204 ? await Promise.resolve(status) : await Promise.reject(status);
+  const status = await fetch(url.toString(), options).then(
+    ({ status }) => status
+  );
+  return status === 204
+    ? await Promise.resolve(status)
+    : await Promise.reject(status);
 };

@@ -1,11 +1,17 @@
 #!/usr/bin/env node
-/* eslint-disable no-console */
+
 import { existsSync, mkdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { red } from 'kolorist';
 import minimist from 'minimist';
 import prompts from 'prompts';
-import { canSkipEmptying, emptyDir, isValidPackageName, pkgFromUserAgent, toValidPackageName } from './helpers';
+import {
+  canSkipEmptying,
+  emptyDir,
+  isValidPackageName,
+  pkgFromUserAgent,
+  toValidPackageName
+} from './helpers';
 import { getAccessToken } from '@lxr/core/index';
 import banner from './utils/banner';
 import { deployTemplate } from './utils/deployTemplate';
@@ -13,23 +19,23 @@ import { generateLeanIXFiles } from './utils/leanix';
 import { checkFeatureFlag } from './utils/featureFlags';
 
 export interface IProjectOptions {
-  packageName?: string
-  targetDir?: string
-  overwrite?: boolean
+  packageName?: string;
+  targetDir?: string;
+  overwrite?: boolean;
 }
 
 export interface ILeanIXOptions {
-  id?: string
-  author?: string
-  title?: string
-  description?: string
-  host?: string
-  apitoken?: string
-  proxyURL?: string
+  id?: string;
+  author?: string;
+  title?: string;
+  description?: string;
+  host?: string;
+  apitoken?: string;
+  proxyURL?: string;
 }
 
 export interface IPromptResult extends IProjectOptions, ILeanIXOptions {
-  projectName?: string
+  projectName?: string;
 }
 
 const cwd = process.cwd();
@@ -42,21 +48,30 @@ const getCredentialQuestions = (options?: {
   apitoken?: string;
   proxyURL?: string;
   skipIfProvided?: boolean;
-}): Array<prompts.PromptObject<'host' | 'apitoken' | 'behindProxy' | 'proxyURL'>> => [
+}): Array<
+  prompts.PromptObject<'host' | 'apitoken' | 'behindProxy' | 'proxyURL'>
+> => [
   {
-    type: options?.skipIfProvided && options?.host !== undefined ? null : 'text',
+    type:
+      options?.skipIfProvided && options?.host !== undefined ? null : 'text',
     name: 'host',
     initial: options?.host ?? 'demo-eu.leanix.net',
     message: 'Which host do you want to work with?'
   },
   {
-    type: options?.skipIfProvided && options?.apitoken !== undefined ? null : 'text',
+    type:
+      options?.skipIfProvided && options?.apitoken !== undefined
+        ? null
+        : 'text',
     name: 'apitoken',
     message:
       'API-Token for Authentication (see: https://dev.leanix.net/docs/authentication#section-generate-api-tokens)'
   },
   {
-    type: options?.skipIfProvided && options?.proxyURL !== undefined ? null : 'toggle',
+    type:
+      options?.skipIfProvided && options?.proxyURL !== undefined
+        ? null
+        : 'toggle',
     name: 'behindProxy',
     message: 'Are you behind a proxy?',
     initial: !!options?.proxyURL,
@@ -77,7 +92,8 @@ const getLeanIXQuestions = (
   {
     type: argv?.id === undefined ? 'text' : null,
     name: 'id',
-    message: 'Unique id for this report in Java package notation (e.g. net.leanix.barcharts)'
+    message:
+      'Unique id for this report in Java package notation (e.g. net.leanix.barcharts)'
   },
   {
     type: argv?.author === undefined ? 'text' : null,
@@ -105,7 +121,15 @@ const getLeanIXQuestions = (
 export const init = async (): Promise<void> => {
   console.log(`\n${banner}\n`);
   const argv = minimist(process.argv.slice(2), {
-    string: ['reportId', 'author', 'title', 'description', 'host', 'apitoken', 'proxyUrl'],
+    string: [
+      'reportId',
+      'author',
+      'title',
+      'description',
+      'host',
+      'apitoken',
+      'proxyUrl'
+    ],
     boolean: ['overwrite', 'skipAuth'],
     default: {
       overwrite: false,
@@ -117,7 +141,16 @@ export const init = async (): Promise<void> => {
   const defaultProjectName = targetDir ?? 'leanix-custom-report';
 
   // leanix-specific answers
-  let { id, author, title, description, host, apitoken, proxyURL, overwrite = false } = argv;
+  let {
+    id,
+    author,
+    title,
+    description,
+    host,
+    apitoken,
+    proxyURL,
+    overwrite = false
+  } = argv;
 
   let result: IPromptResult = {};
   try {
@@ -128,13 +161,18 @@ export const init = async (): Promise<void> => {
           name: 'projectName',
           message: 'Project name:',
           initial: defaultProjectName,
-          onState: state => (targetDir = state.value.trim() ?? defaultProjectName)
+          onState: (state) =>
+            (targetDir = state.value.trim() ?? defaultProjectName)
         },
         {
           name: 'overwrite',
-          type: () => (canSkipEmptying(targetDir) || overwrite ? null : 'confirm'),
+          type: () =>
+            canSkipEmptying(targetDir) || overwrite ? null : 'confirm',
           message: () => {
-            const dirForPrompt = targetDir === '.' ? 'Current directory' : `Target directory "${targetDir}"`;
+            const dirForPrompt =
+              targetDir === '.'
+                ? 'Current directory'
+                : `Target directory "${targetDir}"`;
             return `${dirForPrompt} is not empty. Remove existing files and continue?`;
           }
         },
@@ -152,7 +190,8 @@ export const init = async (): Promise<void> => {
           type: () => (isValidPackageName(targetDir) ? null : 'text'),
           message: 'Package name:',
           initial: () => toValidPackageName(targetDir),
-          validate: dir => isValidPackageName(dir) ?? 'Invalid package.json name'
+          validate: (dir) =>
+            isValidPackageName(dir) ?? 'Invalid package.json name'
         },
         ...getLeanIXQuestions(argv)
       ],
@@ -162,8 +201,7 @@ export const init = async (): Promise<void> => {
         }
       }
     );
-  }
-  catch (cancelled: any) {
+  } catch (cancelled: any) {
     console.log(cancelled?.message);
     process.exit(1);
   }
@@ -194,16 +232,22 @@ export const init = async (): Promise<void> => {
         }
         tokenResponse = await getAccessToken({ host, apitoken, proxyURL });
         console.log('✓ Successfully authenticated with LeanIX');
-      }
-      catch (error) {
-        console.log(`${red('✖')} Failed to authenticate: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        console.log('Please check your host, API token, and proxy settings and try again.\n');
+      } catch (error) {
+        console.log(
+          `${red('✖')} Failed to authenticate: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        console.log(
+          'Please check your host, API token, and proxy settings and try again.\n'
+        );
 
-        const retryResult = await prompts(getCredentialQuestions({ host, apitoken, proxyURL }), {
-          onCancel: () => {
-            throw new Error(`${red('✖')} Operation cancelled`);
+        const retryResult = await prompts(
+          getCredentialQuestions({ host, apitoken, proxyURL }),
+          {
+            onCancel: () => {
+              throw new Error(`${red('✖')} Operation cancelled`);
+            }
           }
-        });
+        );
 
         host = retryResult.host;
         apitoken = retryResult.apitoken;
@@ -219,8 +263,7 @@ export const init = async (): Promise<void> => {
         featureFlagId: 'mcpserver.custom-reports',
         proxyURL
       });
-    }
-    catch (error) {
+    } catch (error) {
       console.log(
         `${red('✖')} Could not check feature flags: ${error instanceof Error ? error?.message : 'Unknown error'}`
       );
@@ -245,12 +288,31 @@ export const init = async (): Promise<void> => {
     defaultProjectName,
     targetDir: root,
     template: TEMPLATE,
-    result: { id, author, title, description, host, apitoken, proxyURL, overwrite },
+    result: {
+      id,
+      author,
+      title,
+      description,
+      host,
+      apitoken,
+      proxyURL,
+      overwrite
+    },
     mcpCustomReportsEnabled: mcpCustomReportsEnabled
   });
   await generateLeanIXFiles({
     targetDir: root,
-    result: { packageName: defaultProjectName, id, author, title, description, host, apitoken, proxyURL, overwrite }
+    result: {
+      packageName: defaultProjectName,
+      id,
+      author,
+      title,
+      description,
+      host,
+      apitoken,
+      proxyURL,
+      overwrite
+    }
   });
 
   console.log('\n🔥Done. Now run:\n');

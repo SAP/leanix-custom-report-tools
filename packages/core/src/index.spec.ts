@@ -2,7 +2,13 @@ import type { CustomReportMetadata } from '@lxr/core/models/custom-report-metada
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { ReadEntry } from 'tar';
-import { createReadStream, mkdtempSync, openAsBlob, rmSync, writeFileSync } from 'node:fs';
+import {
+  createReadStream,
+  mkdtempSync,
+  openAsBlob,
+  rmSync,
+  writeFileSync
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { URL } from 'node:url';
@@ -52,12 +58,23 @@ describe('the lxr core package', () => {
     const validMetadataDocument = getDummyReportMetadata();
     const invalidMetadataDocument = { ...validMetadataDocument, id: undefined };
 
-    await expect(validateDocument(validMetadataDocument, 'lxreport.json')).resolves.not.toThrow();
-    await expect(async () => await validateDocument(invalidMetadataDocument, 'lxreport.json')).rejects.toThrow();
     await expect(
-      validateDocument({ host: 'demo-us.leanix.net', apitoken: 'token' }, 'lxr.json')
+      validateDocument(validMetadataDocument, 'lxreport.json')
     ).resolves.not.toThrow();
-    await expect(async () => await validateDocument({ host: 'demo-us.leanix.net' }, 'lxr.json')).rejects.toThrow();
+    await expect(
+      async () =>
+        await validateDocument(invalidMetadataDocument, 'lxreport.json')
+    ).rejects.toThrow();
+    await expect(
+      validateDocument(
+        { host: 'demo-us.leanix.net', apitoken: 'token' },
+        'lxr.json'
+      )
+    ).resolves.not.toThrow();
+    await expect(
+      async () =>
+        await validateDocument({ host: 'demo-us.leanix.net' }, 'lxr.json')
+    ).rejects.toThrow();
   });
 
   it("readLxrJson throws error if json file doesn't have all required fields", async () => {
@@ -125,7 +142,9 @@ describe('the lxr core package', () => {
 
     const bundleFiles = await new Promise<Set<string>>((resolve, reject) => {
       const entries: ReadEntry[] = [];
-      fileStream.on('open', () => fileStream.pipe(tarT()).on('entry', (entry) => entries.push(entry)));
+      fileStream.on('open', () =>
+        fileStream.pipe(tarT()).on('entry', (entry) => entries.push(entry))
+      );
       fileStream.on('error', (err) => {
         reject(err);
       });
@@ -134,7 +153,10 @@ describe('the lxr core package', () => {
       });
     });
 
-    const requiredFiles = new Set([...Object.keys(projectFiles), 'lxreport.json']);
+    const requiredFiles = new Set([
+      ...Object.keys(projectFiles),
+      'lxreport.json'
+    ]);
 
     const bundleHasAllFiles = (): boolean => {
       for (const file of requiredFiles) {
@@ -156,7 +178,10 @@ describe('the lxr core package', () => {
     const outDir = mkdtempSync(join(tmpdir(), 'uploadBundle-'));
     const metadata = getDummyReportMetadata();
 
-    writeFileSync(resolve(outDir, 'index.html'), '<html><body>Hi from demo project</body></html>');
+    writeFileSync(
+      resolve(outDir, 'index.html'),
+      '<html><body>Hi from demo project</body></html>'
+    );
     writeFileSync(resolve(outDir, 'index.js'), 'console.log("hello world")');
     const { accessToken: bearerToken } = await getAccessToken(credentials);
     const reports = await fetchWorkspaceReports(bearerToken);
@@ -168,11 +193,17 @@ describe('the lxr core package', () => {
     }
     const bundlePath = await createBundle(metadata, outDir);
     const bundle = await openAsBlob(bundlePath);
-    const reportUploadResponseData = await uploadBundle({ bundle, bearerToken });
+    const reportUploadResponseData = await uploadBundle({
+      bundle,
+      bearerToken
+    });
     expect(reportUploadResponseData.status).toBe('OK');
     expect(reportUploadResponseData.type).toBe('ReportUploadResponseData');
     expect(typeof reportUploadResponseData.data.id).toBe('string');
-    const status = await deleteWorkspaceReportById(reportUploadResponseData.data.id, bearerToken);
+    const status = await deleteWorkspaceReportById(
+      reportUploadResponseData.data.id,
+      bearerToken
+    );
     expect(status).toBe(204);
     rmSync(outDir, { recursive: true });
   }, 60000);

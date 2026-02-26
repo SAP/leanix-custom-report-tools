@@ -89,11 +89,13 @@ function BarChart({ data }: BarChartProps) {
 
 function App() {
   const [applications, setApplications] = useState<lxr.FactSheet[]>([]);
-  const [criticalityConfig, setCriticalityConfig] = useState<CriticalityConfig>({
-    order: [],
-    colors: {},
-    labels: {}
-  });
+  const [criticalityConfig, setCriticalityConfig] = useState<CriticalityConfig>(
+    {
+      order: [],
+      colors: {},
+      labels: {}
+    }
+  );
 
   useEffect(() => {
     const initReport = async () => {
@@ -107,16 +109,24 @@ function App() {
         labels: {}
       };
 
-      const criticalityField = settings.dataModel.factSheets[FACT_SHEET_TYPE]?.fields?.[FIELD_NAME];
+      const criticalityField =
+        settings.dataModel.factSheets[FACT_SHEET_TYPE]?.fields?.[FIELD_NAME];
       if (criticalityField && 'values' in criticalityField) {
         config.order = criticalityField.values as string[];
       }
 
-      const metadata = lx.getFactSheetFieldMetaData(FACT_SHEET_TYPE, FIELD_NAME);
+      const metadata = lx.getFactSheetFieldMetaData(
+        FACT_SHEET_TYPE,
+        FIELD_NAME
+      );
       if (metadata && 'values' in metadata) {
         for (const [key, value] of Object.entries(metadata.values)) {
           config.colors[key] = value.bgColor || '#555555';
-          config.labels[key] = lx.translateFieldValue(FACT_SHEET_TYPE, FIELD_NAME, key);
+          config.labels[key] = lx.translateFieldValue(
+            FACT_SHEET_TYPE,
+            FIELD_NAME,
+            key
+          );
         }
       }
 
@@ -166,12 +176,18 @@ function App() {
     const allLevels = [...new Set([...configuredLevels, ...foundLevels])];
 
     // Filter to only show levels that have data
-    const levelsWithData = allLevels.filter((level) => (criticalityCounts[level] || 0) > 0);
+    const levelsWithData = allLevels.filter(
+      (level) => (criticalityCounts[level] || 0) > 0
+    );
 
     return {
-      labels: levelsWithData.map((level) => criticalityConfig.labels[level] || level),
+      labels: levelsWithData.map(
+        (level) => criticalityConfig.labels[level] || level
+      ),
       values: levelsWithData.map((level) => criticalityCounts[level] || 0),
-      colors: levelsWithData.map((level) => criticalityConfig.colors[level] || '#555555')
+      colors: levelsWithData.map(
+        (level) => criticalityConfig.colors[level] || '#555555'
+      )
     };
   }, [criticalityCounts, criticalityConfig]);
 

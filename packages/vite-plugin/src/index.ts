@@ -25,7 +25,9 @@ export interface LeanIXPluginOptions {
   packageJsonPath?: string;
 }
 
-export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugin[] {
+export default function leanixPlugin(
+  pluginOptions?: LeanIXPluginOptions
+): Plugin[] {
   let logger: Logger;
   let accessToken: AccessToken | null = null;
   let claims: JwtClaims | null = null;
@@ -54,7 +56,9 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
           logger = logger ?? console;
           const code = (error as { code: string })?.code ?? null;
           if (code === 'ENOENT') {
-            logger.error('💥 Error: "lxr.json" file not found in your project root');
+            logger.error(
+              '💥 Error: "lxr.json" file not found in your project root'
+            );
           } else {
             logger?.error(error as string);
           }
@@ -66,16 +70,23 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
 
     async configResolved(resolvedConfig: ResolvedConfig) {
       logger = resolvedConfig.logger;
-      devMetadata = await readMetadataJson(join(resolvedConfig.root, 'package.json')).catch(() => null);
+      devMetadata = await readMetadataJson(
+        join(resolvedConfig.root, 'package.json')
+      ).catch(() => null);
       if (loadWorkspaceCredentials) {
         try {
-          if (typeof credentials.proxyURL === 'string' && credentials.proxyURL.length > 0) {
+          if (
+            typeof credentials.proxyURL === 'string' &&
+            credentials.proxyURL.length > 0
+          ) {
             logger?.info(`  Using proxy: ${credentials.proxyURL}`);
           }
           accessToken = await getAccessToken(credentials);
           claims = getAccessTokenClaims(accessToken);
           if (claims !== null) {
-            logger?.info(`  Using workspace: ${claims.principal.permission.workspaceName}`);
+            logger?.info(
+              `  Using workspace: ${claims.principal.permission.workspaceName}`
+            );
           }
         } catch (err) {
           logger?.error(err === 401 ? '💥 Invalid LeanIX API token' : `${err}`);
@@ -100,7 +111,9 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
           target: targetOrigin,
           changeOrigin: true,
           secure: true,
-          agent: credentials.proxyURL ? new HttpsProxyAgent(credentials.proxyURL) : undefined,
+          agent: credentials.proxyURL
+            ? new HttpsProxyAgent(credentials.proxyURL)
+            : undefined,
           on: {
             proxyReq: (proxyReq, req) => {
               // Rewrite Origin header: localhost -> LeanIX host
@@ -139,7 +152,12 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
           const relayPort = (relayServer!.address() as AddressInfo).port;
           const relayUrl = `http://${hostname}:${relayPort}`;
 
-          launchUrl = getLaunchUrl(viteDevServerUrl, accessToken.accessToken, relayUrl, devMetadata?.title);
+          launchUrl = getLaunchUrl(
+            viteDevServerUrl,
+            accessToken.accessToken,
+            relayUrl,
+            devMetadata?.title
+          );
 
           // Override Vite's resolved URLs BEFORE they are printed
           viteDevServer.resolvedUrls = {
@@ -147,7 +165,9 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
             network: []
           };
           viteDevServer.printUrls = () => {
-            logger.info(`  Your LeanIX Custom Report is running at:\n  ${launchUrl}\n`);
+            logger.info(
+              `  Your LeanIX Custom Report is running at:\n  ${launchUrl}\n`
+            );
           };
         });
       });
@@ -171,13 +191,17 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
           logger?.warn('🙋 Have you initialized this project?"');
         } else if (err instanceof ZodError) {
           const issues = err.issues;
-          logger.error(`\n💥 Found ${issues.length} errors while validating metadata`);
+          logger.error(
+            `\n💥 Found ${issues.length} errors while validating metadata`
+          );
           let i = 0;
           for (const issue of issues) {
             i++;
             if (issue.code === 'invalid_type') {
               const { code, expected, path, message } = issue;
-              logger?.error(`💥 #${i} ${message} ${path} - ${code}, expected ${expected}`);
+              logger?.error(
+                `💥 #${i} ${message} ${path} - ${code}, expected ${expected}`
+              );
             } else {
               const { code, path, message } = issue;
               logger?.error(`💥 #${i} ${message} ${path} - ${code}`);
@@ -196,28 +220,43 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
         logger?.error('💥 Error while create project bundle file.');
         process.exit(1);
       }
-      if (bundle !== undefined && accessToken?.accessToken !== undefined && shouldUpload) {
+      if (
+        bundle !== undefined &&
+        accessToken?.accessToken !== undefined &&
+        shouldUpload
+      ) {
         try {
           const { accessToken: bearerToken } = accessToken;
           const { proxyURL, store } = credentials;
           const { id, version } = metadata;
           if (claims !== null) {
             if (typeof store?.assetId === 'string') {
-              logger.info(`😅 Deploying asset id ${store.assetId} to ${store.host ?? 'store.leanix.net'}...`);
+              logger.info(
+                `😅 Deploying asset id ${store.assetId} to ${store.host ?? 'store.leanix.net'}...`
+              );
             } else {
               logger.info(
                 `😅 Uploading report ${id} with version "${version}" to workspace "${claims.principal.permission.workspaceName}"...`
               );
             }
           }
-          const result = await uploadBundle({ bundle, bearerToken, proxyURL, store });
+          const result = await uploadBundle({
+            bundle,
+            bearerToken,
+            proxyURL,
+            store
+          });
           if (result.status === 'ERROR') {
-            logger?.error('💥 Error while uploading project to workpace, check your "package.json" file...');
+            logger?.error(
+              '💥 Error while uploading project to workpace, check your "package.json" file...'
+            );
             logger?.error(JSON.stringify(result, null, 2));
             process.exit(1);
           }
           if (typeof store?.assetId === 'string') {
-            logger.info(`😅 Asset id ${store.assetId} has been deployed to ${store.host ?? 'store.leanix.net'}...`);
+            logger.info(
+              `😅 Asset id ${store.assetId} has been deployed to ${store.host ?? 'store.leanix.net'}...`
+            );
           } else if (claims !== null) {
             logger?.info(
               `🥳 Report "${id}" with version "${version}" was uploaded to workspace "${claims.principal.permission.workspaceName}"!`

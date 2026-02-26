@@ -49,12 +49,16 @@ export async function checkFeatureFlag(options: {
 
   const response = await fetch(url, fetchOptions);
   if (!response.ok) {
-    throw new Error(`Failed to get feature bundle: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Failed to get feature bundle: ${response.status} ${response.statusText}`
+    );
   }
   const featureBundle = (await response.json()) as FeatureBundleResponse;
 
   // Find the specific feature
-  const feature = featureBundle.data?.features?.find((f) => f.id === featureFlagId);
+  const feature = featureBundle.data?.features?.find(
+    (f) => f.id === featureFlagId
+  );
   if (!feature) {
     return false;
   }

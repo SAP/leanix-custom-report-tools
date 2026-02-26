@@ -26,8 +26,12 @@ it('it updates package.json and generates lxr.json files', async () => {
     proxyURL: uuid()
   };
   await generateLeanIXFiles({ targetDir, result });
-  const lxrJson = await readFile(join(targetDir, 'lxr.json')).then(buffer => JSON.parse(buffer.toString()));
-  const packageJson = await readFile(join(targetDir, 'package.json')).then(buffer => JSON.parse(buffer.toString()));
+  const lxrJson = await readFile(join(targetDir, 'lxr.json')).then((buffer) =>
+    JSON.parse(buffer.toString())
+  );
+  const packageJson = await readFile(join(targetDir, 'package.json')).then(
+    (buffer) => JSON.parse(buffer.toString())
+  );
 
   expect(lxrJson).toEqual({
     host: result.host,

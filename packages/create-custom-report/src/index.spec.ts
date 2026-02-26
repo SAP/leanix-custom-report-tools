@@ -10,12 +10,23 @@ const CLI_PATH = resolve(__dirname, '..', pkg.bin);
 const projectName = 'test-app';
 let tempDir: string;
 
-const run = (args: string[], options: { cwd?: string; input?: string; reject?: boolean } = {}) => {
+const run = (
+  args: string[],
+  options: { cwd?: string; input?: string; reject?: boolean } = {}
+) => {
   try {
-    const stdout = execFileSync('node', [CLI_PATH, ...args], { ...options, encoding: 'utf8' });
+    const stdout = execFileSync('node', [CLI_PATH, ...args], {
+      ...options,
+      encoding: 'utf8'
+    });
     return { stdout, stderr: '', exitCode: 0, failed: false };
   } catch (e: any) {
-    return { stdout: e.stdout || '', stderr: e.stderr || '', exitCode: e.status || 1, failed: true };
+    return {
+      stdout: e.stdout || '',
+      stderr: e.stderr || '',
+      exitCode: e.status || 1,
+      failed: true
+    };
   }
 };
 
@@ -31,7 +42,10 @@ const createNonEmptyDir = (): void => {
 };
 
 // Get all file names in a directory, recursively
-const getAllFiles = (dirPath: string, arrayOfFiles: string[] = []): string[] => {
+const getAllFiles = (
+  dirPath: string,
+  arrayOfFiles: string[] = []
+): string[] => {
   readdirSync(dirPath).forEach((file) => {
     statSync(`${dirPath}/${file}`).isDirectory()
       ? (arrayOfFiles = getAllFiles(`${dirPath}/${file}`, arrayOfFiles))
@@ -40,11 +54,15 @@ const getAllFiles = (dirPath: string, arrayOfFiles: string[] = []): string[] => 
   return arrayOfFiles;
 };
 
-const getPackageJson = (dirPath: string): any => JSON.parse(readFileSync(join(dirPath, 'package.json')).toString());
+const getPackageJson = (dirPath: string): any =>
+  JSON.parse(readFileSync(join(dirPath, 'package.json')).toString());
 
 // React TypeScript template plus 1 generated file: 'lxr.json'
 // When --skipAuth is used, AGENTS.md and CLAUDE.md are excluded (they require mcpCustomReportsEnabled)
-const templateFiles = [...getAllFiles(resolve(CLI_PATH, '..', 'templates', 'react-ts')), 'lxr.json']
+const templateFiles = [
+  ...getAllFiles(resolve(CLI_PATH, '..', 'templates', 'react-ts')),
+  'lxr.json'
+]
   .filter((file) => file !== 'AGENTS.md' && file !== 'CLAUDE.md')
   .map((file) => (file === '_gitignore' ? '.gitignore' : file))
   .sort();
@@ -68,7 +86,11 @@ it('prompts for the project name if none supplied', () => {
 it('asks to overwrite non-empty target directory', () => {
   createNonEmptyDir();
   const { stdout } = run([projectName], { cwd: tempDir });
-  expect((stdout as string)?.includes(`Target directory "${projectName}" is not empty.`)).toBe(true);
+  expect(
+    (stdout as string)?.includes(
+      `Target directory "${projectName}" is not empty.`
+    )
+  ).toBe(true);
 });
 
 it('asks to overwrite non-empty current directory', () => {
@@ -79,7 +101,9 @@ it('asks to overwrite non-empty current directory', () => {
     input: 'test-app\n',
     reject: false
   });
-  expect((stdout as string)?.includes('Current directory is not empty.')).toBe(true);
+  expect((stdout as string)?.includes('Current directory is not empty.')).toBe(
+    true
+  );
 });
 
 it('successfully scaffolds a project based on react-ts template', async () => {
@@ -119,7 +143,9 @@ it('successfully scaffolds a project based on react-ts template', async () => {
   const generatedFiles = getAllFiles(projectDir).sort();
 
   // Assertions
-  expect((stdout as string)?.includes('Using React + TypeScript template')).toBe(true);
+  expect(
+    (stdout as string)?.includes('Using React + TypeScript template')
+  ).toBe(true);
   expect(generatedFiles).toEqual(templateFiles);
 
   const pkg = getPackageJson(projectDir);

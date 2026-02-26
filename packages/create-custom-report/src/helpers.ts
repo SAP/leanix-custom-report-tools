@@ -1,4 +1,12 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync, rmdirSync, statSync, unlinkSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  rmdirSync,
+  statSync,
+  unlinkSync
+} from 'node:fs';
 import { resolve } from 'node:path';
 import { postOrderDirectoryTraverse } from './utils/directoryTraverse';
 
@@ -34,7 +42,9 @@ export const emptyDir = (dir: string): void => {
   );
 };
 
-export const pkgFromUserAgent = (userAgent?: string): { name: string, version: string } | undefined => {
+export const pkgFromUserAgent = (
+  userAgent?: string
+): { name: string; version: string } | undefined => {
   if (userAgent === undefined) {
     return undefined;
   }
@@ -48,7 +58,6 @@ export const copyDir = (srcDir: string, destDir: string): void => {
   for (const file of readdirSync(srcDir)) {
     const srcFile = resolve(srcDir, file);
     const destFile = resolve(destDir, file);
-    // eslint-disable-next-line ts/no-use-before-define
     copy(srcFile, destFile);
   }
 };
@@ -57,14 +66,15 @@ const copy = (src: string, dest: string): void => {
   const stat = statSync(src);
   if (stat.isDirectory()) {
     copyDir(src, dest);
-  }
-  else {
+  } else {
     copyFileSync(src, dest);
   }
 };
 
 export const isValidPackageName = (projectName: string): boolean =>
-  /^(?:@[a-z0-9-*~][a-z0-9-*._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/.test(projectName);
+  /^(?:@[a-z0-9-*~][a-z0-9-*._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/.test(
+    projectName
+  );
 
 export const toValidPackageName = (projectName: string): string =>
   projectName

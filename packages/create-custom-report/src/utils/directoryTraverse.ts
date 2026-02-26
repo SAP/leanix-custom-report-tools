@@ -1,7 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-export function preOrderDirectoryTraverse(dir: string, dirCallback: any, fileCallback: any): void {
+export function preOrderDirectoryTraverse(
+  dir: string,
+  dirCallback: any,
+  fileCallback: any
+): void {
   for (const filename of fs.readdirSync(dir)) {
     if (filename === '.git') {
       continue;
@@ -19,7 +23,11 @@ export function preOrderDirectoryTraverse(dir: string, dirCallback: any, fileCal
   }
 }
 
-export function postOrderDirectoryTraverse(dir: string, dirCallback: any, fileCallback: any): void {
+export function postOrderDirectoryTraverse(
+  dir: string,
+  dirCallback: any,
+  fileCallback: any
+): void {
   for (const filename of fs.readdirSync(dir)) {
     if (filename === '.git') {
       continue;
