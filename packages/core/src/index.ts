@@ -25,10 +25,10 @@ import { c } from 'tar';
 const snakeToCamel = (s: string): string =>
   s.replace(/([-_]\w)/g, (g) => g[1].toUpperCase());
 
-export const validateDocument = async (
+export async function validateDocument(
   document: unknown,
   name: 'lxr.json' | 'lxreport.json' | 'package.json'
-): Promise<PackageJsonLXR | LeanIXCredentials | CustomReportMetadata> => {
+): Promise<PackageJsonLXR | LeanIXCredentials | CustomReportMetadata> {
   let schema: ZodObject<any> | null = null;
   let output: PackageJsonLXR | LeanIXCredentials | CustomReportMetadata;
   switch (name) {
@@ -50,11 +50,9 @@ export const validateDocument = async (
 
   schema.parse(document);
   return output;
-};
+}
 
-export const readLxrJson = async (
-  path?: string
-): Promise<LeanIXCredentials> => {
+export async function readLxrJson(path?: string): Promise<LeanIXCredentials> {
   if ((path ?? '').length === 0) {
     path = join(process.cwd(), 'lxr.json');
   }
@@ -73,11 +71,11 @@ export const readLxrJson = async (
   }
   await validateDocument(credentials, 'lxr.json');
   return credentials;
-};
+}
 
-export const readMetadataJson = async (
+export async function readMetadataJson(
   path = join(process.cwd(), 'package.json')
-): Promise<CustomReportMetadata> => {
+): Promise<CustomReportMetadata> {
   const fileContent = readFileSync(path).toString();
   const pkg: PackageJsonLXR = JSON.parse(fileContent);
   await validateDocument(pkg, 'package.json');
@@ -91,14 +89,15 @@ export const readMetadataJson = async (
   };
   await validateDocument(metadata, 'lxreport.json');
   return metadata;
-};
+}
 
-export const createProxyAgent = (proxyURL: string): HttpsProxyAgent<string> =>
-  new HttpsProxyAgent(new URL(proxyURL));
+export function createProxyAgent(proxyURL: string): HttpsProxyAgent<string> {
+  return new HttpsProxyAgent(new URL(proxyURL));
+}
 
-export const getAccessToken = async (
+export async function getAccessToken(
   credentials: LeanIXCredentials
-): Promise<AccessToken> => {
+): Promise<AccessToken> {
   const uri = `https://${credentials.host}/services/mtm/v1/oauth2/token?grant_type=client_credentials`;
   const headers = {
     'Content-Type': 'application/x-www-form-urlencoded',
@@ -137,17 +136,18 @@ export const getAccessToken = async (
       )
     );
   return accessToken;
-};
+}
 
-export const getAccessTokenClaims = (accessToken: AccessToken): JwtClaims =>
-  jwtDecode(accessToken.accessToken);
+export function getAccessTokenClaims(accessToken: AccessToken): JwtClaims {
+  return jwtDecode(accessToken.accessToken);
+}
 
-export const getLaunchUrl = (
+export function getLaunchUrl(
   devServerUrl: string,
   bearerToken: string,
   relayUrl: string,
   name?: string
-): string => {
+): string {
   const decodedToken: JwtClaims = jwtDecode(bearerToken);
   const urlEncoded =
     devServerUrl === decodeURIComponent(devServerUrl)
@@ -156,12 +156,12 @@ export const getLaunchUrl = (
   const nameParam = name ? `&name=${encodeURIComponent(name)}` : '';
   const baseLaunchUrl = `${relayUrl}/${decodedToken.principal.permission.workspaceName}/reporting/dev?url=${urlEncoded}${nameParam}#access_token=${bearerToken}`;
   return baseLaunchUrl;
-};
+}
 
-export const createBundle = async (
+export async function createBundle(
   metadata: CustomReportMetadata,
   outDir: string
-): Promise<string> => {
+): Promise<string> {
   const metaFilename = 'lxreport.json';
   const bundleFilename = 'bundle.tgz';
   const targetFilePath = resolve(outDir, bundleFilename);
@@ -180,7 +180,7 @@ export const createBundle = async (
   );
 
   return targetFilePath;
-};
+}
 
 type ReportsResponseData = {
   data: CustomReportMetadata[];
@@ -196,7 +196,7 @@ export interface ReportUploadResponseData {
   errors?: PathfinderReportUploadError[];
 }
 
-export const uploadBundle = async (params: {
+export async function uploadBundle(params: {
   bundle: Blob;
   bearerToken: string;
   proxyURL?: string;
@@ -204,7 +204,7 @@ export const uploadBundle = async (params: {
     host?: string;
     assetId: string;
   };
-}): Promise<ReportUploadResponseData> => {
+}): Promise<ReportUploadResponseData> {
   const { bundle, bearerToken, proxyURL, store } = params;
   const storeHost = store?.host ?? 'store.leanix.net';
   const assetId = store?.assetId ?? null;
@@ -234,12 +234,12 @@ export const uploadBundle = async (params: {
     return content as ReportUploadResponseData;
   });
   return reportResponseData;
-};
+}
 
-export const fetchWorkspaceReports = async (
+export async function fetchWorkspaceReports(
   bearerToken: string,
   proxyURL?: string
-): Promise<CustomReportMetadata[]> => {
+): Promise<CustomReportMetadata[]> {
   const decodedToken: JwtClaims = jwtDecode(bearerToken);
   const headers = { Authorization: `Bearer ${bearerToken}` };
   const fetchReportsPage = async (
@@ -276,13 +276,13 @@ export const fetchWorkspaceReports = async (
         : null;
   } while (cursor !== null);
   return reports;
-};
+}
 
-export const deleteWorkspaceReportById = async (
+export async function deleteWorkspaceReportById(
   reportId: string,
   bearerToken: string,
   proxyURL?: string
-): Promise<204 | number> => {
+): Promise<204 | number> {
   const decodedToken: JwtClaims = jwtDecode(bearerToken);
   const headers = { Authorization: `Bearer ${bearerToken}` };
   const url = new URL(
@@ -298,4 +298,4 @@ export const deleteWorkspaceReportById = async (
   return status === 204
     ? await Promise.resolve(status)
     : await Promise.reject(status);
-};
+}

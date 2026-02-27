@@ -19,7 +19,7 @@ const renameFiles: Record<string, string> = {
   _gitignore: '.gitignore'
 };
 
-const copyDir = (srcDir: string, destDir: string): void => {
+function copyDir(srcDir: string, destDir: string): void {
   mkdirSync(destDir, { recursive: true });
   const files = readdirSync(srcDir);
   for (const file of files) {
@@ -27,18 +27,18 @@ const copyDir = (srcDir: string, destDir: string): void => {
     const destFile = resolve(destDir, file);
     copy(srcFile, destFile);
   }
-};
+}
 
-const copy = (src: string, dest: string): void => {
+function copy(src: string, dest: string): void {
   const _stat = statSync(src);
   if (_stat.isDirectory()) {
     copyDir(src, dest);
   } else {
     copyFileSync(src, dest);
   }
-};
+}
 
-export const deployTemplate = (params: IDeployTemplateParams): void => {
+export function deployTemplate(params: IDeployTemplateParams): void {
   const { targetDir, template, mcpCustomReportsEnabled = false } = params;
   if (targetDir === null) {
     throw new Error('invalid target dir');
@@ -65,4 +65,4 @@ export const deployTemplate = (params: IDeployTemplateParams): void => {
     }
     write(file);
   }
-};
+}

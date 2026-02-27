@@ -10,7 +10,7 @@ import {
 import { resolve } from 'node:path';
 import { postOrderDirectoryTraverse } from './utils/directoryTraverse';
 
-export const canSkipEmptying = (dir: string): boolean => {
+export function canSkipEmptying(dir: string): boolean {
   if (!existsSync(dir)) {
     return true;
   }
@@ -24,9 +24,9 @@ export const canSkipEmptying = (dir: string): boolean => {
   }
 
   return false;
-};
+}
 
-export const emptyDir = (dir: string): void => {
+export function emptyDir(dir: string): void {
   if (!existsSync(dir)) {
     return;
   }
@@ -40,46 +40,48 @@ export const emptyDir = (dir: string): void => {
       unlinkSync(file);
     }
   );
-};
+}
 
-export const pkgFromUserAgent = (
+export function pkgFromUserAgent(
   userAgent?: string
-): { name: string; version: string } | undefined => {
+): { name: string; version: string } | undefined {
   if (userAgent === undefined) {
     return undefined;
   }
   const pkgSpec = userAgent.split(' ')[0];
   const pkgSpecArr = pkgSpec.split('/');
   return { name: pkgSpecArr[0], version: pkgSpecArr[1] };
-};
+}
 
-export const copyDir = (srcDir: string, destDir: string): void => {
+export function copyDir(srcDir: string, destDir: string): void {
   mkdirSync(destDir, { recursive: true });
   for (const file of readdirSync(srcDir)) {
     const srcFile = resolve(srcDir, file);
     const destFile = resolve(destDir, file);
     copy(srcFile, destFile);
   }
-};
+}
 
-const copy = (src: string, dest: string): void => {
+function copy(src: string, dest: string): void {
   const stat = statSync(src);
   if (stat.isDirectory()) {
     copyDir(src, dest);
   } else {
     copyFileSync(src, dest);
   }
-};
+}
 
-export const isValidPackageName = (projectName: string): boolean =>
-  /^(?:@[a-z0-9-*~][a-z0-9-*._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/.test(
+export function isValidPackageName(projectName: string): boolean {
+  return /^(?:@[a-z0-9-*~][a-z0-9-*._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/.test(
     projectName
   );
+}
 
-export const toValidPackageName = (projectName: string): string =>
-  projectName
+export function toValidPackageName(projectName: string): string {
+  return projectName
     .trim()
     .toLowerCase()
     .replace(/\s+/g, '-')
     .replace(/^[._]/, '')
     .replace(/[^a-z0-9-~]+/g, '-');
+}

@@ -14,9 +14,9 @@ export interface IGenerateLeanIXFilesOutput {
   lxrJson: any;
 }
 
-export const generateLeanIXFiles = async (
+export async function generateLeanIXFiles(
   params: IAddLeanIXMetadataToPackageJson
-): Promise<void> => {
+): Promise<void> {
   const { targetDir, result } = params;
   const {
     author,
@@ -54,4 +54,4 @@ export const generateLeanIXFiles = async (
     join(targetDir, 'package.json'),
     JSON.stringify(pkg, null, 2)
   );
-};
+}
