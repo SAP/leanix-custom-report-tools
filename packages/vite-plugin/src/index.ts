@@ -93,8 +93,14 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
 
       const targetHost = credentials.host;
       const targetOrigin = `https://${targetHost}`;
+      const workspaceName = claims?.principal.permission.workspaceName ?? '';
 
       // Start HTTP relay server with proxy middleware
+      // The relay proxies requests from localhost to the LeanIX backend, enabling local development
+      // of custom reports within the pathfinder-web shell.
+      // The launch URL includes the workspace name in the path (e.g., localhost/{workspaceName}/reporting/dev)
+      // so that the remote nginx correctly sets <base href="/{workspaceName}/">.
+      // For requests without workspace prefix (e.g., /reporting/...), we prepend the workspace name.
       relayServer = createHttpServer(
         createProxyMiddleware({
           target: targetOrigin,
@@ -112,6 +118,17 @@ export default function leanixPlugin(pluginOptions?: LeanIXPluginOptions): Plugi
                 const refererUrl = new URL(referer);
                 const newReferer = `${targetOrigin}${refererUrl.pathname}${refererUrl.search}`;
                 proxyReq.setHeader('Referer', newReferer);
+              }
+
+              // Pathfinder-web on localhost unfortunately sometimes generates URLs without the workspace prefix
+              // So we prepend the workspace name to paths that need it
+              // Root-level paths like /frontends/, /services/, /favicon, etc. should pass through unchanged
+              const originalPath = proxyReq.path;
+              const rootPaths = ['/frontends/', '/services/', '/favicon.ico', '/lx-frontend-meta.json', '/Shibboleth.sso/'];
+              const isRootPath = rootPaths.some(p => originalPath.startsWith(p));
+              const hasWorkspacePrefix = originalPath.startsWith(`/${workspaceName}/`);
+              if (!isRootPath && !hasWorkspacePrefix && req.method === 'GET') {
+                proxyReq.path = `/${workspaceName}${originalPath}`;
               }
             },
             proxyRes: (proxyRes, req) => {
