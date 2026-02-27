@@ -4,10 +4,9 @@ import type { JwtClaims } from '@lxr/core/models/jwt-claims';
 import type { LeanIXCredentials } from '@lxr/core/models/leanix-credentials';
 import type { PackageJsonLXR } from '@lxr/core/models/package-json';
 import type {
-  PathfinderReportUploadError,
-  PathfinderResponseData,
-  ResponseStatus
-} from '@lxr/core/models/pathfinder-response-data';
+  ReportUploadResponseData,
+  ReportsResponseData
+} from '@lxr/core/models/report-response-data';
 import type { RequestInit } from 'node-fetch';
 import type { ZodObject } from 'zod';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -180,20 +179,6 @@ export async function createBundle(
   );
 
   return targetFilePath;
-}
-
-type ReportsResponseData = {
-  data: CustomReportMetadata[];
-  total: number;
-  endCursor: string;
-} & PathfinderResponseData;
-
-export interface ReportUploadResponseData {
-  type: string;
-  status: ResponseStatus;
-  data: { id: string };
-  errorMessage?: string;
-  errors?: PathfinderReportUploadError[];
 }
 
 export async function uploadBundle(params: {
