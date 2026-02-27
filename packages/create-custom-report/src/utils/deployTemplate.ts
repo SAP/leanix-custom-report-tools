@@ -7,6 +7,7 @@ export interface IDeployTemplateParams {
   defaultProjectName: string
   template: string
   result: IPromptResult
+  mcpCustomReportsEnabled?: boolean
 }
 
 const renameFiles: Record<string, string> = {
@@ -35,7 +36,7 @@ const copy = (src: string, dest: string): void => {
 };
 
 export const deployTemplate = (params: IDeployTemplateParams): void => {
-  const { targetDir, template } = params;
+  const { targetDir, template, mcpCustomReportsEnabled = false } = params;
   if (targetDir === null) {
     throw new Error('invalid target dir');
   }
@@ -53,6 +54,10 @@ export const deployTemplate = (params: IDeployTemplateParams): void => {
 
   const templateFiles = readdirSync(templateDir);
   for (const file of templateFiles /* .filter(f => f !== 'package.json') */) {
+    // Skip AGENTS.md and CLAUDE.md if MCP custom reports feature is not enabled
+    if ((file === 'AGENTS.md' || file === 'CLAUDE.md') && !mcpCustomReportsEnabled) {
+      continue;
+    }
     write(file);
   }
 };
