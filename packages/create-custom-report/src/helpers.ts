@@ -3,12 +3,9 @@ import {
   existsSync,
   mkdirSync,
   readdirSync,
-  rmdirSync,
-  statSync,
-  unlinkSync
+  statSync
 } from 'node:fs';
 import { resolve } from 'node:path';
-import { postOrderDirectoryTraverse } from './utils/directoryTraverse';
 
 export function canSkipEmptying(dir: string): boolean {
   if (!existsSync(dir)) {
@@ -24,22 +21,6 @@ export function canSkipEmptying(dir: string): boolean {
   }
 
   return false;
-}
-
-export function emptyDir(dir: string): void {
-  if (!existsSync(dir)) {
-    return;
-  }
-
-  postOrderDirectoryTraverse(
-    dir,
-    (dir: string) => {
-      rmdirSync(dir);
-    },
-    (file: string) => {
-      unlinkSync(file);
-    }
-  );
 }
 
 export function pkgFromUserAgent(

@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { red } from 'kolorist';
 import minimist from 'minimist';
 import prompts from 'prompts';
 import {
   canSkipEmptying,
-  emptyDir,
   isValidPackageName,
   pkgFromUserAgent,
   toValidPackageName
@@ -278,7 +277,7 @@ export async function init(): Promise<void> {
   console.log(`Using React + TypeScript template`);
 
   if (overwrite === true) {
-    emptyDir(root);
+    rmSync(root, { recursive: true, force: true });
   }
   if (!existsSync(root)) {
     mkdirSync(root);
