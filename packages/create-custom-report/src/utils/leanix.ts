@@ -1,21 +1,21 @@
-import type { IPromptResult } from '..';
+import type { PromptResult } from '..';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { validateDocument } from '@lxr/core/index';
 
-export interface IAddLeanIXMetadataToPackageJson {
+export interface AddLeanIXMetadataToPackageJson {
   targetDir: string;
-  result: IPromptResult;
+  result: PromptResult;
 }
 
-export interface IGenerateLeanIXFilesOutput {
+export interface GenerateLeanIXFilesOutput {
   packageJson: any;
   lxrJson: any;
 }
 
 export async function generateLeanIXFiles(
-  params: IAddLeanIXMetadataToPackageJson
+  params: AddLeanIXMetadataToPackageJson
 ): Promise<void> {
   const { targetDir, result } = params;
   const {

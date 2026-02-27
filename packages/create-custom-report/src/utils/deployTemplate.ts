@@ -8,7 +8,7 @@ import {
 } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-export interface IDeployTemplateParams {
+export interface DeployTemplateParams {
   targetDir: string;
   defaultProjectName: string;
   template: string;
@@ -38,7 +38,7 @@ function copy(src: string, dest: string): void {
   }
 }
 
-export function deployTemplate(params: IDeployTemplateParams): void {
+export function deployTemplate(params: DeployTemplateParams): void {
   const { targetDir, template, mcpCustomReportsEnabled = false } = params;
   if (targetDir === null) {
     throw new Error('invalid target dir');

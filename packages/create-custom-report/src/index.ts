@@ -18,13 +18,13 @@ import { deployTemplate } from './utils/deployTemplate';
 import { generateLeanIXFiles } from './utils/leanix';
 import { checkFeatureFlag } from './utils/featureFlags';
 
-export interface IProjectOptions {
+export interface ProjectOptions {
   packageName?: string;
   targetDir?: string;
   overwrite?: boolean;
 }
 
-export interface ILeanIXOptions {
+export interface LeanIXOptions {
   id?: string;
   author?: string;
   title?: string;
@@ -34,7 +34,7 @@ export interface ILeanIXOptions {
   proxyURL?: string;
 }
 
-export interface IPromptResult extends IProjectOptions, ILeanIXOptions {
+export interface PromptResult extends ProjectOptions, LeanIXOptions {
   projectName?: string;
 }
 
@@ -88,7 +88,7 @@ const getCredentialQuestions = (options?: {
 
 const getLeanIXQuestions = (
   argv: minimist.ParsedArgs
-): Array<prompts.PromptObject<keyof ILeanIXOptions | 'behindProxy'>> => [
+): Array<prompts.PromptObject<keyof LeanIXOptions | 'behindProxy'>> => [
   {
     type: argv?.id === undefined ? 'text' : null,
     name: 'id',
@@ -152,7 +152,7 @@ export async function init(): Promise<void> {
     overwrite = false
   } = argv;
 
-  let result: IPromptResult = {};
+  let result: PromptResult = {};
   try {
     result = await prompts(
       [

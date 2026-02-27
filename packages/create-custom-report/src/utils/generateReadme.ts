@@ -15,7 +15,7 @@ const sfcTypeSupportDoc = [
   ''
 ].join('\n');
 
-export interface IGenerateReadmeParams {
+export interface GenerateReadmeParams {
   projectName: string;
   packageManager: string;
   needsTypeScript?: boolean;
@@ -26,7 +26,7 @@ export interface IGenerateReadmeParams {
   needsEslint?: boolean;
 }
 
-export default function generateReadme(params: IGenerateReadmeParams): string {
+export default function generateReadme(params: GenerateReadmeParams): string {
   const commandFor = (scriptName: string, args?: string): string =>
     getCommand(params.packageManager, scriptName, args);
 
