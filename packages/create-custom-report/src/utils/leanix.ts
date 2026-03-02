@@ -48,10 +48,10 @@ export async function generateLeanIXFiles(
   await validateDocument(lxrJson, 'lxr.json');
   await writeFile(
     join(targetDir, 'lxr.json'),
-    JSON.stringify(lxrJson, null, 2)
+    JSON.stringify(lxrJson, null, 2) + '\n'
   );
   await writeFile(
     join(targetDir, 'package.json'),
-    JSON.stringify(pkg, null, 2)
+    JSON.stringify(pkg, null, 2) + '\n'
   );
 }
