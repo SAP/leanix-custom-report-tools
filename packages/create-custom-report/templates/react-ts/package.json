@@ -9,7 +9,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@leanix/reporting": "0.4.171",
+    "@leanix/reporting": "0.4.172",
     "chart.js": "4.5.1",
     "react": "19.2.4",
     "react-dom": "19.2.4"
@@ -19,11 +19,11 @@
     "@sap/vite-plugin-leanix-custom-report": "8.1.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "5.1.2",
+    "@vitejs/plugin-react": "5.1.4",
     "eslint": "9.39.3",
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.0.1",
-    "prettier": "3.4.2",
+    "prettier": "3.8.1",
     "typescript": "5.9.3",
     "typescript-eslint": "8.56.1",
     "vite": "7.3.1"
