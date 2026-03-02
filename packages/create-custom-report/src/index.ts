@@ -32,9 +32,10 @@ const getCredentialQuestions = (options?: {
   host?: string;
   apitoken?: string;
   proxyURL?: string;
+  hasChromeInstalled?: boolean;
   skipIfProvided?: boolean;
 }): Array<
-  prompts.PromptObject<'host' | 'apitoken' | 'behindProxy' | 'proxyURL'>
+  prompts.PromptObject<'host' | 'apitoken' | 'behindProxy' | 'proxyURL' | 'hasChromeInstalled'>
 > => [
   {
     type:
@@ -68,6 +69,14 @@ const getCredentialQuestions = (options?: {
     name: 'proxyURL',
     message: 'Proxy URL?',
     initial: options?.proxyURL
+  },
+  {
+    type: options?.hasChromeInstalled === undefined ? 'toggle' : null,
+    name: 'hasChromeInstalled',
+    message: 'Do you have Chrome installed? (For AI verification with Chrome DevTools MCP)',
+    initial: true,
+    active: 'Yes',
+    inactive: 'No'
   }
 ];
 
@@ -99,6 +108,7 @@ const getLeanIXQuestions = (
     host: argv?.host,
     apitoken: argv?.apitoken,
     proxyURL: argv?.proxyURL,
+    hasChromeInstalled: argv?.hasChromeInstalled,
     skipIfProvided: true
   })
 ];
@@ -134,6 +144,7 @@ export async function init(): Promise<void> {
     host,
     apitoken,
     proxyURL,
+    hasChromeInstalled,
     overwrite = false
   } = argv;
 
@@ -199,6 +210,7 @@ export async function init(): Promise<void> {
     host = host,
     apitoken = apitoken,
     proxyURL = proxyURL,
+    hasChromeInstalled = hasChromeInstalled,
     overwrite = overwrite
   } = result);
   const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent) ?? null;
@@ -314,6 +326,18 @@ export async function init(): Promise<void> {
       break;
   }
   console.log();
+
+  // Chrome DevTools MCP guidance
+  if (hasChromeInstalled === false) {
+    console.log('⚠️   Chrome not installed - AI verification unavailable. Manual testing required.');
+    console.log('   Install Chrome: https://www.google.com/chrome/');
+    console.log();
+  }
+  else if (hasChromeInstalled === true) {
+    console.log('✓ Chrome installed - AI can verify reports with Chrome DevTools MCP.');
+    console.log('  Setup: https://github.com/ChromeDevTools/chrome-devtools-mcp');
+    console.log();
+  }
 }
 
 init().catch((e) => {
