@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { red } from 'kolorist';
