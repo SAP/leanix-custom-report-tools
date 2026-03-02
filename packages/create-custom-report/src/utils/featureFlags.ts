@@ -1,18 +1,8 @@
 import type { RequestInit } from 'node-fetch';
 import type { AccessToken } from '@lxr/core/models/access-token';
+import type { FeatureBundleResponse } from '../models/feature-flag';
 import { createProxyAgent, getAccessTokenClaims } from '@lxr/core/index';
 import fetch from 'node-fetch';
-
-interface Feature {
-  id: string;
-  status: string;
-}
-
-interface FeatureBundleResponse {
-  data: {
-    features: Feature[];
-  };
-}
 
 /**
  * Check if a specific feature flag is enabled for the workspace.
@@ -49,12 +39,16 @@ export async function checkFeatureFlag(options: {
 
   const response = await fetch(url, fetchOptions);
   if (!response.ok) {
-    throw new Error(`Failed to get feature bundle: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Failed to get feature bundle: ${response.status} ${response.statusText}`
+    );
   }
   const featureBundle = (await response.json()) as FeatureBundleResponse;
 
   // Find the specific feature
-  const feature = featureBundle.data?.features?.find((f) => f.id === featureFlagId);
+  const feature = featureBundle.data?.features?.find(
+    (f) => f.id === featureFlagId
+  );
   if (!feature) {
     return false;
   }

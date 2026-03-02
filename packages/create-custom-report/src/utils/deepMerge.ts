@@ -1,5 +1,7 @@
-const isObject = (val: unknown): boolean => val !== null && typeof val === 'object';
-const mergeArrayWithDedupe = (a: any, b: any): any => Array.from(new Set([...a, ...b]));
+const isObject = (val: unknown): boolean =>
+  val !== null && typeof val === 'object';
+const mergeArrayWithDedupe = (a: any, b: any): any =>
+  Array.from(new Set([...a, ...b]));
 
 /**
  * Recursively merge the content of the new object to the existing one

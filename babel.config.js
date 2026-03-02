@@ -1,5 +1,4 @@
-// used by babel/jest
-module.exports = {
+export default {
   presets: [
     '@babel/preset-typescript',
     [
