@@ -13,6 +13,7 @@ export interface DeployTemplateParams {
   defaultProjectName: string;
   template: string;
   result: IPromptResult;
+  mcpCustomReportsEnabled?: boolean;
 }
 
 const renameFiles: Record<string, string> = {
