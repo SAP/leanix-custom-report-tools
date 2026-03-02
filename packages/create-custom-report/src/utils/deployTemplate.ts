@@ -1,4 +1,4 @@
-import type { IPromptResult } from '..';
+import type { DeployTemplateParams } from '../models/deploy-template-params';
 import {
   copyFileSync,
   mkdirSync,
@@ -7,14 +7,6 @@ import {
   writeFileSync
 } from 'node:fs';
 import { join, resolve } from 'node:path';
-
-export interface DeployTemplateParams {
-  targetDir: string;
-  defaultProjectName: string;
-  template: string;
-  result: IPromptResult;
-  mcpCustomReportsEnabled?: boolean;
-}
 
 const renameFiles: Record<string, string> = {
   _gitignore: '.gitignore'

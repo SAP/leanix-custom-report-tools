@@ -1,18 +1,8 @@
-import type { PromptResult } from '..';
+import type { AddLeanIXMetadataToPackageJson } from '../models/leanix-metadata';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { validateDocument } from '@lxr/core/index';
-
-export interface AddLeanIXMetadataToPackageJson {
-  targetDir: string;
-  result: PromptResult;
-}
-
-export interface GenerateLeanIXFilesOutput {
-  packageJson: any;
-  lxrJson: any;
-}
 
 export async function generateLeanIXFiles(
   params: AddLeanIXMetadataToPackageJson

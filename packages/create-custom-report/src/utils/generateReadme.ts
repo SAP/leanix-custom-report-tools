@@ -1,3 +1,4 @@
+import type { GenerateReadmeParams } from '../models/generate-readme-params';
 import getCommand from './getCommand';
 
 const sfcTypeSupportDoc = [
@@ -14,17 +15,6 @@ const sfcTypeSupportDoc = [
   '2. Reload the VSCode window by running `Developer: Reload Window` from the command palette.',
   ''
 ].join('\n');
-
-export interface GenerateReadmeParams {
-  projectName: string;
-  packageManager: string;
-  needsTypeScript?: boolean;
-  needsCypress?: boolean;
-  needsCypressCT?: boolean;
-  needsPlaywright?: boolean;
-  needsJest?: boolean;
-  needsEslint?: boolean;
-}
 
 export default function generateReadme(params: GenerateReadmeParams): string {
   const commandFor = (scriptName: string, args?: string): string =>
