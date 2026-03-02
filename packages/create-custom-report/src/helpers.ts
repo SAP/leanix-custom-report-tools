@@ -1,27 +1,5 @@
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  statSync
-} from 'node:fs';
+import { copyFileSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
-
-export function canSkipEmptying(dir: string): boolean {
-  if (!existsSync(dir)) {
-    return true;
-  }
-
-  const files = readdirSync(dir);
-  if (files.length === 0) {
-    return true;
-  }
-  if (files.length === 1 && files[0] === '.git') {
-    return true;
-  }
-
-  return false;
-}
 
 export function pkgFromUserAgent(
   userAgent?: string

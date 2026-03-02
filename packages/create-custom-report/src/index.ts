@@ -6,7 +6,6 @@ import { red } from 'kolorist';
 import minimist from 'minimist';
 import prompts from 'prompts';
 import {
-  canSkipEmptying,
   isValidPackageName,
   pkgFromUserAgent,
   toValidPackageName
@@ -16,26 +15,13 @@ import banner from './utils/banner';
 import { deployTemplate } from './utils/deployTemplate';
 import { generateLeanIXFiles } from './utils/leanix';
 import { checkFeatureFlag } from './utils/featureFlags';
+import type {
+  LeanIXOptions,
+  ProjectOptions,
+  PromptResult
+} from './models/project-options';
 
-export interface ProjectOptions {
-  packageName?: string;
-  targetDir?: string;
-  overwrite?: boolean;
-}
-
-export interface LeanIXOptions {
-  id?: string;
-  author?: string;
-  title?: string;
-  description?: string;
-  host?: string;
-  apitoken?: string;
-  proxyURL?: string;
-}
-
-export interface PromptResult extends ProjectOptions, LeanIXOptions {
-  projectName?: string;
-}
+export type { LeanIXOptions, ProjectOptions, PromptResult };
 
 const cwd = process.cwd();
 
@@ -165,8 +151,7 @@ export async function init(): Promise<void> {
         },
         {
           name: 'overwrite',
-          type: () =>
-            canSkipEmptying(targetDir) || overwrite ? null : 'confirm',
+          type: () => (!existsSync(targetDir) || overwrite ? null : 'confirm'),
           message: () => {
             const dirForPrompt =
               targetDir === '.'
