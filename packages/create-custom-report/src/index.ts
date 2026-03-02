@@ -104,13 +104,13 @@ const getLeanIXQuestions = (
     name: 'description',
     message: 'Description of your project'
   },
-  ...getCredentialQuestions({
+  ...(argv.skipAuth ? [] : getCredentialQuestions({
     host: argv?.host,
     apitoken: argv?.apitoken,
     proxyURL: argv?.proxyURL,
     hasChromeInstalled: argv?.hasChromeInstalled,
     skipIfProvided: true
-  })
+  }))
 ];
 
 export async function init(): Promise<void> {
