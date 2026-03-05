@@ -25,11 +25,12 @@ The LeanIX MCP Server provides additional tools tagged with `custom_reports`. Li
 
 The `get_custom_report_guide()` tool returns the complete AI Agent Development Guide and TypeScript type definitions from the @leanix/reporting package (lxr module), and explains what the MCP tools provide and when to use them.
 
-### If the LeanIX MCP Server is Not Available
+### If MCP Servers are Not Available
 
 **The LeanIX MCP Server is required for custom report development.**
 
-**Setup**: Follow instructions at https://help.sap.com/docs/leanix/ea/mcp-server
+**Setup instructions:**
+- LeanIX MCP Server: https://help.sap.com/docs/leanix/ea/mcp-server
 
 ## Additional Resources
 
