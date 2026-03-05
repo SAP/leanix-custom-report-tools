@@ -327,15 +327,9 @@ export async function init(): Promise<void> {
   }
   console.log();
 
-  // Chrome DevTools MCP guidance
+  // Chrome DevTools MCP availability check
   if (hasChromeInstalled === false) {
-    console.log('⚠️   Chrome not installed - AI verification unavailable. Manual testing required.');
-    console.log('   Install Chrome: https://www.google.com/chrome/');
-    console.log();
-  }
-  else if (hasChromeInstalled === true) {
-    console.log('✓ Chrome installed - AI can verify reports with Chrome DevTools MCP.');
-    console.log('  Setup: https://github.com/ChromeDevTools/chrome-devtools-mcp');
+    console.log('ℹ️  Chrome not installed - manual browser testing will be required.');
     console.log();
   }
 }
