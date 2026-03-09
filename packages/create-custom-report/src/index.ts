@@ -32,9 +32,10 @@ const getCredentialQuestions = (options?: {
   host?: string;
   apitoken?: string;
   proxyURL?: string;
+  hasChromeInstalled?: boolean;
   skipIfProvided?: boolean;
 }): Array<
-  prompts.PromptObject<'host' | 'apitoken' | 'behindProxy' | 'proxyURL'>
+  prompts.PromptObject<'host' | 'apitoken' | 'behindProxy' | 'proxyURL' | 'hasChromeInstalled'>
 > => [
   {
     type:
@@ -68,6 +69,14 @@ const getCredentialQuestions = (options?: {
     name: 'proxyURL',
     message: 'Proxy URL?',
     initial: options?.proxyURL
+  },
+  {
+    type: options?.hasChromeInstalled === undefined ? 'toggle' : null,
+    name: 'hasChromeInstalled',
+    message: 'Do you have Chrome installed? (For AI verification with Chrome DevTools MCP)',
+    initial: true,
+    active: 'Yes',
+    inactive: 'No'
   }
 ];
 
@@ -95,12 +104,13 @@ const getLeanIXQuestions = (
     name: 'description',
     message: 'Description of your project'
   },
-  ...getCredentialQuestions({
+  ...(argv.skipAuth ? [] : getCredentialQuestions({
     host: argv?.host,
     apitoken: argv?.apitoken,
     proxyURL: argv?.proxyURL,
+    hasChromeInstalled: argv?.hasChromeInstalled,
     skipIfProvided: true
-  })
+  }))
 ];
 
 export async function init(): Promise<void> {
@@ -134,6 +144,7 @@ export async function init(): Promise<void> {
     host,
     apitoken,
     proxyURL,
+    hasChromeInstalled,
     overwrite = false
   } = argv;
 
@@ -199,6 +210,7 @@ export async function init(): Promise<void> {
     host = host,
     apitoken = apitoken,
     proxyURL = proxyURL,
+    hasChromeInstalled = hasChromeInstalled,
     overwrite = overwrite
   } = result);
   const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent) ?? null;
@@ -314,6 +326,12 @@ export async function init(): Promise<void> {
       break;
   }
   console.log();
+
+  // Chrome DevTools MCP availability check
+  if (hasChromeInstalled === false) {
+    console.log('ℹ️  Chrome not installed - manual browser testing will be required.');
+    console.log();
+  }
 }
 
 init().catch((e) => {
