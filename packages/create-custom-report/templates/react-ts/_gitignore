@@ -23,5 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 
+# MCP configurations (contain API tokens - must never be committed)
+.vscode/mcp.json
+.mcp.json
+.cline/
+
+# LeanIX credentials (contain API tokens - must never be committed)
 lxr.json
 bundle.tgz

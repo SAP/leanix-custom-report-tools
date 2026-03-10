@@ -14,6 +14,7 @@ import { getAccessToken } from '@lxr/core/index';
 import banner from './utils/banner';
 import { deployTemplate } from './utils/deployTemplate';
 import { generateLeanIXFiles } from './utils/leanix';
+import { generateMcpConfig } from './utils/generateMcpConfig';
 import { checkFeatureFlag } from './utils/featureFlags';
 import type {
   LeanIXOptions,
@@ -32,10 +33,10 @@ const getCredentialQuestions = (options?: {
   host?: string;
   apitoken?: string;
   proxyURL?: string;
-  hasChromeInstalled?: boolean;
+  setupMcpServers?: boolean;
   skipIfProvided?: boolean;
 }): Array<
-  prompts.PromptObject<'host' | 'apitoken' | 'behindProxy' | 'proxyURL' | 'hasChromeInstalled'>
+  prompts.PromptObject<'host' | 'apitoken' | 'behindProxy' | 'proxyURL' | 'setupMcpServers'>
 > => [
   {
     type:
@@ -71,9 +72,10 @@ const getCredentialQuestions = (options?: {
     initial: options?.proxyURL
   },
   {
-    type: options?.hasChromeInstalled === undefined ? 'toggle' : null,
-    name: 'hasChromeInstalled',
-    message: 'Do you have Chrome installed? (For AI verification with Chrome DevTools MCP)',
+    type: options?.setupMcpServers === undefined ? 'toggle' : null,
+    name: 'setupMcpServers',
+    message:
+      'Set up local MCP servers for AI development?\n  - Chrome DevTools MCP (requires Chrome browser)\n  - LeanIX MCP Server (workspace data access)\n  Note: Config files are gitignored and take precedence over global settings.',
     initial: true,
     active: 'Yes',
     inactive: 'No'
@@ -108,7 +110,7 @@ const getLeanIXQuestions = (
     host: argv?.host,
     apitoken: argv?.apitoken,
     proxyURL: argv?.proxyURL,
-    hasChromeInstalled: argv?.hasChromeInstalled,
+    setupMcpServers: argv?.setupMcpServers,
     skipIfProvided: true
   }))
 ];
@@ -144,7 +146,7 @@ export async function init(): Promise<void> {
     host,
     apitoken,
     proxyURL,
-    hasChromeInstalled,
+    setupMcpServers,
     overwrite = false
   } = argv;
 
@@ -210,7 +212,7 @@ export async function init(): Promise<void> {
     host = host,
     apitoken = apitoken,
     proxyURL = proxyURL,
-    hasChromeInstalled = hasChromeInstalled,
+    setupMcpServers = setupMcpServers,
     overwrite = overwrite
   } = result);
   const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent) ?? null;
@@ -311,6 +313,15 @@ export async function init(): Promise<void> {
     }
   });
 
+  // Generate MCP configuration files if user opted in
+  if (setupMcpServers === true && host && apitoken) {
+    generateMcpConfig({
+      targetDir: root,
+      host,
+      apitoken
+    });
+  }
+
   console.log('\n🔥Done. Now run:\n');
   if (root !== cwd) {
     console.log(`  cd ${relative(cwd, root)}`);
@@ -327,9 +338,18 @@ export async function init(): Promise<void> {
   }
   console.log();
 
-  // Chrome DevTools MCP availability check
-  if (hasChromeInstalled === false) {
-    console.log('ℹ️  Chrome not installed - manual browser testing will be required.');
+  // MCP setup status
+  if (setupMcpServers === false) {
+    console.log('ℹ️  MCP servers not configured - you can set up manually later.');
+    console.log('   See https://help.sap.com/docs/leanix/ea/mcp-server for setup instructions.');
+    console.log();
+  } else if (setupMcpServers === true) {
+    console.log('✓ MCP servers configured (.vscode/mcp.json, .mcp.json, .cline/mcp.json)');
+    console.log('  - Chrome DevTools MCP (AI report verification)');
+    console.log('  - LeanIX MCP Server (workspace data access)');
+    console.log();
+    console.log('  ⚠️  Config files contain API tokens and are gitignored');
+    console.log('  📝 Restart your IDE to activate - no additional setup needed');
     console.log();
   }
 }
