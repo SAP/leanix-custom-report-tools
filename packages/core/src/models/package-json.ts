@@ -8,6 +8,7 @@ export const packageJsonLxrSchema = zod.object({
   leanixReport: zod.object({
     id: zod.string(),
     title: zod.string(),
+    aiAssisted: zod.boolean().optional(),
     defaultConfig: zod.record(zod.string(), zod.any()).optional()
   })
 });
