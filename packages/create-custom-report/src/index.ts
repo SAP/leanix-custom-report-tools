@@ -33,10 +33,9 @@ const getCredentialQuestions = (options?: {
   host?: string;
   apitoken?: string;
   proxyURL?: string;
-  setupMcpServers?: boolean;
   skipIfProvided?: boolean;
 }): Array<
-  prompts.PromptObject<'host' | 'apitoken' | 'behindProxy' | 'proxyURL' | 'setupMcpServers'>
+  prompts.PromptObject<'host' | 'apitoken' | 'behindProxy' | 'proxyURL'>
 > => [
   {
     type:
@@ -70,15 +69,6 @@ const getCredentialQuestions = (options?: {
     name: 'proxyURL',
     message: 'Proxy URL?',
     initial: options?.proxyURL
-  },
-  {
-    type: options?.setupMcpServers === undefined ? 'toggle' : null,
-    name: 'setupMcpServers',
-    message:
-      'Set up local MCP servers for AI development?\n  - Chrome DevTools MCP (requires Chrome browser)\n  - LeanIX MCP Server (workspace data access)\n  Note: Config files are gitignored and take precedence over global settings.',
-    initial: true,
-    active: 'Yes',
-    inactive: 'No'
   }
 ];
 
@@ -110,7 +100,6 @@ const getLeanIXQuestions = (
     host: argv?.host,
     apitoken: argv?.apitoken,
     proxyURL: argv?.proxyURL,
-    setupMcpServers: argv?.setupMcpServers,
     skipIfProvided: true
   }))
 ];
@@ -268,6 +257,27 @@ export async function init(): Promise<void> {
       console.log('AGENTS.md will not be included in the generated project.\n');
       mcpCustomReportsEnabled = false;
     }
+
+    // Ask about MCP setup only if feature flag is enabled
+    if (mcpCustomReportsEnabled && setupMcpServers === undefined) {
+      const mcpPromptResult = await prompts(
+        {
+          type: 'toggle',
+          name: 'setupMcpServers',
+          message:
+            'Set up local MCP servers for AI development?\n  - Chrome DevTools MCP (requires Chrome browser)\n  - LeanIX MCP Server (workspace data access)\n  Note: Config files are gitignored and take precedence over global settings.',
+          initial: true,
+          active: 'Yes',
+          inactive: 'No'
+        },
+        {
+          onCancel: () => {
+            throw new Error(`${red('✖')} Operation cancelled`);
+          }
+        }
+      );
+      setupMcpServers = mcpPromptResult.setupMcpServers;
+    }
   }
 
   const root = join(cwd, targetDir ?? '');
@@ -313,8 +323,8 @@ export async function init(): Promise<void> {
     }
   });
 
-  // Generate MCP configuration files if user opted in
-  if (setupMcpServers === true && host && apitoken) {
+  // Generate MCP configuration files if feature flag enabled and user opted in
+  if (setupMcpServers === true && mcpCustomReportsEnabled && host && apitoken) {
     generateMcpConfig({
       targetDir: root,
       host,
@@ -344,12 +354,10 @@ export async function init(): Promise<void> {
     console.log('   See https://help.sap.com/docs/leanix/ea/mcp-server for setup instructions.');
     console.log();
   } else if (setupMcpServers === true) {
-    console.log('✓ MCP servers configured (.vscode/mcp.json, .mcp.json, .cline/mcp.json)');
+    console.log('✓ MCP servers configured (.vscode/mcp.json, .mcp.json)');
+    console.log('  Supports: GitHub Copilot (VS Code) and Claude Code');
     console.log('  - Chrome DevTools MCP (AI report verification)');
     console.log('  - LeanIX MCP Server (workspace data access)');
-    console.log();
-    console.log('  ⚠️  Config files contain API tokens and are gitignored');
-    console.log('  📝 Restart your IDE to activate - no additional setup needed');
     console.log();
   }
 }
