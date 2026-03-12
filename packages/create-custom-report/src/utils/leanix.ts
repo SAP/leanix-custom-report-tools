@@ -29,7 +29,7 @@ export async function generateLeanIXFiles(
       .at(-1);
   const version = pkg.version ?? '0.0.0';
   const pkgMetadataFields = { name, author, description, version };
-  const leanixReport = { id, title, defaultConfig: {} };
+  const leanixReport = { id, title, aiAssisted: false, defaultConfig: {} };
   pkg = { ...pkg, ...pkgMetadataFields, name, leanixReport };
   const lxreportJson = { ...leanixReport, ...pkgMetadataFields };
   await validateDocument(lxreportJson, 'lxreport.json');

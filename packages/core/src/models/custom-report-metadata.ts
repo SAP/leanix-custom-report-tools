@@ -7,6 +7,7 @@ export const customReportMetadataSchema = zod.object({
   version: zod.string(),
   author: zod.string(),
   description: zod.string(),
+  aiAssisted: zod.boolean().optional(),
   defaultConfig: zod.record(zod.string(), zod.any()).optional()
 });
 
