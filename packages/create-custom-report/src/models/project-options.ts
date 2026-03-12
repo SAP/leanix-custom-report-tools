@@ -12,7 +12,7 @@ export interface LeanIXOptions {
   host?: string;
   apitoken?: string;
   proxyURL?: string;
-  hasChromeInstalled?: boolean;
+  setupMcpServers?: boolean;
 }
 
 export interface PromptResult extends ProjectOptions, LeanIXOptions {
