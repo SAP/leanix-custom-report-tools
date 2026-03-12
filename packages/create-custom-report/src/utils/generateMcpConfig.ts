@@ -1,7 +1,7 @@
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-export interface IGenerateMcpConfigParams {
+interface GenerateMcpConfigParams {
   targetDir: string;
   host: string;
   apitoken: string;
@@ -9,7 +9,7 @@ export interface IGenerateMcpConfigParams {
 
 /**
  * Generates MCP configuration files with Chrome DevTools + LeanIX MCP servers.
- * Creates .vscode/mcp.json, .claude/mcp.json, and .cline/mcp.json.
+ * Creates .vscode/mcp.json for GitHub Copilot and .mcp.json for Claude Code.
  *
  * Chrome DevTools MCP enables AI agents to:
  * - Navigate to custom report URLs
@@ -33,52 +33,40 @@ export interface IGenerateMcpConfigParams {
  * @param params.host - LeanIX instance host (e.g., demo-eu.leanix.net)
  * @param params.apitoken - API token for LeanIX authentication
  */
-export const generateMcpConfig = (params: IGenerateMcpConfigParams): void => {
+export const generateMcpConfig = (params: GenerateMcpConfigParams): void => {
   const { targetDir, host, apitoken } = params;
 
-  // Configuration with actual credentials (files are gitignored)
-  const config = {
-    mcpServers: {
-      'chrome-devtools': {
-        command: 'npx',
-        args: ['-y', 'chrome-devtools-mcp@latest', '--headless']
-      },
-      'leanix-mcp-server': {
-        command: 'npx',
-        args: [
-          '-y',
-          'mcp-remote',
-          `https://${host}/services/mcp-server/v1/mcp?toolsets=inventory,custom_reports`,
-          '--header',
-          `Authorization: Token ${apitoken}`
-        ]
-      }
+  // Server configuration (shared between IDEs)
+  const serverConfig = {
+    'chrome-devtools': {
+      command: 'npx',
+      args: ['-y', 'chrome-devtools-mcp@latest', '--headless']
+    },
+    'leanix-mcp-server': {
+      command: 'npx',
+      args: [
+        '-y',
+        'mcp-remote',
+        `https://${host}/services/mcp-server/v1/mcp?toolsets=inventory,custom_reports`,
+        '--header',
+        `Authorization: Token ${apitoken}`
+      ]
     }
   };
 
-  // GitHub Copilot (VS Code)
+  // GitHub Copilot (VS Code) - uses "servers" key
   const vscodeDir = join(targetDir, '.vscode');
   if (!existsSync(vscodeDir)) {
     mkdirSync(vscodeDir, { recursive: true });
   }
   writeFileSync(
     join(vscodeDir, 'mcp.json'),
-    JSON.stringify(config, null, 2) + '\n'
+    JSON.stringify({ servers: serverConfig }, null, 2) + '\n'
   );
 
-  // Claude Code (project root)
+  // Claude Code (project root) - uses "mcpServers" key
   writeFileSync(
     join(targetDir, '.mcp.json'),
-    JSON.stringify(config, null, 2) + '\n'
-  );
-
-  // Cline
-  const clineDir = join(targetDir, '.cline');
-  if (!existsSync(clineDir)) {
-    mkdirSync(clineDir, { recursive: true });
-  }
-  writeFileSync(
-    join(clineDir, 'mcp.json'),
-    JSON.stringify(config, null, 2) + '\n'
+    JSON.stringify({ mcpServers: serverConfig }, null, 2) + '\n'
   );
 };
