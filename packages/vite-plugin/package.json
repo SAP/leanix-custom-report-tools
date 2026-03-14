@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "http-proxy-middleware": "3.0.5",
-    "https-proxy-agent": "7.0.6"
+    "https-proxy-agent": "8.0.0"
   },
   "devDependencies": {}
 }
