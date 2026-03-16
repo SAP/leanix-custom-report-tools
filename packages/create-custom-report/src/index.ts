@@ -265,7 +265,7 @@ export async function init(): Promise<void> {
           type: 'toggle',
           name: 'setupMcpServers',
           message:
-            'Set up local MCP servers for AI development?\n  - Chrome DevTools MCP (requires Chrome browser)\n  - LeanIX MCP Server (workspace data access)\n  Note: Config files are gitignored and take precedence over global settings.',
+            'Set up local MCP servers for AI development?\n  - Chrome DevTools MCP (requires Chrome browser)\n  - LeanIX MCP Server (workspace data access)\n  ⚠️  Security: AI can read your API token from config files.\n  Config files are gitignored and take precedence over global settings.',
           initial: true,
           active: 'Yes',
           inactive: 'No'
