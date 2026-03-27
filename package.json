@@ -1,6 +1,6 @@
 {
   "name": "@sap/leanix-custom-report-tools",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "private": true,
   "description": "Monorepo for SAP LeanIX custom report development tools",
   "license": "Apache-2.0",
