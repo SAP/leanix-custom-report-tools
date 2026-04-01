@@ -108,15 +108,16 @@ export async function init(): Promise<void> {
   console.log(`\n${banner}\n`);
   const argv = minimist(process.argv.slice(2), {
     string: [
-      'reportId',
+      'id',
       'author',
       'title',
       'description',
       'host',
       'apitoken',
-      'proxyUrl'
+      'proxyURL',
+      'packageName'
     ],
-    boolean: ['overwrite', 'skipAuth'],
+    boolean: ['overwrite', 'skipAuth', 'help'],
     default: {
       overwrite: false,
       skipAuth: false
