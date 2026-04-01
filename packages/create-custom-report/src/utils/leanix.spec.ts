@@ -1,4 +1,4 @@
-import type { IPromptResult } from '..';
+import type { PromptResult } from '..';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
@@ -14,7 +14,7 @@ beforeAll(async () => {
 });
 
 it('it updates package.json and generates lxr.json files', async () => {
-  const result: IPromptResult = {
+  const result: PromptResult = {
     targetDir,
     packageName: uuid(),
     author: uuid(),

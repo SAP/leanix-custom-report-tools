@@ -110,7 +110,6 @@ const getLeanIXQuestions = (
   }))
 ];
 
-
 export async function init(): Promise<void> {
   console.log(`\n${banner}\n`);
   const argv = minimist(process.argv.slice(2), {
