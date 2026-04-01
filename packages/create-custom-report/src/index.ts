@@ -104,6 +104,20 @@ const getLeanIXQuestions = (
   }))
 ];
 
+/**
+ * Parses a flag that needs three states: true, false, or undefined (not supplied).
+ * minimist collapses boolean flags to false when absent, losing the "not supplied"
+ * state that is needed to decide whether to prompt the user.
+ */
+export function parseTriStateBoolean(
+  args: string[],
+  name: string
+): boolean | undefined {
+  if (args.includes(`--${name}`)) return true;
+  if (args.includes(`--no-${name}`)) return false;
+  return undefined;
+}
+
 export async function init(): Promise<void> {
   console.log(`\n${banner}\n`);
   const argv = minimist(process.argv.slice(2), {
@@ -137,9 +151,14 @@ export async function init(): Promise<void> {
     apitoken,
     proxyURL,
     packageName,
-    setupMcpServers,
     overwrite = false
   } = argv;
+
+  // tri-state: undefined = not supplied (will prompt), true/false = skip prompt
+  let setupMcpServers = parseTriStateBoolean(
+    process.argv.slice(2),
+    'setupMcpServers'
+  );
 
   let result: PromptResult = {};
   try {
