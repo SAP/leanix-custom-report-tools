@@ -57,7 +57,11 @@ const getCredentialQuestions = (options?: {
     type:
       options?.skipIfProvided && options?.proxyURL !== undefined
         ? null
-        : 'toggle',
+        : options?.skipIfProvided &&
+            options?.host !== undefined &&
+            options?.apitoken !== undefined
+          ? null // full auth provided without proxy — skip toggle
+          : 'toggle',
     name: 'behindProxy',
     message: 'Are you behind a proxy?',
     initial: !!options?.proxyURL,
