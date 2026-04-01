@@ -136,6 +136,7 @@ export async function init(): Promise<void> {
     host,
     apitoken,
     proxyURL,
+    packageName,
     setupMcpServers,
     overwrite = false
   } = argv;
@@ -174,7 +175,10 @@ export async function init(): Promise<void> {
         },
         {
           name: 'packageName',
-          type: () => (isValidPackageName(targetDir) ? null : 'text'),
+          type: () =>
+            isValidPackageName(targetDir) || packageName !== undefined
+              ? null
+              : 'text',
           message: 'Package name:',
           initial: () => toValidPackageName(targetDir),
           validate: (dir) =>
@@ -202,6 +206,7 @@ export async function init(): Promise<void> {
     host = host,
     apitoken = apitoken,
     proxyURL = proxyURL,
+    packageName = packageName,
     setupMcpServers = setupMcpServers,
     overwrite = overwrite
   } = result);
@@ -312,7 +317,7 @@ export async function init(): Promise<void> {
   await generateLeanIXFiles({
     targetDir: root,
     result: {
-      packageName: defaultProjectName,
+      packageName: packageName ?? defaultProjectName,
       id,
       author,
       title,
