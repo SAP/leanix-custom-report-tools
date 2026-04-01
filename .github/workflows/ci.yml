@@ -40,9 +40,29 @@ jobs:
       - name: Create lxr.json
         env:
           LXR_TEST_HOST: test-app-1.leanix.net
-          LXR_TEST_APITOKEN: ${{ secrets.TEAM_COMPASS_TECHNICAL_USER_TOKEN }}
+          LXR_TEST_APITOKEN: ${​{ secrets.TEAM_COMPASS_TECHNICAL_USER_TOKEN }}
         run: |
-          jq -cn --arg host '${{ env.LXR_TEST_HOST }}' --arg apitoken '${{ env.LXR_TEST_APITOKEN }}' '$ARGS.named' | jq . > lxr.json
+          jq -cn --arg host '${​{ env.LXR_TEST_HOST }}' --arg apitoken '${​{ env.LXR_TEST_APITOKEN }}' '$ARGS.named' | jq . > lxr.json
 
       - name: Test
         run: npm test
+
+      - name: Scaffold report with CLI
+        env:
+          LXR_TEST_HOST: test-app-1.leanix.net
+          LXR_TEST_APITOKEN: ${​{ secrets.TEAM_COMPASS_TECHNICAL_USER_TOKEN }}
+        run: |
+          node packages/create-custom-report/dist/index.cjs my-report \
+            --id net.leanix.myreport \
+            --author "LeanIX GmbH" \
+            --title "My Custom Report" \
+            --description "A custom report for LeanIX" \
+            --packageName my-report \
+            --host "$LXR_TEST_HOST" \
+            --apitoken "$LXR_TEST_APITOKEN" \
+            --no-setupMcpServers \
+            --overwrite
+
+      - name: Install scaffolded report dependencies
+        run: npm install
+        working-directory: my-report
