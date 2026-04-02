@@ -132,7 +132,7 @@ export async function init(): Promise<void> {
 
   if (argv.help) {
     console.log(`
-Usage: create-leanix-custom-report [project-name] [options]
+Usage: npm create @sap/leanix-custom-report [project-name] [options]
 
 Arguments:
   project-name            Directory name for the new project (default: leanix-custom-report)
