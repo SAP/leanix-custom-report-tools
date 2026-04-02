@@ -361,17 +361,19 @@ it('--proxyURL suppresses the behind-a-proxy prompt', () => {
 
 it('omitting --title still prompts for it', () => {
   // Provide everything except --title; the CLI will pause at that prompt.
-  const { stdout } = run([
-    projectName,
-    '--skipAuth',
-    '--id',
-    uuid(),
-    '--author',
-    uuid(),
-    '--description',
-    uuid()
-  ]);
-
+  const { stdout } = run(
+    [
+      projectName,
+      '--skipAuth',
+      '--id',
+      uuid(),
+      '--author',
+      uuid(),
+      '--description',
+      uuid()
+    ],
+    { cwd: tempDir }
+  );
   expect((stdout as string)?.includes('A title to be shown in LeanIX')).toBe(
     true
   );
