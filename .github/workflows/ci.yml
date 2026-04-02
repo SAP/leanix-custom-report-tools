@@ -66,3 +66,7 @@ jobs:
       - name: Install scaffolded report dependencies
         run: npm install
         working-directory: my-report
+
+      - name: Build scaffolded report
+        run: npm run build
+        working-directory: my-report
