@@ -145,7 +145,7 @@ Options:
   --packageName <string>  npm package name (default: derived from project-name)
   --host <string>         LeanIX host (default: demo-eu.leanix.net)
   --apitoken <string>     API token for authentication
-  --proxyURL <string>     HTTP/S proxy URL (implies proxy is in use; skips proxy prompts)
+  --proxyURL <string>     HTTP/S proxy URL to use for requests to LeanIX
   --overwrite             Overwrite target directory if it exists (default: false)
   --skipAuth              Skip LeanIX authentication entirely (default: false)
   --setupMcpServers       Generate MCP server config files (requires feature flag)
