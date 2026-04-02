@@ -64,17 +64,17 @@ jobs:
             --overwrite
 
       - name: Link vite plugin
-        run: npm link
         working-directory: packages/vite-plugin
+        run: npm link
 
       - name: Link vite plugin in scaffolded report
-        run: npm link @sap/vite-plugin-leanix-custom-report
         working-directory: my-report
+        run: npm link @sap/vite-plugin-leanix-custom-report
 
       - name: Install scaffolded report dependencies
-        run: npm install
         working-directory: my-report
+        run: npm install
 
       - name: Build scaffolded report
-        run: npm run build
         working-directory: my-report
+        run: npm run build
