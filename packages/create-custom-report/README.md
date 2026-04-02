@@ -43,7 +43,9 @@ All projects are scaffolded using **React with TypeScript**, providing a modern,
 ## Non-Interactive / CI Usage
 
 Every interactive prompt can be bypassed by passing the corresponding flag. This is useful for
-CI pipelines, automation scripts, or any environment where stdin is not a TTY.
+CI pipelines, automation scripts, or any environment where stdin is not a TTY. Consider using
+environment variables for passing the apitoken as the token might be persisted in your shell
+history otherwise.
 
 ```bash
 npm create @sap/leanix-custom-report@latest my-report \
