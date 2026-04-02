@@ -63,6 +63,14 @@ jobs:
             --no-setupMcpServers \
             --overwrite
 
+      - name: Link vite plugin
+        run: npm link
+        working-directory: packages/vite-plugin
+
+      - name: Link vite plugin in scaffolded report
+        run: npm link @sap/vite-plugin-leanix-custom-report
+        working-directory: my-report
+
       - name: Install scaffolded report dependencies
         run: npm install
         working-directory: my-report
