@@ -21,8 +21,10 @@ import type {
   ProjectOptions,
   PromptResult
 } from './models/project-options';
+import { parseTriStateBoolean } from './utils/parseTriStateBoolean';
 
 export type { LeanIXOptions, ProjectOptions, PromptResult };
+export { parseTriStateBoolean };
 
 const cwd = process.cwd();
 
@@ -57,7 +59,11 @@ const getCredentialQuestions = (options?: {
     type:
       options?.skipIfProvided && options?.proxyURL !== undefined
         ? null
-        : 'toggle',
+        : options?.skipIfProvided &&
+            options?.host !== undefined &&
+            options?.apitoken !== undefined
+          ? null // full auth provided without proxy — skip toggle
+          : 'toggle',
     name: 'behindProxy',
     message: 'Are you behind a proxy?',
     initial: !!options?.proxyURL,
@@ -108,20 +114,46 @@ export async function init(): Promise<void> {
   console.log(`\n${banner}\n`);
   const argv = minimist(process.argv.slice(2), {
     string: [
-      'reportId',
+      'id',
       'author',
       'title',
       'description',
       'host',
       'apitoken',
-      'proxyUrl'
+      'proxyURL',
+      'packageName'
     ],
-    boolean: ['overwrite', 'skipAuth'],
+    boolean: ['overwrite', 'skipAuth', 'help'],
     default: {
       overwrite: false,
       skipAuth: false
     }
   });
+
+  if (argv.help) {
+    console.log(`
+Usage: npm create @sap/leanix-custom-report [project-name] [options]
+
+Arguments:
+  project-name            Directory name for the new project (default: leanix-custom-report)
+
+Options:
+  --id <string>           Unique report id in Java package notation (e.g. net.leanix.barcharts)
+  --author <string>       Report author (e.g. LeanIX GmbH)
+  --title <string>        Title shown in LeanIX when the report is installed
+  --description <string>  Short description of the report
+  --packageName <string>  npm package name (default: derived from project-name)
+  --host <string>         LeanIX host (default: demo-eu.leanix.net)
+  --apitoken <string>     API token for authentication
+  --proxyURL <string>     HTTP/S proxy URL to use for requests to LeanIX
+  --overwrite             Overwrite target directory if it exists (default: false)
+  --skipAuth              Skip LeanIX authentication entirely (default: false)
+  --setupMcpServers       Generate MCP server config files (requires feature flag)
+  --no-setupMcpServers    Skip MCP server config generation without prompting
+  --help                  Show this help message and exit
+`);
+    process.exit(0);
+  }
 
   let targetDir = argv?._?.[0] ?? null;
   const defaultProjectName = targetDir ?? 'leanix-custom-report';
@@ -135,9 +167,15 @@ export async function init(): Promise<void> {
     host,
     apitoken,
     proxyURL,
-    setupMcpServers,
+    packageName,
     overwrite = false
   } = argv;
+
+  // tri-state: undefined = not supplied (will prompt), true/false = skip prompt
+  let setupMcpServers = parseTriStateBoolean(
+    process.argv.slice(2),
+    'setupMcpServers'
+  );
 
   let result: PromptResult = {};
   try {
@@ -173,7 +211,10 @@ export async function init(): Promise<void> {
         },
         {
           name: 'packageName',
-          type: () => (isValidPackageName(targetDir) ? null : 'text'),
+          type: () =>
+            isValidPackageName(targetDir) || packageName !== undefined
+              ? null
+              : 'text',
           message: 'Package name:',
           initial: () => toValidPackageName(targetDir),
           validate: (dir) =>
@@ -201,6 +242,7 @@ export async function init(): Promise<void> {
     host = host,
     apitoken = apitoken,
     proxyURL = proxyURL,
+    packageName = packageName,
     setupMcpServers = setupMcpServers,
     overwrite = overwrite
   } = result);
@@ -311,7 +353,7 @@ export async function init(): Promise<void> {
   await generateLeanIXFiles({
     targetDir: root,
     result: {
-      packageName: defaultProjectName,
+      packageName: packageName ?? defaultProjectName,
       id,
       author,
       title,
