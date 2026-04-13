@@ -9,7 +9,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@leanix/reporting": "0.4.174",
+    "@leanix/reporting": "0.4.175",
     "chart.js": "4.5.1",
     "react": "19.2.5",
     "react-dom": "19.2.5"
@@ -23,9 +23,9 @@
     "eslint": "9.39.4",
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.0.1",
-    "prettier": "3.8.1",
+    "prettier": "3.8.2",
     "typescript": "5.9.3",
     "typescript-eslint": "8.58.1",
-    "vite": "8.0.5"
+    "vite": "8.0.8"
   }
 }
