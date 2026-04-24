@@ -156,7 +156,9 @@ export default function leanixPlugin(
         })
       );
 
-      relayServer.listen(undefined, () => {
+      // Port 4201 is explicitly listed in MTM's and pathfinder backend's corsAllowlist, which is required so that
+      // pathfinder-web can call them directly (absolute URLs bypass the relay proxy).
+      relayServer.listen(4201, () => {
         httpServer.once('listening', () => {
           if (accessToken === null) {
             throw new Error('Missing AccessToken');
