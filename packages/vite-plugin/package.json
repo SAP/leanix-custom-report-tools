@@ -1,7 +1,7 @@
 {
   "name": "@sap/vite-plugin-leanix-custom-report",
   "type": "module",
-  "version": "8.5.0",
+  "version": "8.5.1",
   "description": "Vite plugin for developing SAP LeanIX Custom Reports",
   "license": "Apache-2.0",
   "repository": {
@@ -23,7 +23,7 @@
     "test": "jest"
   },
   "peerDependencies": {
-    "vite": "^8.0.5 ^8.0.5"
+    "vite": "^8.0.5"
   },
   "dependencies": {
     "http-proxy-middleware": "3.0.5",
