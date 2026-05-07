@@ -20,7 +20,8 @@ import {
   getLaunchUrl,
   readLxrJson,
   uploadBundle,
-  validateDocument
+  validateDocument,
+  writeReportMetadata
 } from '@lxr/core/index';
 import appRoot from 'app-root-path';
 import { t as tarT } from 'tar';
@@ -136,8 +137,8 @@ describe('the lxr core package', () => {
     });
 
     const expectedMetadata = getDummyReportMetadata();
-
-    const bundlePath = await createBundle(expectedMetadata, outDir);
+    writeReportMetadata(expectedMetadata, outDir);
+    const bundlePath = await createBundle(outDir);
     const fileStream = createReadStream(bundlePath);
 
     const bundleFiles = await new Promise<Set<string>>((resolve, reject) => {
@@ -191,7 +192,8 @@ describe('the lxr core package', () => {
     if (hasTestReportInWorkspace !== undefined) {
       await deleteWorkspaceReportById(hasTestReportInWorkspace.id, bearerToken);
     }
-    const bundlePath = await createBundle(metadata, outDir);
+    writeReportMetadata(metadata, outDir);
+    const bundlePath = await createBundle(outDir);
     const bundle = await openAsBlob(bundlePath);
     const reportUploadResponseData = await uploadBundle({
       bundle,
