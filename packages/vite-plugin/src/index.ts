@@ -14,7 +14,8 @@ import {
   getLaunchUrl,
   readLxrJson,
   readMetadataJson,
-  uploadBundle
+  uploadBundle,
+  writeReportMetadata
 } from '@lxr/core/index';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { HttpsProxyAgent } from 'https-proxy-agent';
@@ -199,7 +200,12 @@ export default function leanixPlugin(
       }
     },
 
+    // Rollup hook: called after all files have been written to disk.
+    // On a normal build we only write lxreport.json metadata alongside the output.
+    // On upload mode we also package and ship the bundle to the workspace.
     async writeBundle(options, _outputBundle) {
+
+      // Read and validate metadata from package.json
       let metadata: CustomReportMetadata | undefined;
       try {
         metadata = await readMetadataJson(pluginOptions?.packageJsonPath);
@@ -231,61 +237,63 @@ export default function leanixPlugin(
         }
         process.exit(1);
       }
-      let bundle: Blob;
-      if (metadata !== undefined && options?.dir !== undefined) {
-        const bundlePath = await createBundle(metadata, options?.dir);
-        bundle = await openAsBlob(bundlePath);
-      } else {
-        logger?.error('💥 Error while create project bundle file.');
+
+      // Guard: output.file mode is not supported (custom reports always use output.dir)
+      if (options.dir === undefined) {
+        logger?.error('💥 No output directory configured.');
         process.exit(1);
       }
-      if (
-        bundle !== undefined &&
-        accessToken?.accessToken !== undefined &&
-        shouldUpload
-      ) {
-        try {
-          const { accessToken: bearerToken } = accessToken;
-          const { proxyURL, store } = credentials;
-          const { id, version } = metadata;
-          if (claims !== null) {
-            if (typeof store?.assetId === 'string') {
-              logger.info(
-                `😅 Deploying asset id ${store.assetId} to ${store.host ?? 'store.leanix.net'}...`
-              );
-            } else {
-              logger.info(
-                `😅 Uploading report ${id} with version "${version}" to workspace "${claims.principal.permission.workspaceName}"...`
-              );
-            }
-          }
-          const result = await uploadBundle({
-            bundle,
-            bearerToken,
-            proxyURL,
-            store
-          });
-          if (result.status === 'ERROR') {
-            logger?.error(
-              '💥 Error while uploading project to workpace, check your "package.json" file...'
-            );
-            logger?.error(JSON.stringify(result, null, 2));
-            process.exit(1);
-          }
+
+      // Write lxreport.json to dist/
+      writeReportMetadata(metadata, options.dir);
+      if (!shouldUpload) {
+        return;
+      }
+
+      // Upload mode: package the dist and upload to the workspace
+      const bundlePath = await createBundle(options.dir);
+      const bundle = await openAsBlob(bundlePath);
+      try {
+        const { accessToken: bearerToken } = accessToken!;
+        const { proxyURL, store } = credentials;
+        const { id, version } = metadata;
+        if (claims !== null) {
           if (typeof store?.assetId === 'string') {
             logger.info(
-              `😅 Asset id ${store.assetId} has been deployed to ${store.host ?? 'store.leanix.net'}...`
+              `😅 Deploying asset id ${store.assetId} to ${store.host ?? 'store.leanix.net'}...`
             );
-          } else if (claims !== null) {
-            logger?.info(
-              `🥳 Report "${id}" with version "${version}" was uploaded to workspace "${claims.principal.permission.workspaceName}"!`
+          } else {
+            logger.info(
+              `😅 Uploading report ${id} with version "${version}" to workspace "${claims.principal.permission.workspaceName}"...`
             );
           }
-        } catch (err: any) {
-          logger?.error('💥 Error while uploading project to workpace...');
-          logger?.error(`💣 ${err}`);
+        }
+        const result = await uploadBundle({
+          bundle,
+          bearerToken,
+          proxyURL,
+          store
+        });
+        if (result.status === 'ERROR') {
+          logger?.error(
+            '💥 Error while uploading project to workpace, check your "package.json" file...'
+          );
+          logger?.error(JSON.stringify(result, null, 2));
           process.exit(1);
         }
+        if (typeof store?.assetId === 'string') {
+          logger.info(
+            `😅 Asset id ${store.assetId} has been deployed to ${store.host ?? 'store.leanix.net'}...`
+          );
+        } else if (claims !== null) {
+          logger?.info(
+            `🥳 Report "${id}" with version "${version}" was uploaded to workspace "${claims.principal.permission.workspaceName}"!`
+          );
+        }
+      } catch (err: any) {
+        logger?.error('💥 Error while uploading project to workpace...');
+        logger?.error(`💣 ${err}`);
+        process.exit(1);
       }
     }
   };
