@@ -28,7 +28,7 @@ export async function validateDocument(
   document: unknown,
   name: 'lxr.json' | 'lxreport.json' | 'package.json'
 ): Promise<PackageJsonLXR | LeanIXCredentials | CustomReportMetadata> {
-  let schema: ZodObject<any> | null = null;
+  let schema: ZodObject<any>;
   let output: PackageJsonLXR | LeanIXCredentials | CustomReportMetadata;
   switch (name) {
     case 'package.json':
