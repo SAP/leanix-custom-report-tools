@@ -10,6 +10,7 @@ import type {
 import type { RequestInit } from 'node-fetch';
 import type { ZodObject } from 'zod';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { URL } from 'node:url';
 import { customReportMetadataSchema } from '@lxr/core/models/custom-report-metadata';
@@ -163,7 +164,7 @@ export async function createBundle(
 ): Promise<string> {
   const metaFilename = 'lxreport.json';
   const bundleFilename = 'bundle.tgz';
-  const targetFilePath = resolve(outDir, bundleFilename);
+  const targetFilePath = resolve(tmpdir(), bundleFilename);
   if (!existsSync(outDir)) {
     throw new Error(`could not find outDir: ${outDir}`);
   }
@@ -172,8 +173,7 @@ export async function createBundle(
     {
       gzip: true,
       cwd: outDir,
-      file: targetFilePath,
-      filter: (path) => path !== bundleFilename
+      file: targetFilePath
     },
     readdirSync(outDir)
   );
