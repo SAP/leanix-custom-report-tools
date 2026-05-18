@@ -16,7 +16,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "@sap/vite-plugin-leanix-custom-report": "8.5.1",
+    "@sap/vite-plugin-leanix-custom-report": "8.6.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.1",

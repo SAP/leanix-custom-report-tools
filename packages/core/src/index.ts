@@ -157,17 +157,19 @@ export function getLaunchUrl(
   return baseLaunchUrl;
 }
 
-export async function createBundle(
+export function writeReportMetadata(
   metadata: CustomReportMetadata,
   outDir: string
-): Promise<string> {
-  const metaFilename = 'lxreport.json';
+): void {
+  writeFileSync(resolve(outDir, 'lxreport.json'), JSON.stringify(metadata));
+}
+
+export async function createBundle(outDir: string): Promise<string> {
   const bundleFilename = 'bundle.tgz';
   const targetFilePath = resolve(outDir, bundleFilename);
   if (!existsSync(outDir)) {
     throw new Error(`could not find outDir: ${outDir}`);
   }
-  writeFileSync(resolve(outDir, metaFilename), JSON.stringify(metadata));
   await c(
     {
       gzip: true,
