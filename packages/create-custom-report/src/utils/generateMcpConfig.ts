@@ -1,5 +1,6 @@
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { platform } from 'node:os';
 
 interface GenerateMcpConfigParams {
   targetDir: string;
@@ -8,14 +9,15 @@ interface GenerateMcpConfigParams {
 }
 
 /**
- * Generates MCP configuration files with Chrome DevTools + LeanIX MCP servers.
+ * Generates MCP configuration files with Playwright MCP + LeanIX MCP servers.
  * Creates .vscode/mcp.json for GitHub Copilot and .mcp.json for Claude Code.
  *
- * Chrome DevTools MCP enables AI agents to:
+ * Playwright MCP enables AI agents to:
  * - Navigate to custom report URLs
  * - Check console for JavaScript/GraphQL errors
  * - Take screenshots to verify rendering
  * - Verify reports work before declaring success
+ * Works with Chrome, Microsoft Edge, Firefox, and WebKit.
  *
  * LeanIX MCP Server enables AI agents to:
  * - Access workspace data during development
@@ -26,7 +28,9 @@ interface GenerateMcpConfigParams {
  * - npx for automatic updates
  * - -y flag to auto-confirm
  * - @latest for always getting latest version
- * - --headless flag for Chrome DevTools (no UI disruption)
+ * - --headless flag for Playwright MCP (no UI disruption)
+ * - --browser msedge on Windows (system Edge, no download)
+ * - --browser chrome on Mac/Linux (system Chrome, no download)
  *
  * @param params - Configuration parameters
  * @param params.targetDir - Project root directory where MCP configs will be created
@@ -36,11 +40,14 @@ interface GenerateMcpConfigParams {
 export const generateMcpConfig = (params: GenerateMcpConfigParams): void => {
   const { targetDir, host, apitoken } = params;
 
+  const isWindows = platform() === 'win32';
+  const browserArgs = isWindows ? ['--browser', 'msedge'] : ['--browser', 'chrome'];
+
   // Server configuration (shared between IDEs)
   const serverConfig = {
-    'chrome-devtools': {
+    playwright: {
       command: 'npx',
-      args: ['-y', 'chrome-devtools-mcp@latest', '--headless']
+      args: ['-y', '@playwright/mcp@latest', '--headless', ...browserArgs]
     },
     'leanix-mcp-server': {
       command: 'npx',
