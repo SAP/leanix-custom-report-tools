@@ -9,6 +9,7 @@ import {
   rmSync,
   writeFileSync
 } from 'node:fs';
+import { createServer as createHttpServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { URL } from 'node:url';
@@ -18,8 +19,11 @@ import {
   fetchWorkspaceReports,
   getAccessToken,
   getLaunchUrl,
+  npmPackBundle,
+  pollReportState,
   readLxrJson,
   uploadBundle,
+  uploadReportV2,
   validateDocument,
   writeReportMetadata
 } from '@lxr/core/index';
@@ -209,4 +213,176 @@ describe('the lxr core package', () => {
     expect(status).toBe(204);
     rmSync(outDir, { recursive: true });
   }, 60000);
+
+  describe('v2 upload (Reports Service)', () => {
+    let server: Server;
+    let baseURL: string;
+
+    it('npmPackBundle produces a tarball for a package directory', async () => {
+      const pkgDir = mkdtempSync(join(tmpdir(), 'npmPackBundle-'));
+      writeFileSync(
+        resolve(pkgDir, 'package.json'),
+        JSON.stringify({
+          name: 'lxr-test-pack-fixture',
+          version: '0.0.0',
+          description: 'fixture',
+          author: 'tests',
+          files: ['index.js']
+        })
+      );
+      writeFileSync(resolve(pkgDir, 'index.js'), '// fixture');
+      const tarballPath = await npmPackBundle(pkgDir);
+      expect(tarballPath.endsWith('.tgz')).toBe(true);
+      const entries: string[] = [];
+      await new Promise<void>((res, rej) => {
+        createReadStream(tarballPath)
+          .pipe(tarT())
+          .on('entry', (e: ReadEntry) => entries.push(e.path))
+          .on('end', () => res())
+          .on('error', rej);
+      });
+      expect(entries).toEqual(
+        expect.arrayContaining(['package/package.json', 'package/index.js'])
+      );
+      rmSync(pkgDir, { recursive: true });
+    }, 30000);
+
+    it('uploadReportV2 posts multipart and parses customReportVersionId', async () => {
+      let receivedAuth: string | undefined;
+      let receivedContentType: string | undefined;
+      let receivedBody = '';
+      server = createHttpServer((req, res) => {
+        receivedAuth = req.headers.authorization;
+        receivedContentType = req.headers['content-type'];
+        const chunks: Buffer[] = [];
+        req.on('data', (c) => chunks.push(c));
+        req.on('end', () => {
+          receivedBody = Buffer.concat(chunks).toString('utf8');
+          res.statusCode = 201;
+          res.setHeader('content-type', 'application/json');
+          res.end(
+            JSON.stringify({ customReportVersionId: 'uuid-123' })
+          );
+        });
+      });
+      await new Promise<void>((r) => server.listen(0, r));
+      baseURL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+
+      const blob = new Blob([new Uint8Array([1, 2, 3, 4])]);
+      const result = await uploadReportV2({
+        host: 'unused',
+        bearerToken: 'test-token',
+        bundle: blob,
+        baseURL
+      });
+
+      expect(result.customReportVersionId).toBe('uuid-123');
+      expect(receivedAuth).toBe('Bearer test-token');
+      expect(receivedContentType).toMatch(/^multipart\/form-data;/);
+      expect(receivedBody).toContain('name="file"');
+
+      await new Promise<void>((r) => server.close(() => r()));
+    });
+
+    it('uploadReportV2 throws on non-2xx', async () => {
+      server = createHttpServer((_req, res) => {
+        res.statusCode = 401;
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify({ error: 'unauthorized' }));
+      });
+      await new Promise<void>((r) => server.listen(0, r));
+      baseURL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+
+      const blob = new Blob([new Uint8Array([1])]);
+      await expect(
+        uploadReportV2({
+          host: 'unused',
+          bearerToken: 't',
+          bundle: blob,
+          baseURL
+        })
+      ).rejects.toThrow(/401/);
+
+      await new Promise<void>((r) => server.close(() => r()));
+    });
+
+    it('pollReportState resolves on SCANNING -> BUILDING -> READY', async () => {
+      const states = ['SCANNING', 'BUILDING', 'READY'];
+      let i = 0;
+      server = createHttpServer((req, res) => {
+        expect(req.url).toBe('/customReports/uuid-123');
+        const state = states[Math.min(i, states.length - 1)];
+        i++;
+        res.statusCode = 200;
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify({ id: 'uuid-123', state }));
+      });
+      await new Promise<void>((r) => server.listen(0, r));
+      baseURL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+
+      const seen: string[] = [];
+      const row = await pollReportState({
+        host: 'unused',
+        customReportId: 'uuid-123',
+        bearerToken: 't',
+        baseURL,
+        intervalMs: 10,
+        onUpdate: (s) => seen.push(s)
+      });
+
+      expect(row.state).toBe('READY');
+      expect(seen).toEqual(['SCANNING', 'BUILDING', 'READY']);
+
+      await new Promise<void>((r) => server.close(() => r()));
+    });
+
+    it.each([
+      ['VULNERABLE', /security scan found vulnerabilities/],
+      ['FAILED', /build failed/],
+      ['REVOKED', /report was revoked/]
+    ])('pollReportState rejects on %s', async (state, expectedMessage) => {
+      server = createHttpServer((_req, res) => {
+        res.statusCode = 200;
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify({ id: 'uuid-err', state }));
+      });
+      await new Promise<void>((r) => server.listen(0, r));
+      baseURL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+
+      await expect(
+        pollReportState({
+          host: 'unused',
+          customReportId: 'uuid-err',
+          bearerToken: 't',
+          baseURL,
+          intervalMs: 10
+        })
+      ).rejects.toThrow(expectedMessage);
+
+      await new Promise<void>((r) => server.close(() => r()));
+    });
+
+    it('pollReportState rejects on timeout', async () => {
+      server = createHttpServer((_req, res) => {
+        res.statusCode = 200;
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify({ id: 'uuid-stuck', state: 'BUILDING' }));
+      });
+      await new Promise<void>((r) => server.listen(0, r));
+      baseURL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+
+      await expect(
+        pollReportState({
+          host: 'unused',
+          customReportId: 'uuid-stuck',
+          bearerToken: 't',
+          baseURL,
+          intervalMs: 10,
+          timeoutMs: 50
+        })
+      ).rejects.toThrow(/timed out/);
+
+      await new Promise<void>((r) => server.close(() => r()));
+    });
+  });
 });
