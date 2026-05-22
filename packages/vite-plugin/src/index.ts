@@ -1,6 +1,6 @@
 import type { CustomReportMetadata } from '@lxr/core/models/custom-report-metadata';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
-import type { Credentials } from '@lxr/core/models/credentials';
+import type { Credentials } from '@lxr/core/models/leanix-credentials';
 import type { ResolvedAuth } from '@lxr/core/index';
 import type { AddressInfo } from 'node:net';
 import type { Logger, Plugin, ResolvedConfig } from 'vite';
