@@ -307,15 +307,15 @@ describe('the lxr core package', () => {
     });
 
     it('pollReportState resolves on SCANNING -> BUILDING -> READY', async () => {
-      const states = ['SCANNING', 'BUILDING', 'READY'];
+      const statuses = ['SCANNING', 'BUILDING', 'READY'];
       let i = 0;
       server = createHttpServer((req, res) => {
         expect(req.url).toBe('/customReportVersions/uuid-123');
-        const state = states[Math.min(i, states.length - 1)];
+        const status = statuses[Math.min(i, statuses.length - 1)];
         i++;
         res.statusCode = 200;
         res.setHeader('content-type', 'application/json');
-        res.end(JSON.stringify({ id: 'uuid-123', state }));
+        res.end(JSON.stringify({ id: 'uuid-123', status, buildLog: null }));
       });
       await new Promise<void>((r) => server.listen(0, r));
       baseURL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -330,7 +330,7 @@ describe('the lxr core package', () => {
         onUpdate: (s) => seen.push(s)
       });
 
-      expect(row.state).toBe('READY');
+      expect(row.status).toBe('READY');
       expect(seen).toEqual(['SCANNING', 'BUILDING', 'READY']);
 
       await new Promise<void>((r) => server.close(() => r()));
@@ -339,11 +339,11 @@ describe('the lxr core package', () => {
     it.each([
       ['VULNERABLE', /security scan found vulnerabilities/],
       ['FAILED', /build failed/]
-    ])('pollReportState rejects on %s', async (state, expectedMessage) => {
+    ])('pollReportState rejects on %s', async (status: string, expectedMessage: RegExp) => {
       server = createHttpServer((_req, res) => {
         res.statusCode = 200;
         res.setHeader('content-type', 'application/json');
-        res.end(JSON.stringify({ id: 'uuid-err', state }));
+        res.end(JSON.stringify({ id: 'uuid-err', status, buildLog: null }));
       });
       await new Promise<void>((r) => server.listen(0, r));
       baseURL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -365,7 +365,7 @@ describe('the lxr core package', () => {
       server = createHttpServer((_req, res) => {
         res.statusCode = 200;
         res.setHeader('content-type', 'application/json');
-        res.end(JSON.stringify({ id: 'uuid-stuck', state: 'BUILDING' }));
+        res.end(JSON.stringify({ id: 'uuid-stuck', status: 'BUILDING', buildLog: null }));
       });
       await new Promise<void>((r) => server.listen(0, r));
       baseURL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;

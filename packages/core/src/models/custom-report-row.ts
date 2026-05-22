@@ -17,8 +17,8 @@ export const CUSTOM_REPORT_TERMINAL_FAILURE_STATES: CustomReportState[] = [
 
 export interface CustomReportRow {
   id: string;
-  state: CustomReportState;
-  errorMessage?: string;
+  status: CustomReportState;
+  buildLog: string | null;
 }
 
 export interface CustomReportVersionUploadResponse {

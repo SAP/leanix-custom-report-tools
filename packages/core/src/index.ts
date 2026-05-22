@@ -348,6 +348,17 @@ export async function uploadReportV2(params: {
   });
 }
 
+export class ReportStateError extends Error {
+  constructor(
+    public readonly status: CustomReportState,
+    public readonly buildLog: string | null,
+    message: string
+  ) {
+    super(message);
+    this.name = 'ReportStateError';
+  }
+}
+
 export async function pollReportState(params: {
   host: string;
   customReportVersionId: string;
@@ -387,25 +398,21 @@ export async function pollReportState(params: {
       }
       return (await res.json()) as CustomReportRow;
     });
-    if (row.state !== lastState) {
-      lastState = row.state;
-      onUpdate?.(row.state);
+    if (row.status !== lastState) {
+      lastState = row.status;
+      onUpdate?.(row.status);
     }
-    if (row.state === 'READY') {
+    if (row.status === 'READY') {
       return row;
     }
-    if (CUSTOM_REPORT_TERMINAL_FAILURE_STATES.includes(row.state)) {
+    if (CUSTOM_REPORT_TERMINAL_FAILURE_STATES.includes(row.status)) {
       const reason =
-        row.state === 'VULNERABLE'
+        row.status === 'VULNERABLE'
           ? 'security scan found vulnerabilities'
-          : row.state === 'FAILED'
+          : row.status === 'FAILED'
             ? 'build failed'
             : 'report was revoked';
-      throw new Error(
-        row.errorMessage
-          ? `${row.state}: ${reason} — ${row.errorMessage}`
-          : `${row.state}: ${reason}`
-      );
+      throw new ReportStateError(row.status, row.buildLog, `${row.status}: ${reason}`);
     }
     await sleep(intervalMs);
   }

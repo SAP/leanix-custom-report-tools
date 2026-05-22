@@ -16,6 +16,7 @@ import {
   pollReportState,
   readLxrJson,
   readMetadataJson,
+  ReportStateError,
   uploadBundle,
   uploadReportV2,
   writeReportMetadata
@@ -301,6 +302,18 @@ export default function leanixPlugin(
           }
         } catch (err: any) {
           logger?.error('💥 Error during v2 upload to Reports Service...');
+          if (err instanceof ReportStateError && err.status === 'FAILED' && err.buildLog) {
+            const lines = err.buildLog.split('\n');
+            const MAX_LINES = 50;
+            const tail = lines.length > MAX_LINES ? lines.slice(-MAX_LINES) : lines;
+            logger?.error('📜 Build log:');
+            if (lines.length > MAX_LINES) {
+              logger?.error(`  … (showing last ${MAX_LINES} of ${lines.length} lines)`);
+            }
+            for (const line of tail) {
+              logger?.error(`  ${line}`);
+            }
+          }
           logger?.error(`💣 ${err}`);
           process.exit(1);
         }
