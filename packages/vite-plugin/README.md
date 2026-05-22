@@ -5,9 +5,9 @@ A Vite plugin for developing SAP LeanIX Custom Reports with hot reload, TypeScri
 ## Features
 
 - 🚀 Fast development with Vite's hot module replacement
-- 📦 Automatic bundling and optimization for LeanIX reports
+- 📦 Automatic bundling and optimization for SAP LeanIX reports
 - 🔧 Built-in TypeScript support
-- 📤 One-command deployment to LeanIX workspace
+- 📤 One-command deployment to SAP LeanIX workspace
 - ⚛️ Optimized for React with TypeScript
 
 ## Prerequisites

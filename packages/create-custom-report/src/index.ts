@@ -53,7 +53,7 @@ const getCredentialQuestions = (options?: {
         : 'text',
     name: 'apitoken',
     message:
-      'API-Token for Authentication (see: https://dev.leanix.net/docs/authentication#section-generate-api-tokens)\n  ⚠️  Security advice: API token will be persisted in the report config file'
+      'Technical User API-Token for Authentication (see: https://help.sap.com/docs/leanix/ea/technical-users)\n  ⚠️  Security advice: API token will be persisted in the report config file'
   },
   {
     type:
@@ -90,12 +90,12 @@ const getLeanIXQuestions = (
   {
     type: argv?.author === undefined ? 'text' : null,
     name: 'author',
-    message: 'Who is the author of this report (e.g. LeanIX GmbH)'
+    message: 'Who is the author of this report (e.g. SAP LeanIX)'
   },
   {
     type: argv?.title === undefined ? 'text' : null,
     name: 'title',
-    message: 'A title to be shown in LeanIX when report is installed'
+    message: 'A title to be shown in SAP LeanIX when report is installed'
   },
   {
     type: argv?.description === undefined ? 'text' : null,
@@ -139,15 +139,15 @@ Arguments:
 
 Options:
   --id <string>           Unique report id in Java package notation (e.g. net.leanix.barcharts)
-  --author <string>       Report author (e.g. LeanIX GmbH)
-  --title <string>        Title shown in LeanIX when the report is installed
+  --author <string>       Report author (e.g. SAP LeanIX)
+  --title <string>        Title shown in SAP LeanIX when the report is installed
   --description <string>  Short description of the report
   --packageName <string>  npm package name (default: derived from project-name)
-  --host <string>         LeanIX host (default: demo-eu.leanix.net)
+  --host <string>         SAP LeanIX host (default: demo-eu.leanix.net)
   --apitoken <string>     API token for authentication
-  --proxyURL <string>     HTTP/S proxy URL to use for requests to LeanIX
+  --proxyURL <string>     HTTP/S proxy URL to use for requests to SAP LeanIX
   --overwrite             Overwrite target directory if it exists (default: false)
-  --skipAuth              Skip LeanIX authentication entirely (default: false)
+  --skipAuth              Skip SAP LeanIX authentication entirely (default: false)
   --setupMcpServers       Generate MCP server config files (requires feature flag)
   --no-setupMcpServers    Skip MCP server config generation without prompting
   --help                  Show this help message and exit
@@ -260,7 +260,7 @@ Options:
           throw new Error('Host and API token are required');
         }
         tokenResponse = await getAccessToken({ host, apitoken, proxyURL });
-        console.log('✓ Successfully authenticated with LeanIX');
+        console.log('✓ Successfully authenticated with SAP LeanIX');
       } catch (error) {
         console.log(
           `${red('✖')} Failed to authenticate: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -307,7 +307,7 @@ Options:
           type: 'toggle',
           name: 'setupMcpServers',
           message:
-            'Set up local MCP servers for AI development?\n  - Chrome DevTools MCP (requires Chrome browser)\n  - LeanIX MCP Server (workspace data access)\n  ⚠️  Security advice: API token will be persisted in the MCP server config files\n  Config files are gitignored and take precedence over global settings.',
+            'Set up local MCP servers for AI development?\n  - Chrome DevTools MCP (requires Chrome browser)\n  - SAP LeanIX MCP Server (workspace data access)\n  ⚠️  Security advice: API token will be persisted in the MCP server config files\n  Config files are gitignored and take precedence over global settings.',
           initial: true,
           active: 'Yes',
           inactive: 'No'
@@ -399,7 +399,7 @@ Options:
     console.log('✓ MCP servers configured (.vscode/mcp.json, .mcp.json)');
     console.log('  Supports: GitHub Copilot (VS Code) and Claude Code');
     console.log('  - Chrome DevTools MCP (AI report verification)');
-    console.log('  - LeanIX MCP Server (workspace data access)');
+    console.log('  - SAP LeanIX MCP Server (workspace data access)');
     console.log();
   }
 }

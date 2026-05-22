@@ -1,7 +1,7 @@
 /**
- * Demo LeanIX Custom Report
+ * Demo SAP LeanIX Custom Report
  *
- * This demonstrates a basic LeanIX custom report that visualizes Applications by Business Criticality.
+ * This demonstrates a basic SAP LeanIX custom report that visualizes Applications by Business Criticality.
  * The report displays a bar chart showing the distribution of applications across different criticality levels:
  * - Administrative Service
  * - Business Operational
