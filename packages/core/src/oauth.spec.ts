@@ -1,4 +1,5 @@
 import type { Credentials } from './models/leanix-credentials';
+import fetch from 'node-fetch';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import * as os from 'node:os';
 import { join } from 'node:path';
@@ -163,7 +164,7 @@ describe('refreshAccessToken', () => {
   let fetchMock: jest.Mock;
 
   beforeEach(() => {
-    fetchMock = (require('node-fetch') as { default: jest.Mock }).default;
+    fetchMock = jest.mocked(fetch);
     fetchMock.mockReset();
   });
 

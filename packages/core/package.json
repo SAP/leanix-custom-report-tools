@@ -13,6 +13,7 @@
     "https-proxy-agent": "9.0.0",
     "jwt-decode": "4.0.0",
     "node-fetch": "3.3.2",
+    "open": "^11.0.0",
     "tar": "7.5.13"
   },
   "devDependencies": {

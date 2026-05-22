@@ -1,7 +1,7 @@
 import type { Credentials } from './models/leanix-credentials';
 import type { RequestInit } from 'node-fetch';
 import { createHash, randomBytes } from 'node:crypto';
-import { exec } from 'node:child_process';
+import open from 'open';
 import { createServer } from 'node:http';
 import { URL } from 'node:url';
 import { HttpsProxyAgent } from 'https-proxy-agent';
@@ -61,14 +61,13 @@ export function startCallbackServer(): {
   return { port, waitForCode: () => codePromise };
 }
 
-export function openBrowser(url: string): Promise<boolean> {
-  const cmd =
-    process.platform === 'darwin' ? 'open' :
-    process.platform === 'win32' ? 'start' :
-    'xdg-open';
-  return new Promise((resolve) => {
-    exec(`${cmd} "${url}"`, (err) => resolve(err === null));
-  });
+export async function openBrowser(url: string): Promise<boolean> {
+  try {
+    await open(url);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function registerOAuthClient(
