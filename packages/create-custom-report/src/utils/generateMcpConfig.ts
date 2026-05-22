@@ -1,5 +1,7 @@
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { platform } from 'node:os';
+import { execFileSync } from 'node:child_process';
 
 interface GenerateMcpConfigParams {
   targetDir: string;
@@ -8,10 +10,40 @@ interface GenerateMcpConfigParams {
 }
 
 /**
- * Generates MCP configuration files with Chrome DevTools + LeanIX MCP servers.
+ * Picks the Playwright MCP `--browser` value at scaffold time so verification
+ * works without forcing the user to install a browser.
+ *
+ * - Windows → 'msedge'   (Edge ships with Windows; zero download)
+ * - macOS   → 'chrome'   if /Applications/Google Chrome.app is installed,
+ *             else 'chromium' (Playwright-bundled, ~150 MB on first run)
+ * - Linux   → 'chrome'   if google-chrome / google-chrome-stable is on PATH,
+ *             else 'chromium' (Playwright-bundled, ~150 MB on first run)
+ */
+export const detectBrowser = (): string => {
+  // 'win32' is Node's identifier for all Windows (32-bit and 64-bit alike)
+  if (platform() === 'win32') return 'msedge';
+
+  if (platform() === 'darwin') {
+    return existsSync('/Applications/Google Chrome.app') ? 'chrome' : 'chromium';
+  }
+
+  // Linux and other Unix-likes — match what Playwright's chrome channel looks for
+  for (const bin of ['google-chrome', 'google-chrome-stable']) {
+    try {
+      execFileSync('which', [bin], { stdio: 'ignore' });
+      return 'chrome';
+    } catch {
+      // not installed under this name; try the next
+    }
+  }
+  return 'chromium';
+};
+
+/**
+ * Generates MCP configuration files with Playwright MCP + LeanIX MCP servers.
  * Creates .vscode/mcp.json for GitHub Copilot and .mcp.json for Claude Code.
  *
- * Chrome DevTools MCP enables AI agents to:
+ * Playwright MCP enables AI agents to:
  * - Navigate to custom report URLs
  * - Check console for JavaScript/GraphQL errors
  * - Take screenshots to verify rendering
@@ -26,7 +58,8 @@ interface GenerateMcpConfigParams {
  * - npx for automatic updates
  * - -y flag to auto-confirm
  * - @latest for always getting latest version
- * - --headless flag for Chrome DevTools (no UI disruption)
+ * - --headless flag for Playwright MCP (no UI disruption)
+ * - --browser detected at scaffold time by `detectBrowser()` above
  *
  * @param params - Configuration parameters
  * @param params.targetDir - Project root directory where MCP configs will be created
@@ -36,11 +69,13 @@ interface GenerateMcpConfigParams {
 export const generateMcpConfig = (params: GenerateMcpConfigParams): void => {
   const { targetDir, host, apitoken } = params;
 
+  const browserArgs = ['--browser', detectBrowser()];
+
   // Server configuration (shared between IDEs)
   const serverConfig = {
-    'chrome-devtools': {
+    playwright: {
       command: 'npx',
-      args: ['-y', 'chrome-devtools-mcp@latest', '--headless']
+      args: ['-y', '@playwright/mcp@latest', '--headless', ...browserArgs]
     },
     'leanix-mcp-server': {
       command: 'npx',

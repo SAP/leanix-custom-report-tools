@@ -307,7 +307,7 @@ Options:
           type: 'toggle',
           name: 'setupMcpServers',
           message:
-            'Set up local MCP servers for AI development?\n  - Chrome DevTools MCP (requires Chrome browser)\n  - SAP LeanIX MCP Server (workspace data access)\n  ⚠️  Security advice: API token will be persisted in the MCP server config files\n  Config files are gitignored and take precedence over global settings.',
+            'Set up local MCP servers for AI development?\n  - Playwright MCP (browser-based report verification)\n  - SAP LeanIX MCP Server (workspace data access)\n  ⚠️  Security advice: API token will be persisted in the MCP server config files\n  Config files are gitignored and take precedence over global settings.',
           initial: true,
           active: 'Yes',
           inactive: 'No'
@@ -398,7 +398,7 @@ Options:
   } else if (setupMcpServers === true) {
     console.log('✓ MCP servers configured (.vscode/mcp.json, .mcp.json)');
     console.log('  Supports: GitHub Copilot (VS Code) and Claude Code');
-    console.log('  - Chrome DevTools MCP (AI report verification)');
+    console.log('  - Playwright MCP (AI report verification)');
     console.log('  - SAP LeanIX MCP Server (workspace data access)');
     console.log();
   }
