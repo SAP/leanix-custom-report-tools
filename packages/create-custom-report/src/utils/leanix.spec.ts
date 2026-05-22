@@ -13,31 +13,19 @@ beforeAll(async () => {
   await writeFile(join(targetDir, 'package.json'), JSON.stringify({ testId }));
 });
 
-it('it updates package.json and generates lxr.json files', async () => {
+it('it updates package.json with leanix metadata', async () => {
   const result: PromptResult = {
     targetDir,
     packageName: uuid(),
     author: uuid(),
     description: uuid(),
     id: uuid(),
-    title: uuid(),
-    host: uuid(),
-    apitoken: uuid(),
-    proxyURL: uuid()
+    title: uuid()
   };
   await generateLeanIXFiles({ targetDir, result });
-  const lxrJson = await readFile(join(targetDir, 'lxr.json')).then((buffer) =>
-    JSON.parse(buffer.toString())
-  );
   const packageJson = await readFile(join(targetDir, 'package.json')).then(
     (buffer) => JSON.parse(buffer.toString())
   );
-
-  expect(lxrJson).toEqual({
-    host: result.host,
-    apitoken: result.apitoken,
-    proxyURL: result.proxyURL
-  });
 
   expect(packageJson).toMatchObject({
     name: result.packageName,

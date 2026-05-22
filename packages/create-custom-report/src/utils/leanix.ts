@@ -13,9 +13,6 @@ export async function generateLeanIXFiles(
     description,
     id,
     title,
-    host,
-    apitoken,
-    proxyURL,
     packageName
   } = result;
   let pkg = JSON.parse(
@@ -33,13 +30,6 @@ export async function generateLeanIXFiles(
   pkg = { ...pkg, ...pkgMetadataFields, name, leanixReport };
   const lxreportJson = { ...leanixReport, ...pkgMetadataFields };
   await validateDocument(lxreportJson, 'lxreport.json');
-  const lxrJson = { host, apitoken, proxyURL };
-
-  await validateDocument(lxrJson, 'lxr.json');
-  await writeFile(
-    join(targetDir, 'lxr.json'),
-    JSON.stringify(lxrJson, null, 2) + '\n'
-  );
   await writeFile(
     join(targetDir, 'package.json'),
     JSON.stringify(pkg, null, 2) + '\n'

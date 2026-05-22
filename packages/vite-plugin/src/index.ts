@@ -1,7 +1,7 @@
-import type { AccessToken } from '@lxr/core/models/access-token';
 import type { CustomReportMetadata } from '@lxr/core/models/custom-report-metadata';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
-import type { LeanIXCredentials } from '@lxr/core/models/leanix-credentials';
+import type { Credentials } from '@lxr/core/models/credentials';
+import type { ResolvedAuth } from '@lxr/core/index';
 import type { AddressInfo } from 'node:net';
 import type { Logger, Plugin, ResolvedConfig } from 'vite';
 import { openAsBlob } from 'node:fs';
@@ -9,11 +9,11 @@ import { createServer as createHttpServer } from 'node:http';
 import { join } from 'node:path';
 import {
   createBundle,
-  getAccessToken,
-  getAccessTokenClaims,
+  decodeBearerToken,
   getLaunchUrl,
   readLxrJson,
   readMetadataJson,
+  resolveAccessToken,
   uploadBundle,
   writeReportMetadata
 } from '@lxr/core/index';
@@ -30,11 +30,11 @@ export default function leanixPlugin(
   pluginOptions?: LeanIXPluginOptions
 ): Plugin[] {
   let logger: Logger;
-  let accessToken: AccessToken | null = null;
+  let resolvedAuth: ResolvedAuth | null = null;
   let claims: JwtClaims | null = null;
   let shouldUpload: boolean = false;
   let loadWorkspaceCredentials: boolean = false;
-  let credentials: LeanIXCredentials = { host: '', apitoken: '' };
+  let lxrJson: Credentials | null = null;
   let viteDevServerUrl: string;
   let launchUrl: string;
   let relayServer: ReturnType<typeof createHttpServer> | null = null;
@@ -52,19 +52,15 @@ export default function leanixPlugin(
         config.base = '';
         config.server = { ...(config.server ?? {}), host: true, cors: true };
         try {
-          credentials = await readLxrJson();
+          lxrJson = await readLxrJson();
         } catch (error) {
-          logger = logger ?? console;
           const code = (error as { code: string })?.code ?? null;
-          if (code === 'ENOENT') {
-            logger.error(
-              '💥 Error: "lxr.json" file not found in your project root'
-            );
-          } else {
-            logger?.error(error as string);
+          if (code !== 'ENOENT') {
+            logger = logger ?? console;
+            logger.error(error as string);
+            process.exit(1);
           }
-
-          process.exit(1);
+          lxrJson = null;
         }
       }
     },
@@ -76,14 +72,11 @@ export default function leanixPlugin(
       ).catch(() => null);
       if (loadWorkspaceCredentials) {
         try {
-          if (
-            typeof credentials.proxyURL === 'string' &&
-            credentials.proxyURL.length > 0
-          ) {
-            logger?.info(`  Using proxy: ${credentials.proxyURL}`);
+          resolvedAuth = await resolveAccessToken(lxrJson ?? undefined);
+          if (resolvedAuth.proxyURL) {
+            logger?.info(`  Using proxy: ${resolvedAuth.proxyURL}`);
           }
-          accessToken = await getAccessToken(credentials);
-          claims = getAccessTokenClaims(accessToken);
+          claims = decodeBearerToken(resolvedAuth.bearerToken);
           if (claims !== null) {
             logger?.info(
               `  Using workspace: ${claims.principal.permission.workspaceName}`
@@ -103,7 +96,7 @@ export default function leanixPlugin(
         return;
       }
 
-      const targetHost = credentials.host;
+      const targetHost = resolvedAuth?.host ?? '';
       const targetOrigin = `https://${targetHost}`;
       const workspaceName = claims?.principal.permission.workspaceName ?? '';
 
@@ -118,8 +111,8 @@ export default function leanixPlugin(
           target: targetOrigin,
           changeOrigin: true,
           secure: true,
-          agent: credentials.proxyURL
-            ? new HttpsProxyAgent(credentials.proxyURL)
+          agent: resolvedAuth?.proxyURL
+            ? new HttpsProxyAgent(resolvedAuth.proxyURL)
             : undefined,
           on: {
             proxyReq: (proxyReq, req) => {
@@ -161,8 +154,8 @@ export default function leanixPlugin(
       // pathfinder-web can call them directly (absolute URLs bypass the relay proxy).
       relayServer.listen(4200, () => {
         httpServer.once('listening', () => {
-          if (accessToken === null) {
-            throw new Error('Missing AccessToken');
+          if (resolvedAuth === null) {
+            throw new Error('Missing resolved auth');
           }
 
           const { name: hostname } = resolveHostname(config.server.host);
@@ -174,7 +167,7 @@ export default function leanixPlugin(
 
           launchUrl = getLaunchUrl(
             viteDevServerUrl,
-            accessToken.accessToken,
+            resolvedAuth.bearerToken,
             relayUrl,
             devMetadata?.title
           );
@@ -254,8 +247,9 @@ export default function leanixPlugin(
       const bundlePath = await createBundle(options.dir);
       const bundle = await openAsBlob(bundlePath);
       try {
-        const { accessToken: bearerToken } = accessToken!;
-        const { proxyURL, store } = credentials;
+        const bearerToken = resolvedAuth!.bearerToken;
+        const proxyURL = resolvedAuth?.proxyURL;
+        const store = lxrJson?.store;
         const { id, version } = metadata;
         if (claims !== null) {
           if (typeof store?.assetId === 'string') {

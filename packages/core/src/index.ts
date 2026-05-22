@@ -1,7 +1,7 @@
 import type { AccessToken } from '@lxr/core/models/access-token';
 import type { CustomReportMetadata } from '@lxr/core/models/custom-report-metadata';
+import type { Credentials } from './models/leanix-credentials';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
-import type { LeanIXCredentials } from '@lxr/core/models/leanix-credentials';
 import type { PackageJsonLXR } from '@lxr/core/models/package-json';
 import type {
   ReportUploadResponseData,
@@ -13,13 +13,37 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { URL } from 'node:url';
 import { customReportMetadataSchema } from '@lxr/core/models/custom-report-metadata';
-import { leanixCredentialsSchema } from '@lxr/core/models/leanix-credentials';
+import { credentialsSchema } from './models/leanix-credentials';
 import { packageJsonLxrSchema } from '@lxr/core/models/package-json';
 import { FormData } from 'formdata-node';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import { jwtDecode } from 'jwt-decode';
 import fetch from 'node-fetch';
 import { c } from 'tar';
+import { HttpsProxyAgent } from 'https-proxy-agent';
+
+export type { ResolvedAuth } from './auth';
+export type { Credentials } from './models/leanix-credentials';
+
+export { resolveAccessToken } from './auth';
+export {
+  readUserCredentials,
+  writeUserCredentials,
+  deleteUserCredentials
+} from './credentials';
+export {
+  deriveCodeChallenge,
+  generateCodeVerifier,
+  getHostFromAccessToken,
+  openBrowser,
+  refreshAccessToken,
+  registerOAuthClient,
+  runOAuthFlow,
+  startCallbackServer
+} from './oauth';
+
+export function createProxyAgent(proxyURL: string): HttpsProxyAgent<string> {
+  return new HttpsProxyAgent(new URL(proxyURL));
+}
 
 const snakeToCamel = (s: string): string =>
   s.replace(/([-_]\w)/g, (g) => g[1].toUpperCase());
@@ -27,17 +51,17 @@ const snakeToCamel = (s: string): string =>
 export async function validateDocument(
   document: unknown,
   name: 'lxr.json' | 'lxreport.json' | 'package.json'
-): Promise<PackageJsonLXR | LeanIXCredentials | CustomReportMetadata> {
+): Promise<PackageJsonLXR | Credentials | CustomReportMetadata> {
   let schema: ZodObject<any>;
-  let output: PackageJsonLXR | LeanIXCredentials | CustomReportMetadata;
+  let output: PackageJsonLXR | Credentials | CustomReportMetadata;
   switch (name) {
     case 'package.json':
       schema = packageJsonLxrSchema;
       output = document as PackageJsonLXR;
       break;
     case 'lxr.json':
-      schema = leanixCredentialsSchema;
-      output = document as LeanIXCredentials;
+      schema = credentialsSchema;
+      output = document as Credentials;
       break;
     case 'lxreport.json':
       schema = customReportMetadataSchema;
@@ -46,12 +70,12 @@ export async function validateDocument(
     default:
       throw new Error(`unknown document name ${name}`);
   }
-
+  
   schema.parse(document);
   return output;
 }
 
-export async function readLxrJson(path?: string): Promise<LeanIXCredentials> {
+export async function readLxrJson(path?: string): Promise<Credentials> {
   if ((path ?? '').length === 0) {
     path = join(process.cwd(), 'lxr.json');
   }
@@ -61,19 +85,19 @@ export async function readLxrJson(path?: string): Promise<LeanIXCredentials> {
     proxyURL = null,
     store = null
   } = JSON.parse(path !== undefined ? readFileSync(path).toString() : '{}');
-  const credentials: LeanIXCredentials = { host, apitoken };
+  const config: Credentials = { host, apitoken };
   if (proxyURL !== null) {
-    credentials.proxyURL = proxyURL;
+    config.proxyURL = proxyURL;
   }
   if (store !== null) {
-    credentials.store = store;
+    config.store = store;
   }
-  await validateDocument(credentials, 'lxr.json');
-  return credentials;
+  await validateDocument(config, 'lxr.json');
+  return config;
 }
 
 export async function readMetadataJson(
-  path = join(process.cwd(), 'package.json')
+  path = resolve(process.cwd(), 'package.json')
 ): Promise<CustomReportMetadata> {
   const fileContent = readFileSync(path).toString();
   const pkg: PackageJsonLXR = JSON.parse(fileContent);
@@ -90,12 +114,8 @@ export async function readMetadataJson(
   return metadata;
 }
 
-export function createProxyAgent(proxyURL: string): HttpsProxyAgent<string> {
-  return new HttpsProxyAgent(new URL(proxyURL));
-}
-
 export async function getAccessToken(
-  credentials: LeanIXCredentials
+  credentials: Credentials
 ): Promise<AccessToken> {
   const uri = `https://${credentials.host}/services/mtm/v1/oauth2/token?grant_type=client_credentials`;
   const headers = {
@@ -139,6 +159,10 @@ export async function getAccessToken(
 
 export function getAccessTokenClaims(accessToken: AccessToken): JwtClaims {
   return jwtDecode(accessToken.accessToken);
+}
+
+export function decodeBearerToken(bearerToken: string): JwtClaims {
+  return jwtDecode(bearerToken);
 }
 
 export function getLaunchUrl(
@@ -204,7 +228,7 @@ export async function uploadBundle(params: {
   const form = new FormData();
 
   form.append('file', bundle);
-  const options: RequestInit = { method: 'post', headers, body: form };
+  const options: RequestInit = { method: 'post', headers, body: form as any };
   if (typeof proxyURL === 'string' && proxyURL.length > 0) {
     options.agent = createProxyAgent(proxyURL);
   }

@@ -73,9 +73,8 @@ describe('the lxr core package', () => {
       )
     ).resolves.not.toThrow();
     await expect(
-      async () =>
-        await validateDocument({ host: 'demo-us.leanix.net' }, 'lxr.json')
-    ).rejects.toThrow();
+      validateDocument({ host: 'demo-us.leanix.net' }, 'lxr.json')
+    ).resolves.not.toThrow();
   });
 
   it("readLxrJson throws error if json file doesn't have all required fields", async () => {
