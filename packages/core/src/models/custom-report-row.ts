@@ -22,9 +22,5 @@ export interface CustomReportRow {
 }
 
 export interface CustomReportVersionUploadResponse {
-  // TODO: drop `customReportVersionId` in favor of `customReportId` once the
-  // upload endpoint returns the parent report id directly. Until then, callers
-  // fall back to the version id for polling.
   customReportVersionId: string;
-  customReportId?: string;
 }

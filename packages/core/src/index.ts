@@ -348,11 +348,9 @@ export async function uploadReportV2(params: {
   });
 }
 
-// NOTE: until the upload endpoint also returns `customReportId`, callers may
-// pass the `customReportVersionId` here as a stand-in.
 export async function pollReportState(params: {
   host: string;
-  customReportId: string;
+  customReportVersionId: string;
   bearerToken: string;
   proxyURL?: string;
   onUpdate?: (state: CustomReportState) => void;
@@ -362,7 +360,7 @@ export async function pollReportState(params: {
 }): Promise<CustomReportRow> {
   const {
     host,
-    customReportId,
+    customReportVersionId,
     bearerToken,
     proxyURL,
     onUpdate,
@@ -371,7 +369,7 @@ export async function pollReportState(params: {
     baseURL
   } = params;
   const root = baseURL ?? `https://${host}/services/reports/v1`;
-  const url = `${root}/customReports/${customReportId}`;
+  const url = `${root}/customReportVersions/${customReportVersionId}`;
   const headers = { Authorization: `Bearer ${bearerToken}` };
   const sleep = (ms: number): Promise<void> =>
     new Promise((r) => setTimeout(r, ms));
@@ -412,6 +410,6 @@ export async function pollReportState(params: {
     await sleep(intervalMs);
   }
   throw new Error(
-    `timed out after ${timeoutMs}ms waiting for report ${customReportId} to reach ready state (last state: ${lastState ?? 'unknown'})`
+    `timed out after ${timeoutMs}ms waiting for report ${customReportVersionId} to reach ready state (last state: ${lastState ?? 'unknown'})`
   );
 }

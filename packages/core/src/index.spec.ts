@@ -310,7 +310,7 @@ describe('the lxr core package', () => {
       const states = ['SCANNING', 'BUILDING', 'READY'];
       let i = 0;
       server = createHttpServer((req, res) => {
-        expect(req.url).toBe('/customReports/uuid-123');
+        expect(req.url).toBe('/customReportVersions/uuid-123');
         const state = states[Math.min(i, states.length - 1)];
         i++;
         res.statusCode = 200;
@@ -323,7 +323,7 @@ describe('the lxr core package', () => {
       const seen: string[] = [];
       const row = await pollReportState({
         host: 'unused',
-        customReportId: 'uuid-123',
+        customReportVersionId: 'uuid-123',
         bearerToken: 't',
         baseURL,
         intervalMs: 10,
@@ -351,7 +351,7 @@ describe('the lxr core package', () => {
       await expect(
         pollReportState({
           host: 'unused',
-          customReportId: 'uuid-err',
+          customReportVersionId: 'uuid-err',
           bearerToken: 't',
           baseURL,
           intervalMs: 10
@@ -373,7 +373,7 @@ describe('the lxr core package', () => {
       await expect(
         pollReportState({
           host: 'unused',
-          customReportId: 'uuid-stuck',
+          customReportVersionId: 'uuid-stuck',
           bearerToken: 't',
           baseURL,
           intervalMs: 10,

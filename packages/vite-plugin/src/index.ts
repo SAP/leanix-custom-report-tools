@@ -280,17 +280,16 @@ export default function leanixPlugin(
               `😅 Uploading report ${id} v"${version}" to workspace "${claims.principal.permission.workspaceName}" via Reports Service...`
             );
           }
-          const { customReportVersionId, customReportId } =
-            await uploadReportV2({
-              host: credentials.host,
-              bearerToken,
-              bundle,
-              proxyURL
-            });
+          const { customReportVersionId } = await uploadReportV2({
+            host: credentials.host,
+            bearerToken,
+            bundle,
+            proxyURL
+          });
           logger?.info(`  customReportVersionId: ${customReportVersionId}`);
           await pollReportState({
             host: credentials.host,
-            customReportId: customReportId ?? customReportVersionId,
+            customReportVersionId,
             bearerToken,
             proxyURL,
             onUpdate: (state) => logger?.info(`  state: ${state}`)
