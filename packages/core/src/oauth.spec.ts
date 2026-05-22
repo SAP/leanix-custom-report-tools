@@ -1,5 +1,4 @@
 import type { Credentials } from './models/leanix-credentials';
-import fetch from 'node-fetch';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import * as os from 'node:os';
 import { join } from 'node:path';
@@ -12,6 +11,9 @@ jest.mock('node:os', () => {
 
 // Mock node-fetch (ESM default export)
 jest.mock('node-fetch', () => ({ __esModule: true, default: jest.fn() }));
+
+// Mock open (ESM-only package, incompatible with Jest CJS runner)
+jest.mock('open', () => ({ __esModule: true, default: jest.fn() }));
 
 // Mock oauth module — keep all real implementations except runOAuthFlow to prevent browser opening
 jest.mock('@lxr/core/oauth', () => ({
@@ -164,7 +166,8 @@ describe('refreshAccessToken', () => {
   let fetchMock: jest.Mock;
 
   beforeEach(() => {
-    fetchMock = jest.mocked(fetch);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    fetchMock = (require('node-fetch') as { default: jest.Mock }).default;
     fetchMock.mockReset();
   });
 
@@ -209,6 +212,7 @@ describe('resolveAccessToken', () => {
   beforeEach(() => {
     tmpDir = mkdtempSync(join(realTmpdir(), 'lxr-resolve-test-'));
     (os.homedir as jest.Mock).mockReturnValue(tmpDir);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     fetchMock = (require('node-fetch') as { default: jest.Mock }).default;
     fetchMock.mockReset();
     jest.spyOn(console, 'log').mockImplementation(() => {});
