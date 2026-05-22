@@ -90,7 +90,7 @@ export default function leanixPlugin(
             );
           }
         } catch (err) {
-          logger?.error(err === 401 ? '💥 Invalid LeanIX API token' : `${err}`);
+          logger?.error(err === 401 ? '💥 Invalid SAP LeanIX API token' : `${err}`);
           process.exit(1);
         }
       }
@@ -186,7 +186,7 @@ export default function leanixPlugin(
           };
           viteDevServer.printUrls = () => {
             logger.info(
-              `  Your LeanIX Custom Report is running at:\n  ${launchUrl}\n`
+              `  Your SAP LeanIX Custom Report is running at:\n  ${launchUrl}\n`
             );
           };
         });

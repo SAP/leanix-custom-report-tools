@@ -4,7 +4,7 @@
 
 ## About this project
 
-SAP LeanIX custom report tools: command line interface to initialize, develop and upload custom reports for LeanIX Enterprise Architecture Management.
+SAP LeanIX custom report tools: command line interface to initialize, develop and upload custom reports for SAP LeanIX Enterprise Architecture Management.
 
 - **`@lxr/core`** - Core utilities and types for SAP LeanIX reporting
 - **`@sap/create-leanix-custom-report`** - Scaffolding tool to quickly bootstrap new SAP LeanIX custom reports
@@ -13,9 +13,9 @@ SAP LeanIX custom report tools: command line interface to initialize, develop an
 ### Features
 
 - 🚀 Fast development with Vite's hot module replacement
-- 📦 Automatic bundling and optimization for LeanIX reports
+- 📦 Automatic bundling and optimization for SAP LeanIX reports
 - 🔧 Built-in TypeScript support
-- 📤 One-command deployment to LeanIX workspace
+- 📤 One-command deployment to SAP LeanIX workspace
 - 🎯 Framework agnostic (works with vanilla JS, React, Vue, etc.) but provides `react` / `react-ts` template out of the box
 
 ### Documentation
