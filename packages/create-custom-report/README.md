@@ -50,7 +50,7 @@ history otherwise.
 ```bash
 npm create @sap/leanix-custom-report@latest my-report \
   --id net.leanix.myreport \
-  --author "LeanIX GmbH" \
+  --author "SAP LeanIX" \
   --title "My Report" \
   --description "A custom report" \
   --packageName my-report \
@@ -65,7 +65,7 @@ To skip LeanIX authentication entirely (e.g. for offline scaffolding):
 npm create @sap/leanix-custom-report@latest my-report \
   --skipAuth \
   --id net.leanix.myreport \
-  --author "LeanIX GmbH" \
+  --author "SAP LeanIX" \
   --title "My Report" \
   --description "A custom report"
 ```
@@ -76,7 +76,7 @@ npm create @sap/leanix-custom-report@latest my-report \
 |---|---|---|
 | `project-name` | positional | Directory name for the new project (default: `leanix-custom-report`) |
 | `--id` | string | Unique report id in Java package notation (e.g. `net.leanix.barcharts`) |
-| `--author` | string | Report author (e.g. `LeanIX GmbH`) |
+| `--author` | string | Report author (e.g. `SAP LeanIX`) |
 | `--title` | string | Title shown in LeanIX when the report is installed |
 | `--description` | string | Short description of the report |
 | `--packageName` | string | npm package name (default: derived from project-name) |

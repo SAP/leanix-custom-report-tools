@@ -90,7 +90,7 @@ const getLeanIXQuestions = (
   {
     type: argv?.author === undefined ? 'text' : null,
     name: 'author',
-    message: 'Who is the author of this report (e.g. LeanIX GmbH)'
+    message: 'Who is the author of this report (e.g. SAP LeanIX)'
   },
   {
     type: argv?.title === undefined ? 'text' : null,
@@ -139,7 +139,7 @@ Arguments:
 
 Options:
   --id <string>           Unique report id in Java package notation (e.g. net.leanix.barcharts)
-  --author <string>       Report author (e.g. LeanIX GmbH)
+  --author <string>       Report author (e.g. SAP LeanIX)
   --title <string>        Title shown in LeanIX when the report is installed
   --description <string>  Short description of the report
   --packageName <string>  npm package name (default: derived from project-name)
