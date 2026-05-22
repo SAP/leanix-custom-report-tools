@@ -1,12 +1,43 @@
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { platform } from 'node:os';
+import { execFileSync } from 'node:child_process';
 
 interface GenerateMcpConfigParams {
   targetDir: string;
   host: string;
   apitoken: string;
 }
+
+/**
+ * Picks the Playwright MCP `--browser` value at scaffold time so verification
+ * works without forcing the user to install a browser.
+ *
+ * - Windows → 'msedge'   (Edge ships with Windows; zero download)
+ * - macOS   → 'chrome'   if /Applications/Google Chrome.app is installed,
+ *             else 'chromium' (Playwright-bundled, ~150 MB on first run)
+ * - Linux   → 'chrome'   if google-chrome / google-chrome-stable is on PATH,
+ *             else 'chromium' (Playwright-bundled, ~150 MB on first run)
+ */
+export const detectBrowser = (): string => {
+  // 'win32' is Node's identifier for all Windows (32-bit and 64-bit alike)
+  if (platform() === 'win32') return 'msedge';
+
+  if (platform() === 'darwin') {
+    return existsSync('/Applications/Google Chrome.app') ? 'chrome' : 'chromium';
+  }
+
+  // Linux and other Unix-likes — match what Playwright's chrome channel looks for
+  for (const bin of ['google-chrome', 'google-chrome-stable']) {
+    try {
+      execFileSync('which', [bin], { stdio: 'ignore' });
+      return 'chrome';
+    } catch {
+      // not installed under this name; try the next
+    }
+  }
+  return 'chromium';
+};
 
 /**
  * Generates MCP configuration files with Playwright MCP + LeanIX MCP servers.
@@ -17,7 +48,6 @@ interface GenerateMcpConfigParams {
  * - Check console for JavaScript/GraphQL errors
  * - Take screenshots to verify rendering
  * - Verify reports work before declaring success
- * Works with Chrome, Microsoft Edge, Firefox, and WebKit.
  *
  * LeanIX MCP Server enables AI agents to:
  * - Access workspace data during development
@@ -29,8 +59,7 @@ interface GenerateMcpConfigParams {
  * - -y flag to auto-confirm
  * - @latest for always getting latest version
  * - --headless flag for Playwright MCP (no UI disruption)
- * - --browser msedge on Windows (system Edge, no download)
- * - --browser chrome on Mac/Linux (system Chrome, no download)
+ * - --browser detected at scaffold time by `detectBrowser()` above
  *
  * @param params - Configuration parameters
  * @param params.targetDir - Project root directory where MCP configs will be created
@@ -40,8 +69,7 @@ interface GenerateMcpConfigParams {
 export const generateMcpConfig = (params: GenerateMcpConfigParams): void => {
   const { targetDir, host, apitoken } = params;
 
-  const isWindows = platform() === 'win32';
-  const browserArgs = isWindows ? ['--browser', 'msedge'] : ['--browser', 'chrome'];
+  const browserArgs = ['--browser', detectBrowser()];
 
   // Server configuration (shared between IDEs)
   const serverConfig = {
