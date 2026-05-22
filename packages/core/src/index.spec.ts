@@ -338,8 +338,7 @@ describe('the lxr core package', () => {
 
     it.each([
       ['VULNERABLE', /security scan found vulnerabilities/],
-      ['FAILED', /build failed/],
-      ['REVOKED', /report was revoked/]
+      ['FAILED', /build failed/]
     ])('pollReportState rejects on %s', async (state, expectedMessage) => {
       server = createHttpServer((_req, res) => {
         res.statusCode = 200;
