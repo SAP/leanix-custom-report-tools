@@ -5,7 +5,7 @@ export default {
       '@babel/preset-env',
       {
         targets: {
-          node: 'current'
+          node: '18.0.0'
         }
       }
     ]

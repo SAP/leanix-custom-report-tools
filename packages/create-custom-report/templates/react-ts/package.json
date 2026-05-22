@@ -8,6 +8,9 @@
     "lint": "eslint --fix",
     "format": "prettier --write ."
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "@leanix/reporting": "0.4.176",
     "chart.js": "4.5.1",

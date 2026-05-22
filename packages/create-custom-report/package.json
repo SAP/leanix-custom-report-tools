@@ -17,13 +17,13 @@
     "cli"
   ],
   "main": "dist/index.cjs",
-  "bin": "dist/index.cjs",
+  "bin": { "create-leanix-custom-report": "dist/index.cjs" },
   "files": [
     "dist"
   ],
   "scripts": {
     "clean": "rimraf dist",
-    "build": "tsup && shx cp -r ./templates/ ./dist && chmod -R 777 ./dist/",
+    "build": "tsup && shx cp -r ./templates/ ./dist && chmod -R 755 ./dist/",
     "test": "jest"
   },
   "dependencies": {
@@ -32,6 +32,9 @@
     "prompts": "2.4.2",
     "short-uuid": "6.0.3",
     "undici": "8.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "devDependencies": {
     "@types/fs-extra": "11.0.4",

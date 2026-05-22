@@ -15,6 +15,13 @@
   ],
   "main": "dist/index.cjs",
   "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
   "files": [
     "dist"
   ],
@@ -24,6 +31,9 @@
   },
   "peerDependencies": {
     "vite": "^8.0.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "http-proxy-middleware": "4.0.0",

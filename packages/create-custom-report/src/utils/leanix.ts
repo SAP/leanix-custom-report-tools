@@ -32,10 +32,10 @@ export async function generateLeanIXFiles(
   const leanixReport = { id, title, aiAssisted: false, defaultConfig: {} };
   pkg = { ...pkg, ...pkgMetadataFields, name, leanixReport };
   const lxreportJson = { ...leanixReport, ...pkgMetadataFields };
-  await validateDocument(lxreportJson, 'lxreport.json');
+  validateDocument(lxreportJson, 'lxreport.json');
   const lxrJson = { host, apitoken, proxyURL };
 
-  await validateDocument(lxrJson, 'lxr.json');
+  validateDocument(lxrJson, 'lxr.json');
   await writeFile(
     join(targetDir, 'lxr.json'),
     JSON.stringify(lxrJson, null, 2) + '\n'
