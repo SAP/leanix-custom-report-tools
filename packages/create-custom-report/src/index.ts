@@ -53,7 +53,7 @@ const getCredentialQuestions = (options?: {
         : 'text',
     name: 'apitoken',
     message:
-      'API-Token for Authentication (see: https://dev.leanix.net/docs/authentication#section-generate-api-tokens)\n  ⚠️  Security advice: API token will be persisted in the report config file'
+      'Technical User API-Token for Authentication (see: https://help.sap.com/docs/leanix/ea/technical-users)\n  ⚠️  Security advice: API token will be persisted in the report config file'
   },
   {
     type:

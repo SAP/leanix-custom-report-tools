@@ -93,7 +93,7 @@ fixedFactSheetType: 'BusinessCapability'; // or 'Project', 'ITComponent', etc.
 
 ## Learn More
 
-- [LeanIX Reporting Documentation](https://dev.leanix.net/docs/reporting)
+- [SAP LeanIX Reporting Documentation](https://help.sap.com/docs/leanix/ea/reporting-framework-and-cli)
 - [Chart.js Documentation](https://www.chartjs.org/docs/)
 - [React Documentation](https://react.dev/)
 - [TypeScript Documentation](https://www.typescriptlang.org/docs/)
