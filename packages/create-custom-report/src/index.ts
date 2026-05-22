@@ -62,8 +62,8 @@ const getLeanIXQuestions = (
 export async function init(): Promise<void> {
   console.log(`\n${banner}\n`);
   const argv = minimist(process.argv.slice(2), {
-    string: ['id', 'author', 'title', 'description', 'packageName'],
-    boolean: ['overwrite', 'help'],
+    string: ['id', 'author', 'title', 'description', 'packageName', 'host', 'apitoken', 'proxyURL'],
+    boolean: ['overwrite', 'help', 'skipAuth'],
     default: {
       overwrite: false
     }
@@ -82,6 +82,10 @@ Options:
   --title <string>        Title shown in LeanIX when the report is installed
   --description <string>  Short description of the report
   --packageName <string>  npm package name (default: derived from project-name)
+  --host <string>         LeanIX workspace host (e.g. demo-eu.leanix.net)
+  --apitoken <string>     LeanIX API token for authentication
+  --proxyURL <string>     HTTP proxy URL (e.g. http://proxy.example.com:8080)
+  --skipAuth              Write lxr.json directly from --host/--apitoken without OAuth flow
   --overwrite             Overwrite target directory if it exists (default: false)
   --setupMcpServers       Generate MCP server config files (requires feature flag)
   --no-setupMcpServers    Skip MCP server config generation without prompting
@@ -99,7 +103,10 @@ Options:
     title,
     description,
     packageName,
-    overwrite = false
+    overwrite = false,
+    host,
+    apitoken,
+    proxyURL
   } = argv;
 
   // tri-state: undefined = not supplied (will prompt), true/false = skip prompt
@@ -170,6 +177,9 @@ Options:
     title = title,
     description = description,
     packageName = packageName,
+    host = host,
+    apitoken = apitoken,
+    proxyURL = proxyURL,
     setupMcpServers = setupMcpServers,
     overwrite = overwrite
   } = result);
@@ -252,7 +262,10 @@ Options:
       author,
       title,
       description,
-      overwrite
+      overwrite,
+      host,
+      apitoken,
+      proxyURL
     }
   });
 

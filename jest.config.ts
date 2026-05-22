@@ -12,6 +12,9 @@ const config: Config.InitialOptions = {
     ]
   },
   testPathIgnorePatterns: ['<rootDir>/node_modules/'],
+  moduleNameMapper: {
+    '^open$': '<rootDir>/packages/core/src/__mocks__/open.ts'
+  },
   projects: [
     {
       displayName: '@lxr/core',

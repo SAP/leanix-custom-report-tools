@@ -13,7 +13,10 @@ export async function generateLeanIXFiles(
     description,
     id,
     title,
-    packageName
+    packageName,
+    host,
+    apitoken,
+    proxyURL
   } = result;
   let pkg = JSON.parse(
     await readFile(join(targetDir, 'package.json'), 'utf-8')
@@ -34,4 +37,12 @@ export async function generateLeanIXFiles(
     join(targetDir, 'package.json'),
     JSON.stringify(pkg, null, 2) + '\n'
   );
+  if (host && apitoken) {
+    const lxrJson: Record<string, string> = { host, apitoken };
+    if (proxyURL) lxrJson.proxyURL = proxyURL;
+    await writeFile(
+      join(targetDir, 'lxr.json'),
+      JSON.stringify(lxrJson, null, 2) + '\n'
+    );
+  }
 }
