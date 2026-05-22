@@ -59,7 +59,7 @@ npm create @sap/leanix-custom-report@latest my-report \
   --overwrite
 ```
 
-To skip LeanIX authentication entirely (e.g. for offline scaffolding):
+To skip SAP LeanIX authentication entirely (e.g. for offline scaffolding):
 
 ```bash
 npm create @sap/leanix-custom-report@latest my-report \
@@ -77,14 +77,14 @@ npm create @sap/leanix-custom-report@latest my-report \
 | `project-name` | positional | Directory name for the new project (default: `leanix-custom-report`) |
 | `--id` | string | Unique report id in Java package notation (e.g. `net.leanix.barcharts`) |
 | `--author` | string | Report author (e.g. `SAP LeanIX`) |
-| `--title` | string | Title shown in LeanIX when the report is installed |
+| `--title` | string | Title shown in SAP LeanIX when the report is installed |
 | `--description` | string | Short description of the report |
 | `--packageName` | string | npm package name (default: derived from project-name) |
-| `--host` | string | LeanIX host (default: `demo-eu.leanix.net`) |
+| `--host` | string | SAP LeanIX host (default: `demo-eu.leanix.net`) |
 | `--apitoken` | string | API token for authentication |
 | `--proxyURL` | string | HTTP/S proxy URL — also suppresses the proxy toggle prompt |
 | `--overwrite` | boolean | Overwrite target directory if it already exists |
-| `--skipAuth` | boolean | Skip LeanIX authentication entirely |
+| `--skipAuth` | boolean | Skip SAP LeanIX authentication entirely |
 | `--setupMcpServers` | boolean | Generate MCP server config files (requires feature flag) |
 | `--no-setupMcpServers` | boolean | Skip MCP server config generation without prompting |
 | `--help` | boolean | Print this flag reference and exit |

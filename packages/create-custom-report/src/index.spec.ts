@@ -374,7 +374,7 @@ it('omitting --title still prompts for it', () => {
     ],
     { cwd: tempDir }
   );
-  expect((stdout as string)?.includes('A title to be shown in LeanIX')).toBe(
+  expect((stdout as string)?.includes('A title to be shown in SAP LeanIX')).toBe(
     true
   );
 });
