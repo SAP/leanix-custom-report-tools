@@ -406,12 +406,9 @@ export async function pollReportState(params: {
       return row;
     }
     if (CUSTOM_REPORT_TERMINAL_FAILURE_STATES.includes(row.status)) {
-      const reason =
-        row.status === 'VULNERABLE'
-          ? 'security scan found vulnerabilities'
-          : row.status === 'FAILED'
-            ? 'build failed'
-            : 'report was revoked';
+      const reason = row.status === 'VULNERABLE'
+        ? 'security scan found vulnerabilities'
+        : 'build failed';
       throw new ReportStateError(row.status, row.buildLog, `${row.status}: ${reason}`);
     }
     await sleep(intervalMs);
