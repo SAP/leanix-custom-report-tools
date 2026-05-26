@@ -18,16 +18,15 @@ import {
   fetchWorkspaceReports,
   getAccessToken,
   getLaunchUrl,
-  readLxrJson,
+  readCredentials,
   uploadBundle,
-  validateDocument,
   writeReportMetadata
 } from '@lxr/core/index';
-import appRoot from 'app-root-path';
+import { credentialsSchema } from '@lxr/core/models/leanix-credentials';
+import { customReportMetadataSchema } from '@lxr/core/models/custom-report-metadata';
 import { t as tarT } from 'tar';
 import ProxyServer from 'transparent-proxy';
 
-const LXR_JSON_PATH = resolve(appRoot.path, 'lxr.json');
 
 const getDummyReportMetadata = (): CustomReportMetadata => ({
   id: 'net.testReport',
@@ -55,34 +54,18 @@ describe('the lxr core package', () => {
     proxy.close();
   });
 
-  it('validate "lxr.json" and "lxreport.json" against document schemas', async () => {
-    const validMetadataDocument = getDummyReportMetadata();
-    const invalidMetadataDocument = { ...validMetadataDocument, id: undefined };
+  it('validate credentials and metadata against their schemas', () => {
+    const validMetadata = getDummyReportMetadata();
+    const invalidMetadata = { ...validMetadata, id: undefined };
 
-    await expect(
-      validateDocument(validMetadataDocument, 'lxreport.json')
-    ).resolves.not.toThrow();
-    await expect(
-      async () =>
-        await validateDocument(invalidMetadataDocument, 'lxreport.json')
-    ).rejects.toThrow();
-    await expect(
-      validateDocument(
-        { host: 'demo-us.leanix.net', apitoken: 'token' },
-        'lxr.json'
-      )
-    ).resolves.not.toThrow();
-    await expect(
-      validateDocument({ host: 'demo-us.leanix.net' }, 'lxr.json')
-    ).resolves.not.toThrow();
-  });
-
-  it("readLxrJson throws error if json file doesn't have all required fields", async () => {
-    await readLxrJson(LXR_JSON_PATH);
+    expect(() => customReportMetadataSchema.parse(validMetadata)).not.toThrow();
+    expect(() => customReportMetadataSchema.parse(invalidMetadata)).toThrow();
+    expect(() => credentialsSchema.parse({ host: 'demo-us.leanix.net', apitoken: 'token' })).not.toThrow();
+    expect(() => credentialsSchema.parse({ host: 'demo-us.leanix.net' })).not.toThrow();
   });
 
   it('getAccessToken returns a token', async () => {
-    const credentials = await readLxrJson(LXR_JSON_PATH);
+    const credentials = readCredentials()!.credentials;
     const accessToken = await getAccessToken(credentials);
     expect(typeof accessToken.accessToken).toBe('string'); // accessToken is a string
     expect(accessToken.accessToken).toBeTruthy();
@@ -95,7 +78,7 @@ describe('the lxr core package', () => {
   });
 
   it('getAccessToken with proxy returns a token', async () => {
-    const credentials = await readLxrJson(LXR_JSON_PATH);
+    const credentials = readCredentials()!.credentials;
     credentials.proxyURL = `http://127.0.0.1:${proxyPort}`;
     const accessToken = await getAccessToken(credentials);
     expect(typeof accessToken.accessToken).toBe('string'); // accessToken is a string
@@ -174,7 +157,7 @@ describe('the lxr core package', () => {
   });
 
   it('uploadBundle', async () => {
-    const credentials = await readLxrJson(LXR_JSON_PATH);
+    const credentials = readCredentials()!.credentials;
     const outDir = mkdtempSync(join(tmpdir(), 'uploadBundle-'));
     const metadata = getDummyReportMetadata();
 

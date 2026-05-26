@@ -5,7 +5,6 @@ import { join, resolve } from 'node:path';
 import { mkdirpSync, readdirSync, statSync, writeFileSync } from 'fs-extra';
 import { generate as uuid } from 'short-uuid';
 import pkg from '../package.json' with { type: 'json' };
-import { parseTriStateBoolean } from './utils/parseTriStateBoolean';
 
 const CLI_PATH = resolve(__dirname, '..', pkg.bin);
 const projectName = 'test-app';
@@ -160,40 +159,6 @@ it('successfully scaffolds a project based on react-ts template', async () => {
 });
 
 // ---------------------------------------------------------------------------
-// parseTriStateBoolean unit tests
-// ---------------------------------------------------------------------------
-
-describe('parseTriStateBoolean', () => {
-  it('returns true when --flag is present', () => {
-    expect(parseTriStateBoolean(['--setupMcpServers'], 'setupMcpServers')).toBe(
-      true
-    );
-  });
-
-  it('returns false when --no-flag is present', () => {
-    expect(
-      parseTriStateBoolean(['--no-setupMcpServers'], 'setupMcpServers')
-    ).toBe(false);
-  });
-
-  it('returns undefined when neither flag is present', () => {
-    expect(
-      parseTriStateBoolean(['--skipAuth', '--id', 'foo'], 'setupMcpServers')
-    ).toBeUndefined();
-  });
-
-  it('prefers --flag over --no-flag when both present (first wins)', () => {
-    // --flag appears first in the array
-    expect(
-      parseTriStateBoolean(
-        ['--setupMcpServers', '--no-setupMcpServers'],
-        'setupMcpServers'
-      )
-    ).toBe(true);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // A. --packageName suppresses the package-name prompt
 // ---------------------------------------------------------------------------
 
@@ -224,36 +189,6 @@ it('--packageName skips the package-name prompt and is used in package.json', ()
 
   const pkg = getPackageJson(join(tempDir, projectName));
   expect(pkg.name).toEqual(customPkgName);
-});
-
-// ---------------------------------------------------------------------------
-// C. --no-setupMcpServers produces no MCP config files
-// ---------------------------------------------------------------------------
-
-it('--no-setupMcpServers does not generate MCP config files', () => {
-  const args = [
-    '--skipAuth',
-    '--overwrite',
-    '--no-setupMcpServers',
-    '--id',
-    uuid(),
-    '--author',
-    uuid(),
-    '--title',
-    uuid(),
-    '--description',
-    uuid(),
-    '--host',
-    uuid(),
-    '--apitoken',
-    uuid()
-  ];
-
-  run([projectName, ...args], { cwd: tempDir });
-
-  const projectDir = join(tempDir, projectName);
-  expect(existsSync(join(projectDir, '.vscode', 'mcp.json'))).toBe(false);
-  expect(existsSync(join(projectDir, '.mcp.json'))).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
@@ -399,7 +334,6 @@ it('--help prints usage and exits with code 0', () => {
     '--proxyURL',
     '--overwrite',
     '--skipAuth',
-    '--setupMcpServers',
     '--help'
   ];
   for (const flag of flags) {

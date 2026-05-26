@@ -1,32 +1,27 @@
 #!/usr/bin/env node
 
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join, relative } from 'node:path';
 import { red } from 'kolorist';
 import minimist from 'minimist';
 import prompts from 'prompts';
+import { getUserLxrJsonPath } from '@lxr/core/index';
 import {
   isValidPackageName,
   pkgFromUserAgent,
   toValidPackageName
 } from './helpers';
-import { readUserCredentials } from '@lxr/core/index';
-import type { AccessToken } from '@lxr/core/models/access-token';
 import banner from './utils/banner';
 import { deployTemplate } from './utils/deployTemplate';
 import { generateLeanIXFiles } from './utils/leanix';
 import { generateMcpConfig } from './utils/generateMcpConfig';
-import { checkFeatureFlag } from './utils/featureFlags';
 import type {
   LeanIXOptions,
   ProjectOptions,
   PromptResult
 } from './models/project-options';
-import { parseTriStateBoolean } from './utils/parseTriStateBoolean';
 
 export type { LeanIXOptions, ProjectOptions, PromptResult };
-export { parseTriStateBoolean };
 
 const cwd = process.cwd();
 
@@ -87,8 +82,6 @@ Options:
   --proxyURL <string>     HTTP proxy URL (e.g. http://proxy.example.com:8080)
   --skipAuth              Write lxr.json directly from --host/--apitoken without OAuth flow
   --overwrite             Overwrite target directory if it exists (default: false)
-  --setupMcpServers       Generate MCP server config files (requires feature flag)
-  --no-setupMcpServers    Skip MCP server config generation without prompting
   --help                  Show this help message and exit
 `);
     process.exit(0);
@@ -108,12 +101,7 @@ Options:
     apitoken,
     proxyURL
   } = argv;
-
-  // tri-state: undefined = not supplied (will prompt), true/false = skip prompt
-  let setupMcpServers = parseTriStateBoolean(
-    process.argv.slice(2),
-    'setupMcpServers'
-  );
+  const { localCliPath } = argv;
 
   let result: PromptResult = {};
   try {

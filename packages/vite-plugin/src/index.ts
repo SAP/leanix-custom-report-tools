@@ -1,6 +1,5 @@
 import type { CustomReportMetadata } from '@lxr/core/models/custom-report-metadata';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
-import type { Credentials } from '@lxr/core/models/leanix-credentials';
 import type { ResolvedAuth } from '@lxr/core/index';
 import type { AddressInfo } from 'node:net';
 import type { Logger, Plugin, ResolvedConfig } from 'vite';
@@ -11,7 +10,6 @@ import {
   createBundle,
   decodeBearerToken,
   getLaunchUrl,
-  readLxrJson,
   readMetadataJson,
   resolveAccessToken,
   uploadBundle,
@@ -34,7 +32,6 @@ export default function leanixPlugin(
   let claims: JwtClaims | null = null;
   let shouldUpload: boolean = false;
   let loadWorkspaceCredentials: boolean = false;
-  let lxrJson: Credentials | null = null;
   let viteDevServerUrl: string;
   let launchUrl: string;
   let relayServer: ReturnType<typeof createHttpServer> | null = null;
@@ -51,28 +48,19 @@ export default function leanixPlugin(
       if (loadWorkspaceCredentials) {
         config.base = '';
         config.server = { ...(config.server ?? {}), host: true, cors: true };
-        try {
-          lxrJson = await readLxrJson();
-        } catch (error) {
-          const code = (error as { code: string })?.code ?? null;
-          if (code !== 'ENOENT') {
-            logger = logger ?? console;
-            logger.error(error as string);
-            process.exit(1);
-          }
-          lxrJson = null;
-        }
       }
     },
 
     async configResolved(resolvedConfig: ResolvedConfig) {
       logger = resolvedConfig.logger;
-      devMetadata = await readMetadataJson(
-        join(resolvedConfig.root, 'package.json')
-      ).catch(() => null);
+      try {
+        devMetadata = readMetadataJson(join(resolvedConfig.root, 'package.json'));
+      } catch {
+        devMetadata = null;
+      }
       if (loadWorkspaceCredentials) {
         try {
-          resolvedAuth = await resolveAccessToken(lxrJson ?? undefined);
+          resolvedAuth = await resolveAccessToken();
           if (resolvedAuth.proxyURL) {
             logger?.info(`  Using proxy: ${resolvedAuth.proxyURL}`);
           }
@@ -201,7 +189,7 @@ export default function leanixPlugin(
       // Read and validate metadata from package.json
       let metadata: CustomReportMetadata | undefined;
       try {
-        metadata = await readMetadataJson(pluginOptions?.packageJsonPath);
+        metadata = readMetadataJson(pluginOptions?.packageJsonPath);
       } catch (err: any) {
         if (err?.code === 'ENOENT') {
           const path: string = err.path;

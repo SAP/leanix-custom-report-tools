@@ -8,7 +8,7 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import { jwtDecode } from 'jwt-decode';
 import fetch from 'node-fetch';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
-import { readUserCredentials, writeUserCredentials } from './credentials';
+import { readCredentials } from './credentials';
 
 const OAUTH_BASE_URL = 'https://mcp.leanix.net/services/mcp-server/v1/oauth';
 
@@ -132,9 +132,9 @@ export async function runOAuthFlow(
   oauthBaseUrl = OAUTH_BASE_URL,
   proxyURL?: string
 ): Promise<Credentials> {
-  const existing = readUserCredentials();
-  let client_id = existing?.oauth?.client_id;
-  let client_secret = existing?.oauth?.client_secret;
+  const existing = readCredentials();
+  let client_id = existing?.credentials.oauth?.client_id;
+  let client_secret = existing?.credentials.oauth?.client_secret;
 
   const { port, waitForCode } = startCallbackServer();
   const redirectUri = `http://localhost:${port}/callback`;
@@ -206,6 +206,5 @@ export async function runOAuthFlow(
     },
     ...(proxyURL ? { proxyURL } : {})
   };
-  writeUserCredentials(credentials);
   return credentials;
 }
