@@ -249,24 +249,16 @@ export default function leanixPlugin(
       try {
         const bearerToken = resolvedAuth!.bearerToken;
         const proxyURL = resolvedAuth?.proxyURL;
-        const store = lxrJson?.store;
         const { id, version } = metadata;
         if (claims !== null) {
-          if (typeof store?.assetId === 'string') {
-            logger.info(
-              `😅 Deploying asset id ${store.assetId} to ${store.host ?? 'store.leanix.net'}...`
-            );
-          } else {
-            logger.info(
-              `😅 Uploading report ${id} with version "${version}" to workspace "${claims.principal.permission.workspaceName}"...`
-            );
-          }
+          logger.info(
+            `😅 Uploading report ${id} with version "${version}" to workspace "${claims.principal.permission.workspaceName}"...`
+          );
         }
         const result = await uploadBundle({
           bundle,
           bearerToken,
-          proxyURL,
-          store
+          proxyURL
         });
         if (result.status === 'ERROR') {
           logger?.error(
@@ -275,11 +267,7 @@ export default function leanixPlugin(
           logger?.error(JSON.stringify(result, null, 2));
           process.exit(1);
         }
-        if (typeof store?.assetId === 'string') {
-          logger.info(
-            `😅 Asset id ${store.assetId} has been deployed to ${store.host ?? 'store.leanix.net'}...`
-          );
-        } else if (claims !== null) {
+        if (claims !== null) {
           logger?.info(
             `🥳 Report "${id}" with version "${version}" was uploaded to workspace "${claims.principal.permission.workspaceName}"!`
           );

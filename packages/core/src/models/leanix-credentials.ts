@@ -5,10 +5,6 @@ export const credentialsSchema = zod.object({
   host: zod.string().optional(),
   apitoken: zod.string().optional(),
   proxyURL: zod.string().optional(),
-  store: zod.object({
-    host: zod.string().optional(),
-    assetId: zod.string()
-  }).optional(),
   oauth: zod.object({
     client_id: zod.string(),
     client_secret: zod.string(),

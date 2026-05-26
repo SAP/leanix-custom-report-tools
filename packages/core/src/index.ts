@@ -211,19 +211,10 @@ export async function uploadBundle(params: {
   bundle: Blob;
   bearerToken: string;
   proxyURL?: string;
-  store?: {
-    host?: string;
-    assetId: string;
-  };
 }): Promise<ReportUploadResponseData> {
-  const { bundle, bearerToken, proxyURL, store } = params;
-  const storeHost = store?.host ?? 'store.leanix.net';
-  const assetId = store?.assetId ?? null;
+  const { bundle, bearerToken, proxyURL } = params;
   const decodedToken: JwtClaims = jwtDecode(bearerToken);
-  const url =
-    assetId !== null
-      ? `https://${storeHost}/services/torg/v1/assetversions/${assetId}/payload`
-      : `${decodedToken.instanceUrl}/services/pathfinder/v1/reports/upload`;
+  const url = `${decodedToken.instanceUrl}/services/pathfinder/v1/reports/upload`;
   const headers = { Authorization: `Bearer ${bearerToken}` };
   const form = new FormData();
 
