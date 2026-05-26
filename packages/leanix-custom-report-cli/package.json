@@ -1,0 +1,29 @@
+{
+  "name": "@sap/leanix-custom-report-cli",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "CLI for LeanIX custom report development — authentication and MCP server",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SAP/leanix-custom-report-tools.git",
+    "directory": "packages/leanix-custom-report-cli"
+  },
+  "keywords": [
+    "leanix",
+    "cli"
+  ],
+  "bin": {
+    "lxr": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  }
+}

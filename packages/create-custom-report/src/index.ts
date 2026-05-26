@@ -57,7 +57,7 @@ const getLeanIXQuestions = (
 export async function init(): Promise<void> {
   console.log(`\n${banner}\n`);
   const argv = minimist(process.argv.slice(2), {
-    string: ['id', 'author', 'title', 'description', 'packageName', 'host', 'apitoken', 'proxyURL'],
+    string: ['id', 'author', 'title', 'description', 'packageName', 'host', 'apitoken', 'proxyURL', 'localCliPath'],
     boolean: ['overwrite', 'help', 'skipAuth'],
     default: {
       overwrite: false
@@ -168,54 +168,10 @@ Options:
     host = host,
     apitoken = apitoken,
     proxyURL = proxyURL,
-    setupMcpServers = setupMcpServers,
     overwrite = overwrite
   } = result);
   const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent) ?? null;
   const pkgManager = pkgInfo != null ? pkgInfo.name : 'npm';
-
-  // Try feature flag check using existing credentials from ~/.leanix/credentials
-  let mcpCustomReportsEnabled = false;
-  const existingCreds = readUserCredentials();
-  if (existingCreds?.host && existingCreds.oauth?.access_token) {
-    const fakeAccessToken: AccessToken = {
-      accessToken: existingCreds.oauth.access_token,
-      expired: false,
-      expiresIn: 0,
-      scope: '',
-      tokenType: 'Bearer'
-    };
-    try {
-      mcpCustomReportsEnabled = await checkFeatureFlag({
-        host: existingCreds.host,
-        tokenResponse: fakeAccessToken,
-        featureFlagId: 'mcpserver.custom-reports'
-      });
-    } catch {
-      mcpCustomReportsEnabled = false;
-    }
-  }
-
-  // Ask about MCP setup only if feature flag is enabled
-  if (mcpCustomReportsEnabled && setupMcpServers === undefined) {
-    const mcpPromptResult = await prompts(
-      {
-        type: 'toggle',
-        name: 'setupMcpServers',
-        message:
-          'Set up local MCP servers for AI development?\n  - Chrome DevTools MCP (requires Chrome browser)\n  - LeanIX MCP Server (workspace data access)\n  Config files are gitignored and take precedence over global settings.',
-        initial: true,
-        active: 'Yes',
-        inactive: 'No'
-      },
-      {
-        onCancel: () => {
-          throw new Error(`${red('✖')} Operation cancelled`);
-        }
-      }
-    );
-    setupMcpServers = mcpPromptResult.setupMcpServers;
-  }
 
   const root = join(cwd, targetDir ?? '');
 
@@ -239,8 +195,7 @@ Options:
       title,
       description,
       overwrite
-    },
-    mcpCustomReportsEnabled: mcpCustomReportsEnabled
+    }
   });
   await generateLeanIXFiles({
     targetDir: root,
@@ -257,13 +212,7 @@ Options:
     }
   });
 
-  // Generate MCP configuration files if feature flag enabled and user opted in
-  if (setupMcpServers === true && mcpCustomReportsEnabled && existingCreds?.host) {
-    generateMcpConfig({
-      targetDir: root,
-      host: existingCreds.host
-    });
-  }
+  generateMcpConfig({ targetDir: root, localCliPath });
 
   console.log('\n🔥Done. Now run:\n');
   if (root !== cwd) {
@@ -281,27 +230,11 @@ Options:
   }
   console.log();
 
-  // MCP setup status
-  if (setupMcpServers === false) {
-    console.log('ℹ️  MCP servers not configured - you can set up manually later.');
-    console.log('   See https://help.sap.com/docs/leanix/ea/mcp-server for setup instructions.');
-    console.log();
-  } else if (setupMcpServers === true) {
-    console.log('✓ MCP servers configured (.vscode/mcp.json, .mcp.json)');
-    console.log('  Supports: GitHub Copilot (VS Code) and Claude Code');
-    console.log('  - Chrome DevTools MCP (AI report verification)');
-    console.log('  - LeanIX MCP Server (workspace data access)');
-    console.log();
-  }
-
-  // Post-scaffold login prompt (task 6.3)
-  const credentialsPath = join(homedir(), '.leanix', 'credentials');
-  if (!existsSync(credentialsPath)) {
-    console.log(
-      'To use npm run dev or npm run upload, log in to your LeanIX workspace first. Run: npm run login'
-    );
-    console.log();
-  }
+  console.log('✓ MCP servers configured (.vscode/mcp.json, .mcp.json)');
+  console.log('  Supports: GitHub Copilot (VS Code) and Claude Code');
+  console.log('  - Chrome DevTools MCP (AI report verification)');
+  console.log('  - LeanIX MCP Server (workspace data access)');
+  console.log();
 }
 
 init().catch((e) => {

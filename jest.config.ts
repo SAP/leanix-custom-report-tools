@@ -22,8 +22,9 @@ const config: Config.InitialOptions = {
       transformIgnorePatterns: []
     },
     {
-      displayName: 'vite-plugin',
-      testMatch: ['<rootDir>/packages/vite-plugin/src/**/*.spec.ts']
+      displayName: 'leanix-custom-report-cli',
+      testMatch: ['<rootDir>/packages/leanix-custom-report-cli/src/**/*.spec.ts'],
+      transformIgnorePatterns: []
     },
     {
       displayName: 'create-custom-report',

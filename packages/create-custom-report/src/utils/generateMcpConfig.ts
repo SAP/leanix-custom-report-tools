@@ -3,26 +3,22 @@ import { join } from 'node:path';
 
 interface GenerateMcpConfigParams {
   targetDir: string;
-  host: string;
+  localCliPath?: string;
 }
 
 export const generateMcpConfig = (params: GenerateMcpConfigParams): void => {
-  const { targetDir, host } = params;
+  const { targetDir, localCliPath } = params;
 
-  // Server configuration (shared between IDEs)
+  const leanixMcpServer = localCliPath
+    ? { command: 'node', args: [localCliPath, 'mcp'] }
+    : { command: 'npx', args: ['-y', '@sap/leanix-custom-report-cli', 'mcp'] };
+
   const serverConfig = {
     'chrome-devtools': {
       command: 'npx',
       args: ['-y', 'chrome-devtools-mcp@latest', '--headless']
     },
-    'leanix-mcp-server': {
-      command: 'npx',
-      args: [
-        '-y',
-        'mcp-remote',
-        `https://${host}/services/mcp-server/v1/mcp?toolsets=inventory,custom_reports`
-      ]
-    }
+    'leanix-mcp-server': leanixMcpServer
   };
 
   // GitHub Copilot (VS Code) - uses "servers" key

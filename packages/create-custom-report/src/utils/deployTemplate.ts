@@ -32,7 +32,7 @@ function copy(src: string, dest: string): void {
 }
 
 export function deployTemplate(params: DeployTemplateParams): void {
-  const { targetDir, template, mcpCustomReportsEnabled = false } = params;
+  const { targetDir, template } = params;
   if (targetDir === null) {
     throw new Error('invalid target dir');
   }
@@ -48,14 +48,7 @@ export function deployTemplate(params: DeployTemplateParams): void {
   };
 
   const templateFiles = readdirSync(templateDir);
-  for (const file of templateFiles /* .filter(f => f !== 'package.json') */) {
-    // Skip AGENTS.md and CLAUDE.md if MCP custom reports feature is not enabled
-    if (
-      (file === 'AGENTS.md' || file === 'CLAUDE.md') &&
-      !mcpCustomReportsEnabled
-    ) {
-      continue;
-    }
+  for (const file of templateFiles) {
     write(file);
   }
 }

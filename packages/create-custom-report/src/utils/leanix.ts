@@ -2,7 +2,8 @@ import type { AddLeanIXMetadataToPackageJson } from '../models/leanix-metadata';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { validateDocument } from '@lxr/core/index';
+import { LXR_JSON_FILENAME } from '@lxr/core/index';
+import { customReportMetadataSchema } from '@lxr/core/models/custom-report-metadata';
 
 export async function generateLeanIXFiles(
   params: AddLeanIXMetadataToPackageJson
@@ -32,7 +33,7 @@ export async function generateLeanIXFiles(
   const leanixReport = { id, title, aiAssisted: false, defaultConfig: {} };
   pkg = { ...pkg, ...pkgMetadataFields, name, leanixReport };
   const lxreportJson = { ...leanixReport, ...pkgMetadataFields };
-  await validateDocument(lxreportJson, 'lxreport.json');
+  customReportMetadataSchema.parse(lxreportJson);
   await writeFile(
     join(targetDir, 'package.json'),
     JSON.stringify(pkg, null, 2) + '\n'
@@ -41,7 +42,7 @@ export async function generateLeanIXFiles(
     const lxrJson: Record<string, string> = { host, apitoken };
     if (proxyURL) lxrJson.proxyURL = proxyURL;
     await writeFile(
-      join(targetDir, 'lxr.json'),
+      join(targetDir, LXR_JSON_FILENAME),
       JSON.stringify(lxrJson, null, 2) + '\n'
     );
   }

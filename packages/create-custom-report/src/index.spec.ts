@@ -57,13 +57,13 @@ const getAllFiles = (
 const getPackageJson = (dirPath: string): any =>
   JSON.parse(readFileSync(join(dirPath, 'package.json')).toString());
 
-// React TypeScript template plus 1 generated file: 'lxr.json'
-// When --skipAuth is used, AGENTS.md and CLAUDE.md are excluded (they require mcpCustomReportsEnabled)
+// React TypeScript template plus generated files: lxr.json, .mcp.json, .vscode/mcp.json
 const templateFiles = [
   ...getAllFiles(resolve(CLI_PATH, '..', 'templates', 'react-ts')),
-  'lxr.json'
+  'lxr.json',
+  '.mcp.json',
+  'mcp.json'
 ]
-  .filter((file) => file !== 'AGENTS.md' && file !== 'CLAUDE.md')
   .map((file) => (file === '_gitignore' ? '.gitignore' : file))
   .sort();
 

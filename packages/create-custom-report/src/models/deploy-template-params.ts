@@ -5,5 +5,4 @@ export interface DeployTemplateParams {
   defaultProjectName: string;
   template: string;
   result: PromptResult;
-  mcpCustomReportsEnabled?: boolean;
 }

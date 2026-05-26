@@ -21,6 +21,16 @@ if ! LINK_OUTPUT=$(npm link 2>&1); then
 fi
 cd ../..
 
+# Create global link for leanix-custom-report-cli
+cd packages/leanix-custom-report-cli
+if ! LINK_OUTPUT=$(npm link --force 2>&1); then
+    echo "$LINK_OUTPUT"
+    exit 1
+fi
+cd ../..
+
+LOCAL_CLI_PATH="$TOOL_DIR/packages/leanix-custom-report-cli/dist/cli.js"
+
 echo "📦 Running scaffolding tool..."
 echo ""
 
@@ -30,7 +40,7 @@ PROJECT_NAME="${PROJECT_NAME:-custom-report-test}"
 
 # Run scaffolding in parent directory
 cd ..
-if ! node "$TOOL_DIR/packages/create-custom-report/dist/index.cjs" "$PROJECT_NAME"; then
+if ! node "$TOOL_DIR/packages/create-custom-report/dist/index.cjs" "$PROJECT_NAME" --localCliPath "$LOCAL_CLI_PATH"; then
     exit 1
 fi
 
@@ -42,15 +52,16 @@ if [ ! -d "$PROJECT_NAME" ]; then
     exit 1
 fi
 
-# Create a symbolic link from globally-installed vite-plugin to node_modules/
+# Link both local packages into the new project in one command so npm resolves
+# them from the global links instead of fetching from the registry
 cd "$PROJECT_NAME"
-if ! LINK_OUTPUT=$(npm link @sap/vite-plugin-leanix-custom-report 2>&1); then
+if ! LINK_OUTPUT=$(npm link @sap/vite-plugin-leanix-custom-report @sap/leanix-custom-report-cli 2>&1); then
     echo "$LINK_OUTPUT"
     exit 1
 fi
 
 echo ""
-echo "✅ Setup complete! Your project is using local @sap/vite-plugin-leanix-custom-report."
+echo "✅ Setup complete! Your project is using local @sap/vite-plugin-leanix-custom-report and @sap/leanix-custom-report-cli."
 echo ""
 echo "📁 Project location: $(pwd)"
 echo ""

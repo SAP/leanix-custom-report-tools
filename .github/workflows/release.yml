@@ -35,6 +35,16 @@ jobs:
       - name: Build packages
         run: npm run build
 
+      - name: Publish @sap/leanix-custom-report-cli
+        working-directory: ./packages/leanix-custom-report-cli
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').name + '@' + require('./package.json').version")
+          if npm view "${PKG_VERSION}" version &>/dev/null; then
+            echo "${PKG_VERSION} already published, skipping."
+          else
+            npm publish --provenance --access public
+          fi
+
       - name: Publish @sap/vite-plugin-leanix-custom-report
         working-directory: ./packages/vite-plugin
         run: |
