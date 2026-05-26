@@ -6,7 +6,8 @@
     "./*": "./src/*.ts"
   },
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "generate:api": "openapi-typescript https://eu.leanix.net/services/reports/v1/docs/openapi.json -o src/generated/reports-service.d.ts"
   },
   "dependencies": {
     "formdata-node": "6.0.3",
@@ -18,6 +19,7 @@
   "devDependencies": {
     "@types/node-fetch": "2.6.13",
     "app-root-path": "3.1.0",
+    "openapi-typescript": "^7.13.0",
     "transparent-proxy": "1.15.3"
   }
 }
