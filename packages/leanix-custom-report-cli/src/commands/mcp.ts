@@ -2,6 +2,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { Credentials } from '@lxr/core/models/leanix-credentials';
 import {
+  EXP_BUFFER_SECONDS,
   readCredentials,
   resolveAccessToken
 } from '@lxr/core/index';
@@ -38,8 +39,26 @@ export async function resolveMcpAuth(): Promise<McpAuth> {
 }
 
 export async function mcp(): Promise<void> {
-  const { mcpUrl, authorization } = await resolveMcpAuth();
+  const { mcpUrl, authorization, expiresAt } = await resolveMcpAuth();
   const authHeaders: Record<string, string> = { Authorization: authorization };
+
+  let refreshTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  function scheduleRefresh(currentExpiresAt: number): void {
+    const delay = Math.max(currentExpiresAt - Date.now() - EXP_BUFFER_SECONDS * 1000, 0);
+    refreshTimeout = setTimeout(async () => {
+      try {
+        const { authorization: newAuthorization, expiresAt: newExpiresAt } = await resolveMcpAuth();
+        authHeaders.Authorization = newAuthorization;
+        if (newExpiresAt) scheduleRefresh(newExpiresAt);
+      } catch (err) {
+        process.stderr.write(`Auth refresh failed: ${err instanceof Error ? err.message : String(err)}\n`);
+      }
+    }, delay);
+    refreshTimeout.unref();
+  }
+
+  if (expiresAt) scheduleRefresh(expiresAt);
 
   const httpTransport = new StreamableHTTPClientTransport(
     new URL(mcpUrl),
@@ -51,6 +70,7 @@ export async function mcp(): Promise<void> {
   httpTransport.onmessage = (msg) => stdioTransport.send(msg);
 
   const exit = (err?: Error) => {
+    clearTimeout(refreshTimeout);
     if (err) process.stderr.write(err.message + '\n');
     process.exit(err ? 1 : 0);
   };
