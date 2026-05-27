@@ -10,7 +10,6 @@
     "generate:api": "openapi-typescript https://eu.leanix.net/services/reports/v1/docs/openapi.json -o src/generated/reports-service.d.ts"
   },
   "dependencies": {
-    "formdata-node": "6.0.3",
     "https-proxy-agent": "9.0.0",
     "jwt-decode": "4.0.0",
     "node-fetch": "3.3.2",

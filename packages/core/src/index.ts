@@ -30,7 +30,6 @@ import { customReportMetadataSchema } from '@lxr/core/models/custom-report-metad
 import { CUSTOM_REPORT_TERMINAL_FAILURE_STATES } from '@lxr/core/models/custom-report-row';
 import { leanixCredentialsSchema } from '@lxr/core/models/leanix-credentials';
 import { packageJsonLxrSchema } from '@lxr/core/models/package-json';
-import { FormData } from 'formdata-node';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { jwtDecode } from 'jwt-decode';
 import fetch from 'node-fetch';
