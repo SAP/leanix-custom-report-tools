@@ -281,9 +281,10 @@ export interface operations {
                         /** Format: uuid */
                         userId: string;
                         /** @enum {string} */
-                        status: "SCANNING" | "BUILDING" | "READY" | "REVOKED" | "VULNERABLE";
+                        status: "SCANNING" | "BUILDING" | "READY" | "REVOKED" | "VULNERABLE" | "FAILED";
                         /** Format: date-time */
                         createdAt: string;
+                        buildLog?: string | null;
                     };
                 };
             };
