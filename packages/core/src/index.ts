@@ -307,6 +307,7 @@ export async function deleteWorkspaceReportById(
 
 export async function npmPackBundle(cwd: string): Promise<string> {
   const packDir = mkdtempSync(join(tmpdir(), 'lxr-npm-pack-'));
+  await execFileAsync('npm', ['shrinkwrap'], { cwd });
   const { stdout } = await execFileAsync(
     'npm',
     ['pack', '--pack-destination', packDir, '--json'],
