@@ -330,10 +330,11 @@ export async function uploadReportV2(params: {
   const { host, bearerToken, bundle, proxyURL, baseURL } = params;
   const root = baseURL ?? `https://${host}/services/reports/v1`;
   const url = `${root}/customReportVersions/upload`;
-  const headers = { Authorization: `Bearer ${bearerToken}` };
-  const form = new FormData();
-  form.append('file', bundle);
-  const options: RequestInit = { method: 'post', headers, body: form };
+  const headers = {
+    Authorization: `Bearer ${bearerToken}`,
+    'Content-Type': 'application/gzip'
+  };
+  const options: RequestInit = { method: 'post', headers, body: bundle };
   if (typeof proxyURL === 'string' && proxyURL.length > 0) {
     options.agent = createProxyAgent(proxyURL);
   }

@@ -247,17 +247,17 @@ describe('the lxr core package', () => {
       rmSync(pkgDir, { recursive: true });
     }, 30000);
 
-    it('uploadReportV2 posts multipart and parses customReportVersionId', async () => {
+    it('uploadReportV2 posts raw gzip body and parses customReportVersionId', async () => {
       let receivedAuth: string | undefined;
       let receivedContentType: string | undefined;
-      let receivedBody = '';
+      let receivedBody = Buffer.alloc(0);
       server = createHttpServer((req, res) => {
         receivedAuth = req.headers.authorization;
         receivedContentType = req.headers['content-type'];
         const chunks: Buffer[] = [];
         req.on('data', (c) => chunks.push(c));
         req.on('end', () => {
-          receivedBody = Buffer.concat(chunks).toString('utf8');
+          receivedBody = Buffer.concat(chunks);
           res.statusCode = 201;
           res.setHeader('content-type', 'application/json');
           res.end(
@@ -268,7 +268,8 @@ describe('the lxr core package', () => {
       await new Promise<void>((r) => server.listen(0, r));
       baseURL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
-      const blob = new Blob([new Uint8Array([1, 2, 3, 4])]);
+      const bundleBytes = new Uint8Array([1, 2, 3, 4]);
+      const blob = new Blob([bundleBytes]);
       const result = await uploadReportV2({
         host: 'unused',
         bearerToken: 'test-token',
@@ -278,8 +279,8 @@ describe('the lxr core package', () => {
 
       expect(result.customReportVersionId).toBe('uuid-123');
       expect(receivedAuth).toBe('Bearer test-token');
-      expect(receivedContentType).toMatch(/^multipart\/form-data;/);
-      expect(receivedBody).toContain('name="file"');
+      expect(receivedContentType).toBe('application/gzip');
+      expect(Uint8Array.from(receivedBody)).toEqual(bundleBytes);
 
       await new Promise<void>((r) => server.close(() => r()));
     });
