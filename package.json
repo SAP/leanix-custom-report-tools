@@ -33,7 +33,8 @@
     "lint": "eslint --fix",
     "format": "prettier --write .",
     "update": "npx npm-check-updates@latest -u",
-    "create-custom-report-local": "./scripts/create-custom-report-local.sh"
+    "create-custom-report-local": "./scripts/create-custom-report-local.sh",
+    "prepare": "lefthook install"
   },
   "dependencies": {
     "tsup": "8.5.1",
@@ -49,6 +50,8 @@
     "babel-jest": "30.3.0",
     "eslint": "10.3.0",
     "jest": "30.3.0",
+    "lefthook": "^2.1.9",
+    "prettier": "^3.8.3",
     "rimraf": "6.1.3",
     "shx": "0.4.0",
     "ts-node": "10.9.2",
