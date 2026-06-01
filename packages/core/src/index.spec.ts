@@ -19,6 +19,7 @@ import {
   fetchWorkspaceReports,
   getAccessToken,
   getLaunchUrl,
+  initProxy,
   npmPackBundle,
   pollReportState,
   readLxrJson,
@@ -30,6 +31,7 @@ import {
 import appRoot from 'app-root-path';
 import { t as tarT } from 'tar';
 import ProxyServer from 'transparent-proxy';
+import { getGlobalDispatcher, setGlobalDispatcher } from 'undici';
 
 const LXR_JSON_PATH = resolve(appRoot.path, 'lxr.json');
 
@@ -86,6 +88,33 @@ describe('the lxr core package', () => {
     await readLxrJson(LXR_JSON_PATH);
   });
 
+  it('readLxrJson sets global proxy dispatcher when proxyURL is present', async () => {
+    const originalDispatcher = getGlobalDispatcher();
+    const tmpFile = join(tmpdir(), `lxr-proxy-test-${Date.now()}.json`);
+    writeFileSync(tmpFile, JSON.stringify({
+      host: 'eu.leanix.net',
+      apitoken: 'dummy',
+      proxyURL: 'http://proxy.example.com:8080'
+    }));
+    await readLxrJson(tmpFile);
+    const dispatcher = getGlobalDispatcher();
+    setGlobalDispatcher(originalDispatcher);
+    rmSync(tmpFile);
+
+    expect(dispatcher.constructor.name).toBe('ProxyAgent');
+  });
+
+  it('readLxrJson does not change dispatcher when proxyURL is absent', async () => {
+    const originalDispatcher = getGlobalDispatcher();
+    const tmpFile = join(tmpdir(), `lxr-no-proxy-test-${Date.now()}.json`);
+    writeFileSync(tmpFile, JSON.stringify({ host: 'eu.leanix.net', apitoken: 'dummy' }));
+    await readLxrJson(tmpFile);
+    const dispatcher = getGlobalDispatcher();
+    rmSync(tmpFile);
+
+    expect(dispatcher).toBe(originalDispatcher);
+  });
+
   it('getAccessToken returns a token', async () => {
     const credentials = await readLxrJson(LXR_JSON_PATH);
     const accessToken = await getAccessToken(credentials);
@@ -99,11 +128,21 @@ describe('the lxr core package', () => {
     expect(accessToken.tokenType).toBe('bearer');
   });
 
+  it('initProxy calls setGlobalDispatcher with a ProxyAgent', () => {
+    const originalDispatcher = getGlobalDispatcher();
+    initProxy('http://proxy.example.com:8080');
+    const dispatcher = getGlobalDispatcher();
+    setGlobalDispatcher(originalDispatcher);
+
+    expect(dispatcher).not.toBe(originalDispatcher);
+    expect(dispatcher.constructor.name).toBe('ProxyAgent');
+  });
+
   it('getAccessToken with proxy returns a token', async () => {
+    initProxy(`http://127.0.0.1:${proxyPort}`);
     const credentials = await readLxrJson(LXR_JSON_PATH);
-    credentials.proxyURL = `http://127.0.0.1:${proxyPort}`;
     const accessToken = await getAccessToken(credentials);
-    expect(typeof accessToken.accessToken).toBe('string'); // accessToken is a string
+    expect(typeof accessToken.accessToken).toBe('string');
     expect(accessToken.accessToken).toBeTruthy();
     expect(typeof accessToken.expired).toBe('boolean');
     expect(accessToken.expired).toBe(false);
@@ -112,7 +151,6 @@ describe('the lxr core package', () => {
     expect(typeof accessToken.scope).toBe('string');
     expect(accessToken.tokenType).toBe('bearer');
   });
-
   it('getLaunchUrl returns a url', async () => {
     const devServerUrl = 'https://localhost:8080';
     const relayServerUrl = 'http://localhost:3000';
