@@ -17,7 +17,9 @@
     "cli"
   ],
   "main": "dist/index.cjs",
-  "bin": { "create-leanix-custom-report": "dist/index.cjs" },
+  "bin": {
+    "create-leanix-custom-report": "dist/index.cjs"
+  },
   "files": [
     "dist"
   ],
@@ -34,7 +36,7 @@
     "undici": "8.3.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.0.0"
   },
   "devDependencies": {
     "@types/fs-extra": "11.0.4",
