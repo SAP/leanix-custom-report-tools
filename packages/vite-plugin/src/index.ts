@@ -260,27 +260,28 @@ export default function leanixPlugin(
         process.exit(1);
       }
 
-      // Write lxreport.json to dist/
-      writeReportMetadata(metadata, options.dir);
       if (!shouldUpload) {
+        writeReportMetadata(metadata, options.dir);
         return;
       }
 
       const { accessToken: bearerToken } = accessToken!;
       const { proxyURL, store } = credentials;
-      const { id, version } = metadata;
+      const { name, version } = metadata;
 
       // v2 upload (Reports Service): opt-in via leanixReport.uploadVersion = 2 in package.json
       if (metadata.uploadVersion === 2) {
         logger?.warn('⚠️  Using EXPERIMENTAL v2 upload (Reports Service).');
+        if (claims === null) {
+          throw new Error('Cannot upload: missing access token claims.');
+        }
+        const { workspaceName } = claims.principal.permission;
         try {
           const tarball = await npmPackBundle(projectRoot);
           const bundle = await openAsBlob(tarball);
-          if (claims !== null) {
-            logger?.info(
-              `😅 Uploading report ${id} v"${version}" to workspace "${claims.principal.permission.workspaceName}" via Reports Service...`
-            );
-          }
+          logger?.info(
+            `Uploading "${name}" v${version} to workspace "${workspaceName}" via Reports Service...`
+          );
           const { customReportVersionId } = await uploadReportV2({
             host: credentials.host,
             bearerToken,
@@ -295,13 +296,9 @@ export default function leanixPlugin(
             proxyURL,
             onUpdate: (state) => logger?.info(`  state: ${state}`)
           });
-          if (claims !== null) {
-            logger?.info(
-              `🥳 Report "${id}" with version "${version}" was uploaded to workspace "${claims.principal.permission.workspaceName}"!`
-            );
-          }
+          logger?.info('🚀 Upload complete.');
         } catch (err: any) {
-          logger?.error('💥 Error during v2 upload to Reports Service...');
+          logger?.error('💥 Error during upload to Reports Service...');
           if (err instanceof ReportStateError && err.status === 'FAILED' && err.buildLog) {
             const lines = err.buildLog.split('\n');
             const MAX_LINES = 50;
@@ -320,6 +317,10 @@ export default function leanixPlugin(
         return;
       }
 
+      // Write lxreport.json to dist/ (legacy v1 upload only)
+      writeReportMetadata(metadata, options.dir);
+
+      const { id } = metadata;
       // Upload mode: package the dist and upload to the workspace
       const bundlePath = await createBundle(options.dir);
       const bundle = await openAsBlob(bundlePath);
