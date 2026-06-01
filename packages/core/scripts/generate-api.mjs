@@ -1,3 +1,4 @@
+/* global URL, console */
 import openapiTS, { astToString } from 'openapi-typescript';
 import ts from 'typescript';
 import { writeFileSync } from 'node:fs';

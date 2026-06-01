@@ -204,7 +204,7 @@ export async function uploadBundle(params: {
     assetId: string;
   };
 }): Promise<ReportUploadResponseData> {
-  const { bundle, bearerToken, proxyURL, store } = params;
+  const { bundle, bearerToken, store } = params;
   const storeHost = store?.host ?? 'store.leanix.net';
   const assetId = store?.assetId ?? null;
   const decodedToken: JwtClaims = jwtDecode(bearerToken);
