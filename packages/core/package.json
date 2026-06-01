@@ -10,15 +10,14 @@
     "generate:api": "openapi-typescript https://eu.leanix.net/services/reports/v1/docs/openapi.json -o src/generated/reports-service.d.ts"
   },
   "dependencies": {
-    "https-proxy-agent": "9.0.0",
     "jwt-decode": "4.0.0",
-    "node-fetch": "3.3.2",
-    "tar": "7.5.13"
+    "openapi-fetch": "0.17.0",
+    "tar": "7.5.13",
+    "undici": "8.3.0"
   },
   "devDependencies": {
-    "@types/node-fetch": "2.6.13",
     "app-root-path": "3.1.0",
-    "openapi-typescript": "^7.13.0",
+    "openapi-typescript": "7.13.0",
     "transparent-proxy": "1.15.3"
   }
 }

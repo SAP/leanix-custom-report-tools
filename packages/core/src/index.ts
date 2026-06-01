@@ -12,8 +12,9 @@ import type {
   ReportUploadResponseData,
   ReportsResponseData
 } from '@lxr/core/models/report-response-data';
-import type { RequestInit } from 'node-fetch';
+import type { paths } from './generated/reports-service';
 import type { ZodObject } from 'zod';
+import type { Dispatcher } from 'undici';
 import { execFile } from 'node:child_process';
 import {
   existsSync,
@@ -30,10 +31,10 @@ import { customReportMetadataSchema } from '@lxr/core/models/custom-report-metad
 import { CUSTOM_REPORT_TERMINAL_FAILURE_STATES } from '@lxr/core/models/custom-report-row';
 import { leanixCredentialsSchema } from '@lxr/core/models/leanix-credentials';
 import { packageJsonLxrSchema } from '@lxr/core/models/package-json';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import { jwtDecode } from 'jwt-decode';
-import fetch from 'node-fetch';
+import createClient from 'openapi-fetch';
 import { c } from 'tar';
+import { fetch as undiciFetch, FormData, ProxyAgent } from 'undici';
 
 const execFileAsync = promisify(execFile);
 
@@ -106,51 +107,48 @@ export async function readMetadataJson(
   return metadata;
 }
 
-export function createProxyAgent(proxyURL: string): HttpsProxyAgent<string> {
-  return new HttpsProxyAgent(new URL(proxyURL));
+export function createProxyAgent(proxyURL: string): Dispatcher {
+  return new ProxyAgent(new URL(proxyURL).toString());
+}
+
+function dispatcherFor(proxyURL?: string): Dispatcher | undefined {
+  return typeof proxyURL === 'string' && proxyURL.length > 0
+    ? createProxyAgent(proxyURL)
+    : undefined;
 }
 
 export async function getAccessToken(
   credentials: LeanIXCredentials
 ): Promise<AccessToken> {
   const uri = `https://${credentials.host}/services/mtm/v1/oauth2/token?grant_type=client_credentials`;
-  const headers = {
-    'Content-Type': 'application/x-www-form-urlencoded',
-    Authorization: `Basic ${Buffer.from(`apitoken:${credentials.apitoken}`).toString('base64')}`
-  };
-  const options: RequestInit = { method: 'post', headers };
-  if (
-    typeof credentials.proxyURL === 'string' &&
-    credentials.proxyURL.length > 0
-  ) {
-    options.agent = createProxyAgent(credentials.proxyURL);
+  const res = await undiciFetch(uri, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: `Basic ${Buffer.from(`apitoken:${credentials.apitoken}`).toString('base64')}`
+    },
+    dispatcher: dispatcherFor(credentials.proxyURL)
+  });
+  const content =
+    res.headers.get('content-type') === 'application/json'
+      ? await res.json()
+      : await res.text();
+  if (!res.ok) {
+    return await Promise.reject(res.status);
   }
-  const accessToken: AccessToken = await fetch(uri, options)
-    .then(async (res) => {
-      const content =
-        await res[
-          res.headers.get('content-type') === 'application/json'
-            ? 'json'
-            : 'text'
-        ]();
-      return res.ok ? content : await Promise.reject(res.status);
-    })
-    .then((accessToken) =>
-      Object.entries(accessToken as AccessToken).reduce(
-        (accumulator, [key, value]) => ({
-          ...accumulator,
-          [snakeToCamel(key)]: value
-        }),
-        {
-          accessToken: '',
-          expired: false,
-          expiresIn: 0,
-          scope: '',
-          tokenType: ''
-        }
-      )
-    );
-  return accessToken;
+  return Object.entries(content as AccessToken).reduce(
+    (accumulator, [key, value]) => ({
+      ...accumulator,
+      [snakeToCamel(key)]: value
+    }),
+    {
+      accessToken: '',
+      expired: false,
+      expiresIn: 0,
+      scope: '',
+      tokenType: ''
+    }
+  ) as AccessToken;
 }
 
 export function getAccessTokenClaims(accessToken: AccessToken): JwtClaims {
@@ -216,27 +214,21 @@ export async function uploadBundle(params: {
     assetId !== null
       ? `https://${storeHost}/services/torg/v1/assetversions/${assetId}/payload`
       : `${decodedToken.instanceUrl}/services/pathfinder/v1/reports/upload`;
-  const headers = { Authorization: `Bearer ${bearerToken}` };
   const form = new FormData();
-
   form.append('file', bundle);
-  const options: RequestInit = { method: 'post', headers, body: form };
-  if (typeof proxyURL === 'string' && proxyURL.length > 0) {
-    options.agent = createProxyAgent(proxyURL);
-  }
-  const reportResponseData: ReportUploadResponseData = await fetch(
-    url,
-    options
-  ).then(async (res) => {
-    const contentType: string | null = res.headers.get('content-type');
-    const content =
-      contentType === 'application/json' ? await res.json() : await res.text();
-    if (!res.ok) {
-      throw new Error(JSON.stringify({ status: res.status, message: content }));
-    }
-    return content as ReportUploadResponseData;
+  const res = await undiciFetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${bearerToken}` },
+    body: form,
+    dispatcher: dispatcherFor(proxyURL)
   });
-  return reportResponseData;
+  const contentType = res.headers.get('content-type');
+  const content =
+    contentType === 'application/json' ? await res.json() : await res.text();
+  if (!res.ok) {
+    throw new Error(JSON.stringify({ status: res.status, message: content }));
+  }
+  return content as ReportUploadResponseData;
 }
 
 export async function fetchWorkspaceReports(
@@ -254,15 +246,12 @@ export async function fetchWorkspaceReports(
     if (cursor !== null) {
       url.searchParams.append('cursor', cursor);
     }
-    const options: RequestInit = { method: 'get', headers };
-    if (proxyURL !== undefined) {
-      options.agent = createProxyAgent(proxyURL);
-    }
-    const reportsPage: ReportsResponseData = await fetch(
-      url.toString(),
-      options
-    ).then(async (res) => (await res.json()) as ReportsResponseData);
-    return reportsPage;
+    const res = await undiciFetch(url.toString(), {
+      method: 'GET',
+      headers,
+      dispatcher: dispatcherFor(proxyURL)
+    });
+    return (await res.json()) as ReportsResponseData;
   };
   const reports: CustomReportMetadata[] = [];
   let cursor = null;
@@ -287,17 +276,14 @@ export async function deleteWorkspaceReportById(
   proxyURL?: string
 ): Promise<204 | number> {
   const decodedToken: JwtClaims = jwtDecode(bearerToken);
-  const headers = { Authorization: `Bearer ${bearerToken}` };
   const url = new URL(
     `${decodedToken.instanceUrl}/services/pathfinder/v1/reports/${reportId}`
   );
-  const options: RequestInit = { method: 'delete', headers };
-  if (proxyURL !== undefined) {
-    options.agent = createProxyAgent(proxyURL);
-  }
-  const status = await fetch(url.toString(), options).then(
-    ({ status }) => status
-  );
+  const { status } = await undiciFetch(url.toString(), {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${bearerToken}` },
+    dispatcher: dispatcherFor(proxyURL)
+  });
   return status === 204
     ? await Promise.resolve(status)
     : await Promise.reject(status);
@@ -320,6 +306,27 @@ export async function npmPackBundle(cwd: string): Promise<string> {
   return resolve(packDir, parsed[0].filename);
 }
 
+function reportsServiceClient(params: {
+  host: string;
+  bearerToken: string;
+  proxyURL?: string;
+  baseURL?: string;
+}): ReturnType<typeof createClient<paths>> {
+  const { host, bearerToken, proxyURL, baseURL } = params;
+  const dispatcher = dispatcherFor(proxyURL);
+  // Wrap undici's fetch so dispatcher (proxy) is injected on every call.
+  const wrappedFetch: typeof globalThis.fetch = (input, init) =>
+    undiciFetch(input as Parameters<typeof undiciFetch>[0], {
+      ...(init as Parameters<typeof undiciFetch>[1]),
+      dispatcher
+    }) as unknown as ReturnType<typeof globalThis.fetch>;
+  return createClient<paths>({
+    baseUrl: baseURL ?? `https://${host}/services/reports/v1`,
+    headers: { Authorization: `Bearer ${bearerToken}` },
+    fetch: wrappedFetch
+  });
+}
+
 export async function uploadReportV2(params: {
   host: string;
   bearerToken: string;
@@ -327,26 +334,22 @@ export async function uploadReportV2(params: {
   proxyURL?: string;
   baseURL?: string;
 }): Promise<CustomReportVersionUploadResponse> {
-  const { host, bearerToken, bundle, proxyURL, baseURL } = params;
-  const root = baseURL ?? `https://${host}/services/reports/v1`;
-  const url = `${root}/customReportVersions/upload`;
-  const headers = {
-    Authorization: `Bearer ${bearerToken}`,
-    'Content-Type': 'application/gzip'
-  };
-  const options: RequestInit = { method: 'post', headers, body: bundle };
-  if (typeof proxyURL === 'string' && proxyURL.length > 0) {
-    options.agent = createProxyAgent(proxyURL);
-  }
-  return await fetch(url, options).then(async (res) => {
-    const contentType: string | null = res.headers.get('content-type');
-    const content =
-      contentType === 'application/json' ? await res.json() : await res.text();
-    if (!res.ok) {
-      throw new Error(JSON.stringify({ status: res.status, message: content }));
+  const { bundle } = params;
+  const client = reportsServiceClient(params);
+  const { data, error, response } = await client.POST(
+    '/customReportVersions/upload',
+    {
+      body: bundle as never,
+      bodySerializer: (b) => b,
+      headers: { 'Content-Type': 'application/gzip' }
     }
-    return content as CustomReportVersionUploadResponse;
-  });
+  );
+  if (error !== undefined || !response.ok || data === undefined) {
+    throw new Error(
+      JSON.stringify({ status: response.status, message: error ?? data })
+    );
+  }
+  return data;
 }
 
 export class ReportStateError extends Error {
@@ -371,34 +374,31 @@ export async function pollReportState(params: {
   baseURL?: string;
 }): Promise<CustomReportRow> {
   const {
-    host,
     customReportVersionId,
-    bearerToken,
-    proxyURL,
     onUpdate,
     intervalMs = 2000,
-    timeoutMs = 5 * 60 * 1000,
-    baseURL
+    timeoutMs = 5 * 60 * 1000
   } = params;
-  const root = baseURL ?? `https://${host}/services/reports/v1`;
-  const url = `${root}/customReportVersions/${customReportVersionId}`;
-  const headers = { Authorization: `Bearer ${bearerToken}` };
+  const client = reportsServiceClient(params);
   const sleep = (ms: number): Promise<void> =>
     new Promise((r) => setTimeout(r, ms));
   const deadline = Date.now() + timeoutMs;
   let lastState: CustomReportState | null = null;
   while (Date.now() < deadline) {
-    const options: RequestInit = { method: 'get', headers };
-    if (typeof proxyURL === 'string' && proxyURL.length > 0) {
-      options.agent = createProxyAgent(proxyURL);
+    const { data, error, response } = await client.GET(
+      '/customReportVersions/{customReportVersionId}',
+      { params: { path: { customReportVersionId } } }
+    );
+    if (error !== undefined || data === undefined) {
+      throw new Error(
+        JSON.stringify({ status: response.status, message: error })
+      );
     }
-    const row = await fetch(url, options).then(async (res) => {
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(JSON.stringify({ status: res.status, message: text }));
-      }
-      return (await res.json()) as CustomReportRow;
-    });
+    const row: CustomReportRow = {
+      id: data.id,
+      status: data.status,
+      buildLog: data.buildLog ?? null
+    };
     if (row.status !== lastState) {
       lastState = row.status;
       onUpdate?.(row.status);
