@@ -346,7 +346,7 @@ export async function uploadReportV2(params: {
   const { data, error, response } = await client.POST(
     '/customReportVersions/upload',
     {
-      body: bundle as never,
+      body: bundle,
       bodySerializer: (b) => b,
       headers: { 'Content-Type': 'application/gzip' }
     }

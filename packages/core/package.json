@@ -7,7 +7,7 @@
   },
   "scripts": {
     "test": "jest",
-    "generate:api": "openapi-typescript https://eu.leanix.net/services/reports/v1/docs/openapi.json -o src/generated/reports-service.d.ts"
+    "generate:api": "node scripts/generate-api.mjs"
   },
   "dependencies": {
     "jwt-decode": "4.0.0",
