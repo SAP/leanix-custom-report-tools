@@ -169,6 +169,9 @@ export interface components {
             cxone: {
                 [key: string]: unknown;
             };
+            npmAudit: {
+                [key: string]: unknown;
+            };
         };
     };
     responses: never;
@@ -211,13 +214,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": {
-                    /**
-                     * Format: binary
-                     * @description Source archive (.tgz, max 50 MB)
-                     */
-                    file: string;
-                };
+                "application/gzip": string;
             };
         };
         responses: {
@@ -233,7 +230,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description Missing file, wrong content-type, or size limit exceeded */
+            /** @description Wrong content-type or invalid gzip signature */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -249,6 +246,13 @@ export interface operations {
             };
             /** @description Insufficient role or permissions */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Body exceeds the size limit */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
