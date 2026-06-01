@@ -315,12 +315,18 @@ function reportsServiceClient(params: {
 }): ReturnType<typeof createClient<paths>> {
   const { host, bearerToken, proxyURL, baseURL } = params;
   const dispatcher = dispatcherFor(proxyURL);
-  // Wrap undici's fetch so dispatcher (proxy) is injected on every call.
-  const wrappedFetch: typeof globalThis.fetch = (input, init) =>
-    undiciFetch(input as Parameters<typeof undiciFetch>[0], {
-      ...(init as Parameters<typeof undiciFetch>[1]),
-      dispatcher
-    }) as unknown as ReturnType<typeof globalThis.fetch>;
+  // openapi-fetch builds a globalThis.Request and passes it to our wrapper.
+  // Forwarding that Request into undici's named export crashes ("Invalid URL")
+  // because the two undici copies have incompatible Request classes. Use the
+  // native fetch (which IS undici under the hood in Node 24+) and rely on
+  // Node's RequestInit accepting `dispatcher`.
+  const wrappedFetch: typeof globalThis.fetch = dispatcher
+    ? (input, init) =>
+        globalThis.fetch(input, {
+          ...init,
+          dispatcher
+        } as unknown as RequestInit)
+    : globalThis.fetch;
   return createClient<paths>({
     baseUrl: baseURL ?? `https://${host}/services/reports/v1`,
     headers: { Authorization: `Bearer ${bearerToken}` },
