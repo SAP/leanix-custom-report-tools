@@ -15,7 +15,7 @@ import type {
 } from '@lxr/core/models/report-response-data';
 import type { paths } from './generated/reports-service';
 import type { ZodObject } from 'zod';
-import type { Dispatcher } from 'undici';
+import { ProxyAgent, setGlobalDispatcher } from 'undici';
 import { execFile } from 'node:child_process';
 import {
   existsSync,
@@ -35,7 +35,6 @@ import { packageJsonLxrSchema } from '@lxr/core/models/package-json';
 import { jwtDecode } from 'jwt-decode';
 import createClient from 'openapi-fetch';
 import { c } from 'tar';
-import { fetch as undiciFetch, FormData, ProxyAgent } from 'undici';
 
 const execFileAsync = promisify(execFile);
 
@@ -87,6 +86,7 @@ export async function readLxrJson(path?: string): Promise<LeanIXCredentials> {
     credentials.store = store;
   }
   await validateDocument(credentials, 'lxr.json');
+  initProxy(credentials.proxyURL);
   return credentials;
 }
 
@@ -108,27 +108,24 @@ export async function readMetadataJson(
   return metadata;
 }
 
-export function createProxyAgent(proxyURL: string): Dispatcher {
-  return new ProxyAgent(new URL(proxyURL).toString());
-}
-
-function dispatcherFor(proxyURL?: string): Dispatcher | undefined {
-  return typeof proxyURL === 'string' && proxyURL.length > 0
-    ? createProxyAgent(proxyURL)
-    : undefined;
+export function initProxy(proxyURL?: string): void {
+  if (typeof proxyURL === 'string' && proxyURL.length > 0) {
+    // Applies to all outgoing requests, including Node's native fetch.
+    // https://github.com/nodejs/undici#undicisetglobaldispatcherdispatcher
+    setGlobalDispatcher(new ProxyAgent(proxyURL));
+  }
 }
 
 export async function getAccessToken(
   credentials: LeanIXCredentials
 ): Promise<AccessToken> {
   const uri = `https://${credentials.host}/services/mtm/v1/oauth2/token?grant_type=client_credentials`;
-  const res = await undiciFetch(uri, {
+  const res = await fetch(uri, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
       Authorization: `Basic ${Buffer.from(`apitoken:${credentials.apitoken}`).toString('base64')}`
-    },
-    dispatcher: dispatcherFor(credentials.proxyURL)
+    }
   });
   const content =
     res.headers.get('content-type') === 'application/json'
@@ -217,11 +214,10 @@ export async function uploadBundle(params: {
       : `${decodedToken.instanceUrl}/services/pathfinder/v1/reports/upload`;
   const form = new FormData();
   form.append('file', bundle);
-  const res = await undiciFetch(url, {
+  const res = await fetch(url, {
     method: 'POST',
     headers: { Authorization: `Bearer ${bearerToken}` },
     body: form,
-    dispatcher: dispatcherFor(proxyURL)
   });
   const contentType = res.headers.get('content-type');
   const content =
@@ -233,8 +229,7 @@ export async function uploadBundle(params: {
 }
 
 export async function fetchWorkspaceReports(
-  bearerToken: string,
-  proxyURL?: string
+  bearerToken: string
 ): Promise<CustomReportMetadata[]> {
   const decodedToken: JwtClaims = jwtDecode(bearerToken);
   const headers = { Authorization: `Bearer ${bearerToken}` };
@@ -247,10 +242,9 @@ export async function fetchWorkspaceReports(
     if (cursor !== null) {
       url.searchParams.append('cursor', cursor);
     }
-    const res = await undiciFetch(url.toString(), {
+    const res = await fetch(url.toString(), {
       method: 'GET',
       headers,
-      dispatcher: dispatcherFor(proxyURL)
     });
     return (await res.json()) as ReportsResponseData;
   };
@@ -273,17 +267,15 @@ export async function fetchWorkspaceReports(
 
 export async function deleteWorkspaceReportById(
   reportId: string,
-  bearerToken: string,
-  proxyURL?: string
+  bearerToken: string
 ): Promise<204 | number> {
   const decodedToken: JwtClaims = jwtDecode(bearerToken);
   const url = new URL(
     `${decodedToken.instanceUrl}/services/pathfinder/v1/reports/${reportId}`
   );
-  const { status } = await undiciFetch(url.toString(), {
+  const { status } = await fetch(url.toString(), {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${bearerToken}` },
-    dispatcher: dispatcherFor(proxyURL)
   });
   return status === 204
     ? await Promise.resolve(status)
@@ -310,27 +302,12 @@ export async function npmPackBundle(cwd: string): Promise<string> {
 function reportsServiceClient(params: {
   host: string;
   bearerToken: string;
-  proxyURL?: string;
   baseURL?: string;
 }): ReturnType<typeof createClient<paths>> {
-  const { host, bearerToken, proxyURL, baseURL } = params;
-  const dispatcher = dispatcherFor(proxyURL);
-  // openapi-fetch builds a globalThis.Request and passes it to our wrapper.
-  // Forwarding that Request into undici's named export crashes ("Invalid URL")
-  // because the two undici copies have incompatible Request classes. Use the
-  // native fetch (which IS undici under the hood in Node 24+) and rely on
-  // Node's RequestInit accepting `dispatcher`.
-  const wrappedFetch: typeof globalThis.fetch = dispatcher
-    ? (input, init) =>
-        globalThis.fetch(input, {
-          ...init,
-          dispatcher
-        } as unknown as RequestInit)
-    : globalThis.fetch;
+  const { host, bearerToken, baseURL } = params;
   return createClient<paths>({
     baseUrl: baseURL ?? `https://${host}/services/reports/v1`,
     headers: { Authorization: `Bearer ${bearerToken}` },
-    fetch: wrappedFetch
   });
 }
 
@@ -338,7 +315,6 @@ export async function uploadReportV2(params: {
   host: string;
   bearerToken: string;
   bundle: Blob;
-  proxyURL?: string;
   baseURL?: string;
 }): Promise<CustomReportVersionUploadResponse> {
   const { bundle } = params;
@@ -375,7 +351,6 @@ export async function pollReportState(params: {
   host: string;
   customReportVersionId: string;
   bearerToken: string;
-  proxyURL?: string;
   onUpdate?: (state: CustomReportState) => void;
   intervalMs?: number;
   timeoutMs?: number;
@@ -422,8 +397,8 @@ export async function pollReportState(params: {
     }
     if (CUSTOM_REPORT_TERMINAL_FAILURE_STATES.includes(row.status)) {
       const reason = row.status === 'VULNERABLE'
-        ? 'security scan found vulnerabilities'
-        : 'build failed';
+          ? 'security scan found vulnerabilities'
+          : 'build failed';
       throw new ReportStateError(
         row.status,
         row.buildLog,

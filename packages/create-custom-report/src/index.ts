@@ -10,7 +10,7 @@ import {
   pkgFromUserAgent,
   toValidPackageName
 } from './helpers';
-import { getAccessToken } from '@lxr/core/index';
+import { getAccessToken, initProxy } from '@lxr/core/index';
 import banner from './utils/banner';
 import { deployTemplate } from './utils/deployTemplate';
 import { generateLeanIXFiles } from './utils/leanix';
@@ -246,6 +246,7 @@ Options:
     setupMcpServers = setupMcpServers,
     overwrite = overwrite
   } = result);
+  initProxy(proxyURL);
   const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent) ?? null;
   const pkgManager = pkgInfo != null ? pkgInfo.name : 'npm';
 
@@ -290,7 +291,6 @@ Options:
         host,
         tokenResponse,
         featureFlagId: 'mcpserver.custom-reports',
-        proxyURL
       });
     } catch (error) {
       console.log(

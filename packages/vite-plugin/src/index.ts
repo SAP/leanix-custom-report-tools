@@ -22,7 +22,6 @@ import {
   writeReportMetadata
 } from '@lxr/core/index';
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import { ZodError } from 'zod';
 import { resolveHostname } from './helpers';
 
@@ -124,9 +123,6 @@ export default function leanixPlugin(
           target: targetOrigin,
           changeOrigin: true,
           secure: true,
-          agent: credentials.proxyURL
-            ? new HttpsProxyAgent(credentials.proxyURL)
-            : undefined,
           on: {
             proxyReq: (proxyReq, req) => {
               // Rewrite Origin header: localhost -> LeanIX host
@@ -220,7 +216,6 @@ export default function leanixPlugin(
     // On a normal build we only write lxreport.json metadata alongside the output.
     // On upload mode we also package and ship the bundle to the workspace.
     async writeBundle(options, _outputBundle) {
-
       // Read and validate metadata from package.json
       let metadata: CustomReportMetadata | undefined;
       try {
@@ -266,7 +261,7 @@ export default function leanixPlugin(
       }
 
       const { accessToken: bearerToken } = accessToken!;
-      const { proxyURL, store } = credentials;
+      const { store } = credentials;
       const { name, version } = metadata;
 
       // v2 upload (Reports Service): opt-in via leanixReport.uploadVersion = 2 in package.json
@@ -285,15 +280,13 @@ export default function leanixPlugin(
           const { customReportVersionId } = await uploadReportV2({
             host: credentials.host,
             bearerToken,
-            bundle,
-            proxyURL
+            bundle
           });
           logger?.info(`  customReportVersionId: ${customReportVersionId}`);
           await pollReportState({
             host: credentials.host,
             customReportVersionId,
             bearerToken,
-            proxyURL,
             onUpdate: (state) => logger?.info(`  state: ${state}`)
           });
           logger?.info('🚀 Upload complete.');
@@ -344,7 +337,6 @@ export default function leanixPlugin(
         const result = await uploadBundle({
           bundle,
           bearerToken,
-          proxyURL,
           store
         });
         if (result.status === 'ERROR') {
