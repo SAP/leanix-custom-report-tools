@@ -114,7 +114,7 @@ it('successfully scaffolds a project based on react-ts template', async () => {
   const description = uuid();
   const host = uuid();
   const apitoken = uuid();
-  const proxyURL = uuid();
+  const proxyURL = 'http://proxy.example.com:8080';
 
   const args = [
     '--overwrite',
@@ -135,9 +135,10 @@ it('successfully scaffolds a project based on react-ts template', async () => {
     proxyURL
   ];
 
-  const { stdout, stderr } = run([projectName, ...args], {
+  const { stdout, stderr, exitCode } = run([projectName, ...args], {
     cwd: tempDir
   });
+  expect(exitCode).toBe(0);
   expect(typeof stderr).toEqual('string');
 
   const projectDir = join(tempDir, projectName);
@@ -218,7 +219,8 @@ it('--packageName skips the package-name prompt and is used in package.json', ()
     customPkgName
   ];
 
-  const { stdout } = run([projectName, ...args], { cwd: tempDir });
+  const { stdout, exitCode } = run([projectName, ...args], { cwd: tempDir });
+  expect(exitCode).toBe(0);
 
   expect((stdout as string)?.includes('Package name:')).toBe(false);
 
@@ -249,7 +251,8 @@ it('--no-setupMcpServers does not generate MCP config files', () => {
     uuid()
   ];
 
-  run([projectName, ...args], { cwd: tempDir });
+  const { exitCode } = run([projectName, ...args], { cwd: tempDir });
+  expect(exitCode).toBe(0);
 
   const projectDir = join(tempDir, projectName);
   expect(existsSync(join(projectDir, '.vscode', 'mcp.json'))).toBe(false);
@@ -268,7 +271,7 @@ it('fully non-interactive invocation succeeds with all flags supplied', () => {
   const customPkgName = 'full-non-interactive';
   const host = uuid();
   const apitoken = uuid();
-  const proxyURL = uuid();
+  const proxyURL = 'http://proxy.example.com:8080';
 
   const args = [
     '--skipAuth',
