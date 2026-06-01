@@ -1,4 +1,4 @@
-import type { operations } from '../generated/reports-service';
+import type { components, operations } from '../generated/reports-service';
 
 type GeneratedMetadata =
   operations['CustomReportVersionsController_getMetadata']['responses']['200']['content']['application/json'];
@@ -8,10 +8,13 @@ export type CustomReportVersionUploadResponse =
 
 export type CustomReportState = GeneratedMetadata['status'];
 
+export type ScanResult = components['schemas']['ScanResult'];
+
 export interface CustomReportRow {
   id: string;
   status: CustomReportState;
   buildLog: string | null;
+  scanResult: ScanResult | null;
 }
 
 // Happy path for an upload: SCANNING -> BUILDING -> READY.

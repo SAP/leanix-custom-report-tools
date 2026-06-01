@@ -2,7 +2,8 @@ import type { AccessToken } from '@lxr/core/models/access-token';
 import type {
   CustomReportRow,
   CustomReportState,
-  CustomReportVersionUploadResponse
+  CustomReportVersionUploadResponse,
+  ScanResult
 } from '@lxr/core/models/custom-report-row';
 import type { CustomReportMetadata } from '@lxr/core/models/custom-report-metadata';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
@@ -356,6 +357,7 @@ export class ReportStateError extends Error {
   constructor(
     public readonly status: CustomReportState,
     public readonly buildLog: string | null,
+    public readonly scanResult: ScanResult | null,
     message: string
   ) {
     super(message);
@@ -394,10 +396,16 @@ export async function pollReportState(params: {
         JSON.stringify({ status: response.status, message: error })
       );
     }
+    // scanResult is not yet declared in the OpenAPI spec; the reports service
+    // adds it on terminal states (notably VULNERABLE) so the CLI can render
+    // npm audit findings. Cast until openapi-typescript regen catches up.
+    const scanResult =
+      (data as { scanResult?: ScanResult | null }).scanResult ?? null;
     const row: CustomReportRow = {
       id: data.id,
       status: data.status,
-      buildLog: data.buildLog ?? null
+      buildLog: data.buildLog ?? null,
+      scanResult
     };
     if (row.status !== lastState) {
       lastState = row.status;
@@ -410,7 +418,12 @@ export async function pollReportState(params: {
       const reason = row.status === 'VULNERABLE'
         ? 'security scan found vulnerabilities'
         : 'build failed';
-      throw new ReportStateError(row.status, row.buildLog, `${row.status}: ${reason}`);
+      throw new ReportStateError(
+        row.status,
+        row.buildLog,
+        row.scanResult,
+        `${row.status}: ${reason}`
+      );
     }
     await sleep(intervalMs);
   }

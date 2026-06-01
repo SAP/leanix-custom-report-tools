@@ -299,16 +299,21 @@ export default function leanixPlugin(
           logger?.info('🚀 Upload complete.');
         } catch (err: any) {
           logger?.error('💥 Error during upload to Reports Service...');
-          if (err instanceof ReportStateError && err.status === 'FAILED' && err.buildLog) {
-            const lines = err.buildLog.split('\n');
-            const MAX_LINES = 50;
-            const tail = lines.length > MAX_LINES ? lines.slice(-MAX_LINES) : lines;
-            logger?.error('📜 Build log:');
-            if (lines.length > MAX_LINES) {
-              logger?.error(`  … (showing last ${MAX_LINES} of ${lines.length} lines)`);
-            }
-            for (const line of tail) {
-              logger?.error(`  ${line}`);
+          if (err instanceof ReportStateError) {
+            if (err.status === 'VULNERABLE' && err.scanResult !== null) {
+              logger?.error('🛡  Scan result:');
+              logger?.error(JSON.stringify(err.scanResult, null, 2));
+            } else if (err.buildLog) {
+              const lines = err.buildLog.split('\n');
+              const MAX_LINES = 50;
+              const tail = lines.length > MAX_LINES ? lines.slice(-MAX_LINES) : lines;
+              logger?.error('📜 Build log:');
+              if (lines.length > MAX_LINES) {
+                logger?.error(`  … (showing last ${MAX_LINES} of ${lines.length} lines)`);
+              }
+              for (const line of tail) {
+                logger?.error(`  ${line}`);
+              }
             }
           }
           logger?.error(`💣 ${err}`);
