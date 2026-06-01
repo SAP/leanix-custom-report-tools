@@ -29,6 +29,7 @@
     "test:vite-plugin": "jest --selectProjects @lxr/core vite-plugin",
     "test:create-custom-report": "jest --selectProjects @lxr/core create-custom-report",
     "test": "jest",
+    "type-check": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/vite-plugin/tsconfig.json && tsc --noEmit -p packages/create-custom-report/tsconfig.json",
     "lint": "eslint --fix",
     "format": "prettier --write .",
     "update": "npx npm-check-updates@latest -u",
