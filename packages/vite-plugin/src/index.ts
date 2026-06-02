@@ -23,8 +23,8 @@ import {
 } from '@lxr/core/index';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { ZodError } from 'zod';
-import { checkPackageVersions } from './check-packages';
-import { resolveHostname } from './helpers';
+import { checkPackageVersions } from './helpers/check-packages';
+import { resolveHostname } from './helpers/resolve-hostname';
 
 export interface LeanIXPluginOptions {
   packageJsonPath?: string;
