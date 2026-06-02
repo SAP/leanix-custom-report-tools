@@ -8,6 +8,17 @@
       "matchUpdateTypes": ["minor", "patch"],
       "automerge": true,
       "automergeSchedule": ["after 10am and before 4pm every weekday"]
+    },
+    {
+      "description": "Keep caret ranges for reporting & vite-plugin packages in the project template. Deprecation mechanism relies on them so users get plugin/SDK updates automatically.",
+      "matchFileNames": [
+        "packages/create-custom-report/templates/**/package.json"
+      ],
+      "matchPackageNames": [
+        "@leanix/reporting",
+        "@sap/vite-plugin-leanix-custom-report"
+      ],
+      "rangeStrategy": "replace"
     }
   ],
   "prConcurrentLimit": 2
