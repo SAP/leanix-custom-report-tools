@@ -12,14 +12,14 @@
     "node": ">=22.0.0"
   },
   "dependencies": {
-    "@leanix/reporting": "0.4.176",
+    "@leanix/reporting": "^0.4.176",
     "chart.js": "4.5.1",
     "react": "19.2.5",
     "react-dom": "19.2.5"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "@sap/vite-plugin-leanix-custom-report": "8.6.0",
+    "@sap/vite-plugin-leanix-custom-report": "^8.7.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.1",
