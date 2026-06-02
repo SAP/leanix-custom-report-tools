@@ -6,7 +6,6 @@
     "./*": "./src/*.ts"
   },
   "scripts": {
-    "test": "jest",
     "generate:api": "node scripts/generate-api.mjs"
   },
   "dependencies": {
