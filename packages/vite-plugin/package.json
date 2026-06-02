@@ -15,19 +15,27 @@
   ],
   "main": "dist/index.cjs",
   "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
-    "test": "jest"
+    "build": "tsup"
   },
   "peerDependencies": {
     "vite": "^8.0.5"
   },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "dependencies": {
-    "http-proxy-middleware": "4.0.0",
-    "https-proxy-agent": "9.0.0"
+    "http-proxy-middleware": "4.0.0"
   },
   "devDependencies": {}
 }

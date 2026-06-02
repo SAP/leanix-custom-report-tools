@@ -7,7 +7,7 @@ import { generate as uuid } from 'short-uuid';
 import pkg from '../package.json' with { type: 'json' };
 import { parseTriStateBoolean } from './utils/parseTriStateBoolean';
 
-const CLI_PATH = resolve(__dirname, '..', pkg.bin);
+const CLI_PATH = resolve(__dirname, '..', Object.values(pkg.bin as Record<string, string>)[0]);
 const projectName = 'test-app';
 let tempDir: string;
 

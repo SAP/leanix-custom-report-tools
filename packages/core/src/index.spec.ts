@@ -65,19 +65,19 @@ describe('the lxr core package', () => {
     const validMetadataDocument = getDummyReportMetadata();
     const invalidMetadataDocument = { ...validMetadataDocument, id: undefined };
 
-    await expect(
+    expect(() =>
       validateDocument(validMetadataDocument, 'lxreport.json')
-    ).resolves.not.toThrow();
+    ).not.toThrow();
     await expect(
       async () =>
         await validateDocument(invalidMetadataDocument, 'lxreport.json')
     ).rejects.toThrow();
-    await expect(
+    expect(() =>
       validateDocument(
         { host: 'demo-us.leanix.net', apitoken: 'token' },
         'lxr.json'
       )
-    ).resolves.not.toThrow();
+    ).not.toThrow();
     await expect(
       async () =>
         await validateDocument({ host: 'demo-us.leanix.net' }, 'lxr.json')

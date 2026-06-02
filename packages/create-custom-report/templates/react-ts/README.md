@@ -39,8 +39,7 @@ The report will run against your SAP LeanIX workspace configured in `lxr.json`.
 
 ```
 src/
-├── App.tsx           # Main component with data logic and SAP LeanIX configuration
-├── BarChart.tsx      # Chart.js visualization component
+├── App.tsx           # Main component with data logic, SAP LeanIX configuration, and chart visualization
 ├── App.css           # Styles
 └── main.tsx          # Application entry point
 ```
@@ -81,7 +80,7 @@ To use a different field, update the `FIELD_NAME` constant in `src/App.tsx`.
 
 Edit `src/App.tsx` to change how data is grouped and displayed.
 
-Edit `src/BarChart.tsx` to customize the Chart.js configuration.
+Edit `src/App.tsx` to customize the Chart.js configuration.
 
 ### Query Different Fact Sheet Types
 

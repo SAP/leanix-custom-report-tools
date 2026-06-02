@@ -228,8 +228,8 @@ Options:
         }
       }
     );
-  } catch (cancelled: any) {
-    console.log(cancelled?.message);
+  } catch (cancelled: unknown) {
+    console.log(cancelled instanceof Error ? cancelled.message : String(cancelled));
     process.exit(1);
   }
 

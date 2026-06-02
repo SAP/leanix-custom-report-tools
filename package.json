@@ -25,36 +25,31 @@
     "build:vite-plugin": "npm run build -w=@sap/vite-plugin-leanix-custom-report",
     "build:create-custom-report": "npm run build -w=@sap/create-leanix-custom-report",
     "build": "npm run build:vite-plugin && npm run build:create-custom-report",
-    "test:core": "jest --selectProjects @lxr/core",
-    "test:vite-plugin": "jest --selectProjects @lxr/core vite-plugin",
-    "test:create-custom-report": "jest --selectProjects @lxr/core create-custom-report",
-    "test": "jest",
+    "test:core": "vitest run packages/core",
+    "test:create-custom-report": "vitest run packages/create-custom-report",
+    "test": "vitest run",
     "type-check": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/vite-plugin/tsconfig.json && tsc --noEmit -p packages/create-custom-report/tsconfig.json",
     "lint": "eslint --fix",
     "format": "prettier --write .",
     "update": "npx npm-check-updates@latest -u",
-    "create-custom-report-local": "./scripts/create-custom-report-local.sh"
+    "create-custom-report-local": "./scripts/create-custom-report-local.sh",
+    "prepare": "lefthook install"
   },
   "dependencies": {
     "tsup": "8.5.1",
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@babel/preset-env": "7.29.5",
-    "@babel/preset-typescript": "7.28.5",
     "@eslint/js": "10.0.1",
-    "@jest/types": "30.3.0",
-    "@swc/core": "1.15.33",
-    "@types/jest": "30.0.0",
     "@types/node": "24.12.2",
-    "babel-jest": "30.3.0",
     "eslint": "10.3.0",
-    "jest": "30.3.0",
+    "lefthook": "^2.1.9",
+    "prettier": "^3.8.3",
     "rimraf": "6.1.3",
     "shx": "0.4.0",
-    "ts-node": "10.9.2",
     "typescript": "6.0.3",
     "typescript-eslint": "8.59.2",
-    "vite": "8.0.10"
+    "vite": "8.0.10",
+    "vitest": "^4.1.8"
   }
 }
