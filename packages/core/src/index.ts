@@ -1,4 +1,10 @@
 import type { AccessToken } from '@lxr/core/models/access-token';
+import type {
+  CustomReportRow,
+  CustomReportState,
+  CustomReportVersionUploadResponse,
+  ScanResult
+} from '@lxr/core/models/custom-report-row';
 import type { CustomReportMetadata } from '@lxr/core/models/custom-report-metadata';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
 import type { LeanIXCredentials } from '@lxr/core/models/leanix-credentials';
@@ -7,18 +13,30 @@ import type {
   ReportUploadResponseData,
   ReportsResponseData
 } from '@lxr/core/models/report-response-data';
-import type { RequestInit } from 'node-fetch';
+import type { paths } from './generated/reports-service';
 import type { ZodObject } from 'zod';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { ProxyAgent, setGlobalDispatcher } from 'undici';
+import { execFile } from 'node:child_process';
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { URL } from 'node:url';
+import { promisify } from 'node:util';
 import { customReportMetadataSchema } from '@lxr/core/models/custom-report-metadata';
+import { CUSTOM_REPORT_TERMINAL_FAILURE_STATES } from '@lxr/core/models/custom-report-row';
 import { leanixCredentialsSchema } from '@lxr/core/models/leanix-credentials';
 import { packageJsonLxrSchema } from '@lxr/core/models/package-json';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import { jwtDecode } from 'jwt-decode';
-import fetch from 'node-fetch';
+import createClient from 'openapi-fetch';
 import { c } from 'tar';
+
+const execFileAsync = promisify(execFile);
 
 const snakeToCamel = (s: string): string =>
   s.replace(/([-_]\w)/g, (g) => g[1].toUpperCase());
@@ -68,6 +86,7 @@ export async function readLxrJson(path?: string): Promise<LeanIXCredentials> {
     credentials.store = store;
   }
   await validateDocument(credentials, 'lxr.json');
+  initProxy(credentials.proxyURL);
   return credentials;
 }
 
@@ -89,51 +108,45 @@ export async function readMetadataJson(
   return metadata;
 }
 
-export function createProxyAgent(proxyURL: string): HttpsProxyAgent<string> {
-  return new HttpsProxyAgent(new URL(proxyURL));
+export function initProxy(proxyURL?: string): void {
+  if (typeof proxyURL === 'string' && proxyURL.length > 0) {
+    // Applies to all outgoing requests, including Node's native fetch.
+    // https://github.com/nodejs/undici#undicisetglobaldispatcherdispatcher
+    setGlobalDispatcher(new ProxyAgent(proxyURL));
+  }
 }
 
 export async function getAccessToken(
   credentials: LeanIXCredentials
 ): Promise<AccessToken> {
   const uri = `https://${credentials.host}/services/mtm/v1/oauth2/token?grant_type=client_credentials`;
-  const headers = {
-    'Content-Type': 'application/x-www-form-urlencoded',
-    Authorization: `Basic ${Buffer.from(`apitoken:${credentials.apitoken}`).toString('base64')}`
-  };
-  const options: RequestInit = { method: 'post', headers };
-  if (
-    typeof credentials.proxyURL === 'string' &&
-    credentials.proxyURL.length > 0
-  ) {
-    options.agent = createProxyAgent(credentials.proxyURL);
+  const res = await fetch(uri, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: `Basic ${Buffer.from(`apitoken:${credentials.apitoken}`).toString('base64')}`
+    }
+  });
+  const content =
+    res.headers.get('content-type') === 'application/json'
+      ? await res.json()
+      : await res.text();
+  if (!res.ok) {
+    return await Promise.reject(res.status);
   }
-  const accessToken: AccessToken = await fetch(uri, options)
-    .then(async (res) => {
-      const content =
-        await res[
-          res.headers.get('content-type') === 'application/json'
-            ? 'json'
-            : 'text'
-        ]();
-      return res.ok ? content : await Promise.reject(res.status);
-    })
-    .then((accessToken) =>
-      Object.entries(accessToken as AccessToken).reduce(
-        (accumulator, [key, value]) => ({
-          ...accumulator,
-          [snakeToCamel(key)]: value
-        }),
-        {
-          accessToken: '',
-          expired: false,
-          expiresIn: 0,
-          scope: '',
-          tokenType: ''
-        }
-      )
-    );
-  return accessToken;
+  return Object.entries(content as AccessToken).reduce(
+    (accumulator, [key, value]) => ({
+      ...accumulator,
+      [snakeToCamel(key)]: value
+    }),
+    {
+      accessToken: '',
+      expired: false,
+      expiresIn: 0,
+      scope: '',
+      tokenType: ''
+    }
+  ) as AccessToken;
 }
 
 export function getAccessTokenClaims(accessToken: AccessToken): JwtClaims {
@@ -191,7 +204,7 @@ export async function uploadBundle(params: {
     assetId: string;
   };
 }): Promise<ReportUploadResponseData> {
-  const { bundle, bearerToken, proxyURL, store } = params;
+  const { bundle, bearerToken, store } = params;
   const storeHost = store?.host ?? 'store.leanix.net';
   const assetId = store?.assetId ?? null;
   const decodedToken: JwtClaims = jwtDecode(bearerToken);
@@ -199,32 +212,24 @@ export async function uploadBundle(params: {
     assetId !== null
       ? `https://${storeHost}/services/torg/v1/assetversions/${assetId}/payload`
       : `${decodedToken.instanceUrl}/services/pathfinder/v1/reports/upload`;
-  const headers = { Authorization: `Bearer ${bearerToken}` };
   const form = new FormData();
-
   form.append('file', bundle);
-  const options: RequestInit = { method: 'post', headers, body: form };
-  if (typeof proxyURL === 'string' && proxyURL.length > 0) {
-    options.agent = createProxyAgent(proxyURL);
-  }
-  const reportResponseData: ReportUploadResponseData = await fetch(
-    url,
-    options
-  ).then(async (res) => {
-    const contentType: string | null = res.headers.get('content-type');
-    const content =
-      contentType === 'application/json' ? await res.json() : await res.text();
-    if (!res.ok) {
-      throw new Error(JSON.stringify({ status: res.status, message: content }));
-    }
-    return content as ReportUploadResponseData;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${bearerToken}` },
+    body: form,
   });
-  return reportResponseData;
+  const contentType = res.headers.get('content-type');
+  const content =
+    contentType === 'application/json' ? await res.json() : await res.text();
+  if (!res.ok) {
+    throw new Error(JSON.stringify({ status: res.status, message: content }));
+  }
+  return content as ReportUploadResponseData;
 }
 
 export async function fetchWorkspaceReports(
-  bearerToken: string,
-  proxyURL?: string
+  bearerToken: string
 ): Promise<CustomReportMetadata[]> {
   const decodedToken: JwtClaims = jwtDecode(bearerToken);
   const headers = { Authorization: `Bearer ${bearerToken}` };
@@ -237,15 +242,11 @@ export async function fetchWorkspaceReports(
     if (cursor !== null) {
       url.searchParams.append('cursor', cursor);
     }
-    const options: RequestInit = { method: 'get', headers };
-    if (proxyURL !== undefined) {
-      options.agent = createProxyAgent(proxyURL);
-    }
-    const reportsPage: ReportsResponseData = await fetch(
-      url.toString(),
-      options
-    ).then(async (res) => (await res.json()) as ReportsResponseData);
-    return reportsPage;
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      headers,
+    });
+    return (await res.json()) as ReportsResponseData;
   };
   const reports: CustomReportMetadata[] = [];
   let cursor = null;
@@ -266,22 +267,148 @@ export async function fetchWorkspaceReports(
 
 export async function deleteWorkspaceReportById(
   reportId: string,
-  bearerToken: string,
-  proxyURL?: string
+  bearerToken: string
 ): Promise<204 | number> {
   const decodedToken: JwtClaims = jwtDecode(bearerToken);
-  const headers = { Authorization: `Bearer ${bearerToken}` };
   const url = new URL(
     `${decodedToken.instanceUrl}/services/pathfinder/v1/reports/${reportId}`
   );
-  const options: RequestInit = { method: 'delete', headers };
-  if (proxyURL !== undefined) {
-    options.agent = createProxyAgent(proxyURL);
-  }
-  const status = await fetch(url.toString(), options).then(
-    ({ status }) => status
-  );
+  const { status } = await fetch(url.toString(), {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${bearerToken}` },
+  });
   return status === 204
     ? await Promise.resolve(status)
     : await Promise.reject(status);
+}
+
+// --- v2 upload (Reports Service) ---
+
+export async function npmPackBundle(cwd: string): Promise<string> {
+  const packDir = mkdtempSync(join(tmpdir(), 'lxr-npm-pack-'));
+  await execFileAsync('npm', ['shrinkwrap'], { cwd });
+  const { stdout } = await execFileAsync(
+    'npm',
+    ['pack', '--pack-destination', packDir, '--json'],
+    { cwd }
+  );
+  const parsed = JSON.parse(stdout) as Array<{ filename: string }>;
+  if (!Array.isArray(parsed) || parsed.length === 0 || !parsed[0]?.filename) {
+    throw new Error(`unexpected npm pack output: ${stdout}`);
+  }
+  return resolve(packDir, parsed[0].filename);
+}
+
+function reportsServiceClient(params: {
+  host: string;
+  bearerToken: string;
+  baseURL?: string;
+}): ReturnType<typeof createClient<paths>> {
+  const { host, bearerToken, baseURL } = params;
+  return createClient<paths>({
+    baseUrl: baseURL ?? `https://${host}/services/reports/v1`,
+    headers: { Authorization: `Bearer ${bearerToken}` },
+  });
+}
+
+export async function uploadReportV2(params: {
+  host: string;
+  bearerToken: string;
+  bundle: Blob;
+  baseURL?: string;
+}): Promise<CustomReportVersionUploadResponse> {
+  const { bundle } = params;
+  const client = reportsServiceClient(params);
+  const { data, error, response } = await client.POST(
+    '/customReportVersions/upload',
+    {
+      body: bundle,
+      bodySerializer: (b) => b,
+      headers: { 'Content-Type': 'application/gzip' }
+    }
+  );
+  if (error !== undefined || !response.ok || data === undefined) {
+    throw new Error(
+      JSON.stringify({ status: response.status, message: error ?? data })
+    );
+  }
+  return data;
+}
+
+export class ReportStateError extends Error {
+  constructor(
+    public readonly status: CustomReportState,
+    public readonly buildLog: string | null,
+    public readonly scanResult: ScanResult | null,
+    message: string
+  ) {
+    super(message);
+    this.name = 'ReportStateError';
+  }
+}
+
+export async function pollReportState(params: {
+  host: string;
+  customReportVersionId: string;
+  bearerToken: string;
+  onUpdate?: (state: CustomReportState) => void;
+  intervalMs?: number;
+  timeoutMs?: number;
+  baseURL?: string;
+}): Promise<CustomReportRow> {
+  const {
+    customReportVersionId,
+    onUpdate,
+    intervalMs = 2000,
+    timeoutMs = 5 * 60 * 1000
+  } = params;
+  const client = reportsServiceClient(params);
+  const sleep = (ms: number): Promise<void> =>
+    new Promise((r) => setTimeout(r, ms));
+  const deadline = Date.now() + timeoutMs;
+  let lastState: CustomReportState | null = null;
+  while (Date.now() < deadline) {
+    const { data, error, response } = await client.GET(
+      '/customReportVersions/{customReportVersionId}',
+      { params: { path: { customReportVersionId } } }
+    );
+    if (error !== undefined || data === undefined) {
+      throw new Error(
+        JSON.stringify({ status: response.status, message: error })
+      );
+    }
+    // scanResult is not yet declared in the OpenAPI spec; the reports service
+    // adds it on terminal states (notably VULNERABLE) so the CLI can render
+    // npm audit findings. Cast until openapi-typescript regen catches up.
+    const scanResult =
+      (data as { scanResult?: ScanResult | null }).scanResult ?? null;
+    const row: CustomReportRow = {
+      id: data.id,
+      status: data.status,
+      buildLog: data.buildLog ?? null,
+      scanResult
+    };
+    if (row.status !== lastState) {
+      lastState = row.status;
+      onUpdate?.(row.status);
+    }
+    if (row.status === 'READY') {
+      return row;
+    }
+    if (CUSTOM_REPORT_TERMINAL_FAILURE_STATES.includes(row.status)) {
+      const reason = row.status === 'VULNERABLE'
+          ? 'security scan found vulnerabilities'
+          : 'build failed';
+      throw new ReportStateError(
+        row.status,
+        row.buildLog,
+        row.scanResult,
+        `${row.status}: ${reason}`
+      );
+    }
+    await sleep(intervalMs);
+  }
+  throw new Error(
+    `timed out after ${timeoutMs}ms waiting for report ${customReportVersionId} to reach ready state (last state: ${lastState ?? 'unknown'})`
+  );
 }

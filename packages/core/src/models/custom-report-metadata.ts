@@ -8,7 +8,8 @@ export const customReportMetadataSchema = zod.object({
   author: zod.string(),
   description: zod.string(),
   aiAssisted: zod.boolean().optional(),
-  defaultConfig: zod.record(zod.string(), zod.any()).optional()
+  defaultConfig: zod.record(zod.string(), zod.any()).optional(),
+  uploadVersion: zod.literal(2).optional()
 });
 
 export type CustomReportMetadata = zod.infer<typeof customReportMetadataSchema>;

@@ -12,13 +12,16 @@ import {
   getAccessToken,
   getAccessTokenClaims,
   getLaunchUrl,
+  npmPackBundle,
+  pollReportState,
   readLxrJson,
   readMetadataJson,
+  ReportStateError,
   uploadBundle,
+  uploadReportV2,
   writeReportMetadata
 } from '@lxr/core/index';
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import { ZodError } from 'zod';
 import { resolveHostname } from './helpers';
 
@@ -39,6 +42,7 @@ export default function leanixPlugin(
   let launchUrl: string;
   let relayServer: ReturnType<typeof createHttpServer> | null = null;
   let devMetadata: CustomReportMetadata | null = null;
+  let projectRoot: string = '';
 
   const lxrPlugin: Plugin = {
     name: 'vite-plugin-leanix-custom-report',
@@ -71,6 +75,7 @@ export default function leanixPlugin(
 
     async configResolved(resolvedConfig: ResolvedConfig) {
       logger = resolvedConfig.logger;
+      projectRoot = resolvedConfig.root;
       devMetadata = await readMetadataJson(
         join(resolvedConfig.root, 'package.json')
       ).catch(() => null);
@@ -118,9 +123,6 @@ export default function leanixPlugin(
           target: targetOrigin,
           changeOrigin: true,
           secure: true,
-          agent: credentials.proxyURL
-            ? new HttpsProxyAgent(credentials.proxyURL)
-            : undefined,
           on: {
             proxyReq: (proxyReq, req) => {
               // Rewrite Origin header: localhost -> LeanIX host
@@ -138,9 +140,19 @@ export default function leanixPlugin(
               // So we prepend the workspace name to paths that need it
               // Root-level paths like /frontends/, /services/, /favicon, etc. should pass through unchanged
               const originalPath = proxyReq.path;
-              const rootPaths = ['/frontends/', '/services/', '/favicon.ico', '/lx-frontend-meta.json', '/Shibboleth.sso/'];
-              const isRootPath = rootPaths.some(p => originalPath.startsWith(p));
-              const hasWorkspacePrefix = originalPath.startsWith(`/${workspaceName}/`);
+              const rootPaths = [
+                '/frontends/',
+                '/services/',
+                '/favicon.ico',
+                '/lx-frontend-meta.json',
+                '/Shibboleth.sso/'
+              ];
+              const isRootPath = rootPaths.some((p) =>
+                originalPath.startsWith(p)
+              );
+              const hasWorkspacePrefix = originalPath.startsWith(
+                `/${workspaceName}/`
+              );
               if (!isRootPath && !hasWorkspacePrefix && req.method === 'GET') {
                 proxyReq.path = `/${workspaceName}${originalPath}`;
               }
@@ -204,7 +216,6 @@ export default function leanixPlugin(
     // On a normal build we only write lxreport.json metadata alongside the output.
     // On upload mode we also package and ship the bundle to the workspace.
     async writeBundle(options, _outputBundle) {
-
       // Read and validate metadata from package.json
       let metadata: CustomReportMetadata | undefined;
       try {
@@ -244,19 +255,74 @@ export default function leanixPlugin(
         process.exit(1);
       }
 
-      // Write lxreport.json to dist/
-      writeReportMetadata(metadata, options.dir);
       if (!shouldUpload) {
+        writeReportMetadata(metadata, options.dir);
         return;
       }
 
+      const { accessToken: bearerToken } = accessToken!;
+      const { store } = credentials;
+      const { name, version } = metadata;
+
+      // v2 upload (Reports Service): opt-in via leanixReport.uploadVersion = 2 in package.json
+      if (metadata.uploadVersion === 2) {
+        logger?.warn('⚠️  Using EXPERIMENTAL v2 upload (Reports Service).');
+        if (claims === null) {
+          throw new Error('Cannot upload: missing access token claims.');
+        }
+        const { workspaceName } = claims.principal.permission;
+        try {
+          const tarball = await npmPackBundle(projectRoot);
+          const bundle = await openAsBlob(tarball);
+          logger?.info(
+            `Uploading "${name}" v${version} to workspace "${workspaceName}" via Reports Service...`
+          );
+          const { customReportVersionId } = await uploadReportV2({
+            host: credentials.host,
+            bearerToken,
+            bundle
+          });
+          logger?.info(`  customReportVersionId: ${customReportVersionId}`);
+          await pollReportState({
+            host: credentials.host,
+            customReportVersionId,
+            bearerToken,
+            onUpdate: (state) => logger?.info(`  state: ${state}`)
+          });
+          logger?.info('🚀 Upload complete.');
+        } catch (err: any) {
+          logger?.error('💥 Error during upload to Reports Service...');
+          if (err instanceof ReportStateError) {
+            if (err.status === 'VULNERABLE' && err.scanResult !== null) {
+              logger?.error('🛡  Scan result:');
+              logger?.error(JSON.stringify(err.scanResult, null, 2));
+            } else if (err.buildLog) {
+              const lines = err.buildLog.split('\n');
+              const MAX_LINES = 50;
+              const tail = lines.length > MAX_LINES ? lines.slice(-MAX_LINES) : lines;
+              logger?.error('📜 Build log:');
+              if (lines.length > MAX_LINES) {
+                logger?.error(`  … (showing last ${MAX_LINES} of ${lines.length} lines)`);
+              }
+              for (const line of tail) {
+                logger?.error(`  ${line}`);
+              }
+            }
+          }
+          logger?.error(`💣 ${err}`);
+          process.exit(1);
+        }
+        return;
+      }
+
+      // Write lxreport.json to dist/ (legacy v1 upload only)
+      writeReportMetadata(metadata, options.dir);
+
+      const { id } = metadata;
       // Upload mode: package the dist and upload to the workspace
       const bundlePath = await createBundle(options.dir);
       const bundle = await openAsBlob(bundlePath);
       try {
-        const { accessToken: bearerToken } = accessToken!;
-        const { proxyURL, store } = credentials;
-        const { id, version } = metadata;
         if (claims !== null) {
           if (typeof store?.assetId === 'string') {
             logger.info(
@@ -271,7 +337,6 @@ export default function leanixPlugin(
         const result = await uploadBundle({
           bundle,
           bearerToken,
-          proxyURL,
           store
         });
         if (result.status === 'ERROR') {

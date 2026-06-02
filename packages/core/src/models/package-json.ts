@@ -9,7 +9,8 @@ export const packageJsonLxrSchema = zod.object({
     id: zod.string(),
     title: zod.string(),
     aiAssisted: zod.boolean().optional(),
-    defaultConfig: zod.record(zod.string(), zod.any()).optional()
+    defaultConfig: zod.record(zod.string(), zod.any()).optional(),
+    uploadVersion: zod.literal(2).optional()
   })
 });
 
