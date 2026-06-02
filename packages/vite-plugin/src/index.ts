@@ -23,6 +23,7 @@ import {
 } from '@lxr/core/index';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { ZodError } from 'zod';
+import { checkPackageVersions } from './check-packages';
 import { resolveHostname } from './helpers';
 
 export interface LeanIXPluginOptions {
@@ -80,6 +81,7 @@ export default function leanixPlugin(
         join(resolvedConfig.root, 'package.json')
       ).catch(() => null);
       if (loadWorkspaceCredentials) {
+        await checkPackageVersions(projectRoot, logger);
         try {
           if (
             typeof credentials.proxyURL === 'string' &&
@@ -95,7 +97,9 @@ export default function leanixPlugin(
             );
           }
         } catch (err) {
-          logger?.error(err === 401 ? '💥 Invalid SAP LeanIX API token' : `${err}`);
+          logger?.error(
+            err === 401 ? '💥 Invalid SAP LeanIX API token' : `${err}`
+          );
           process.exit(1);
         }
       }
@@ -299,10 +303,13 @@ export default function leanixPlugin(
             } else if (err.buildLog) {
               const lines = err.buildLog.split('\n');
               const MAX_LINES = 50;
-              const tail = lines.length > MAX_LINES ? lines.slice(-MAX_LINES) : lines;
+              const tail =
+                lines.length > MAX_LINES ? lines.slice(-MAX_LINES) : lines;
               logger?.error('📜 Build log:');
               if (lines.length > MAX_LINES) {
-                logger?.error(`  … (showing last ${MAX_LINES} of ${lines.length} lines)`);
+                logger?.error(
+                  `  … (showing last ${MAX_LINES} of ${lines.length} lines)`
+                );
               }
               for (const line of tail) {
                 logger?.error(`  ${line}`);
