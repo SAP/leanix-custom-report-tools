@@ -1,26 +1,24 @@
-import { jest } from '@jest/globals';
+import { vi, type MockedFunction } from 'vitest';
 
-jest.mock('node:os', () => ({ platform: jest.fn() }));
-jest.mock('node:fs', () => ({
-  existsSync: jest.fn(),
-  writeFileSync: jest.fn(),
-  mkdirSync: jest.fn()
+vi.mock('node:os', () => ({ platform: vi.fn() }));
+vi.mock('node:fs', () => ({
+  existsSync: vi.fn(),
+  writeFileSync: vi.fn(),
+  mkdirSync: vi.fn()
 }));
-jest.mock('node:child_process', () => ({ execFileSync: jest.fn() }));
+vi.mock('node:child_process', () => ({ execFileSync: vi.fn() }));
 
 import { platform } from 'node:os';
 import { existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { detectBrowser } from './generateMcpConfig';
 
-const mockedPlatform = platform as jest.MockedFunction<typeof platform>;
-const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
-const mockedExecFileSync = execFileSync as jest.MockedFunction<
-  typeof execFileSync
->;
+const mockedPlatform = platform as MockedFunction<typeof platform>;
+const mockedExistsSync = existsSync as MockedFunction<typeof existsSync>;
+const mockedExecFileSync = execFileSync as MockedFunction<typeof execFileSync>;
 
 beforeEach(() => {
-  jest.resetAllMocks();
+  vi.resetAllMocks();
 });
 
 describe('detectBrowser', () => {
