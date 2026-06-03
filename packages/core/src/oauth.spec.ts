@@ -22,13 +22,14 @@ jest.mock('@lxr/core/oauth', () => ({
 }));
 
 import {
-  deleteUserCredentials,
+  readCredentials,
+  saveCredentials
+} from './credentials';
+import {
   deriveCodeChallenge,
   generateCodeVerifier,
   getHostFromAccessToken,
-  readUserCredentials,
-  refreshAccessToken,
-  writeUserCredentials
+  refreshAccessToken
 } from '@lxr/core/index';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -110,52 +111,37 @@ describe('credential storage', () => {
   beforeEach(() => {
     tmpDir = mkdtempSync(join(realTmpdir(), 'lxr-cred-test-'));
     (os.homedir as jest.Mock).mockReturnValue(tmpDir);
+    jest.spyOn(process, 'cwd').mockReturnValue(tmpDir);
   });
 
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
-    jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
 
-  describe('readUserCredentials', () => {
+  describe('readCredentials (user file)', () => {
     it('returns null when credentials file does not exist', () => {
-      expect(readUserCredentials()).toBeNull();
+      expect(readCredentials()).toBeNull();
     });
 
-    it('returns null and logs warning for invalid JSON', () => {
+    it('throws on invalid JSON', () => {
       mkdirSync(join(tmpDir, '.leanix'), { recursive: true });
-      writeFileSync(join(tmpDir, '.leanix', 'credentials'), 'not valid json');
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-      expect(readUserCredentials()).toBeNull();
-      expect(warnSpy).toHaveBeenCalled();
-      warnSpy.mockRestore();
+      writeFileSync(join(tmpDir, '.leanix', 'lxr.json'), 'not valid json');
+      expect(() => readCredentials()).toThrow();
     });
 
     it('returns parsed credentials for a valid file', () => {
       const creds = makeCredentials();
-      writeUserCredentials(creds);
-      expect(readUserCredentials()).toEqual(creds);
+      saveCredentials(creds);
+      expect(readCredentials()?.credentials).toEqual(creds);
     });
   });
 
-  describe('writeUserCredentials', () => {
+  describe('saveCredentials', () => {
     it('creates directory and writes credentials as JSON', () => {
       const creds = makeCredentials();
-      writeUserCredentials(creds);
-      expect(readUserCredentials()).toEqual(creds);
-    });
-  });
-
-  describe('deleteUserCredentials', () => {
-    it('deletes the credentials file', () => {
-      writeUserCredentials(makeCredentials());
-      expect(readUserCredentials()).not.toBeNull();
-      deleteUserCredentials();
-      expect(readUserCredentials()).toBeNull();
-    });
-
-    it('is a no-op when the file does not exist', () => {
-      expect(() => deleteUserCredentials()).not.toThrow();
+      saveCredentials(creds);
+      expect(readCredentials()?.credentials).toEqual(creds);
     });
   });
 });
@@ -224,6 +210,11 @@ describe('resolveAccessToken', () => {
   });
 
   it('uses lxr.json apitoken path when apitoken and host are set', async () => {
+    jest.spyOn(process, 'cwd').mockReturnValue(tmpDir);
+    writeFileSync(
+      join(tmpDir, 'lxr.json'),
+      JSON.stringify({ host: 'lxrjson.leanix.net', apitoken: 'mytoken' })
+    );
     const accessToken = makeFakeJwt({ instanceUrl: 'https://lxrjson.leanix.net' });
     fetchMock.mockResolvedValueOnce({
       ok: true,
@@ -236,25 +227,27 @@ describe('resolveAccessToken', () => {
       })
     });
 
-    const result = await resolveAccessToken({ host: 'lxrjson.leanix.net', apitoken: 'mytoken' });
+    const result = await resolveAccessToken();
     expect(result.host).toBe('lxrjson.leanix.net');
     expect(result.bearerToken).toBe(accessToken);
+    expect(result.expiresAt).toBeUndefined(); // bearer token exchange gives no expiry
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('uses valid cached credentials without any network call', async () => {
     const creds = makeCredentials({ expires_at: Date.now() + 3600 * 1000 });
-    writeUserCredentials(creds);
+    saveCredentials(creds);
 
     const result = await resolveAccessToken();
     expect(result.bearerToken).toBe(creds.oauth!.access_token);
     expect(result.host).toBe(creds.host);
+    expect(result.expiresAt).toBe(creds.oauth!.expires_at);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('refreshes expired token and returns new bearer token', async () => {
     const expiredCreds = makeCredentials({ expires_at: Date.now() - 1000 });
-    writeUserCredentials(expiredCreds);
+    saveCredentials(expiredCreds);
 
     const newToken = makeFakeJwt({ instanceUrl: 'https://test.leanix.net' });
     fetchMock.mockResolvedValueOnce({
@@ -268,12 +261,13 @@ describe('resolveAccessToken', () => {
 
     const result = await resolveAccessToken();
     expect(result.bearerToken).toBe(newToken);
+    expect(result.expiresAt).toBeGreaterThan(Date.now());
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('falls through to OAuth flow when refresh fails (no browser opened)', async () => {
     const expiredCreds = makeCredentials({ expires_at: Date.now() - 1000 });
-    writeUserCredentials(expiredCreds);
+    saveCredentials(expiredCreds);
 
     fetchMock.mockResolvedValueOnce({ ok: false, status: 401 });
 

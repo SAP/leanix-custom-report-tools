@@ -1,32 +1,42 @@
 import type { Credentials } from './models/leanix-credentials';
 import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { dirname } from 'node:path';
 import { credentialsSchema } from './models/leanix-credentials';
+import { getProjectLxrJsonPath, getUserLxrJsonPath } from './constants';
 
-const getUserCredentialsPath = () => join(homedir(), '.leanix', 'credentials');
-
-export function readUserCredentials(): Credentials | null {
+function readLxrJson(path: string): Credentials | null {
   try {
-    const raw = readFileSync(getUserCredentialsPath(), 'utf8');
-    return credentialsSchema.parse(JSON.parse(raw));
+    return credentialsSchema.parse(JSON.parse(readFileSync(path, 'utf8')));
   } catch (e: any) {
-    if (e?.code !== 'ENOENT') {
-      console.warn('[lxr] Could not read ~/.leanix/credentials:', e?.message ?? e);
-    }
-    return null;
+    if (e?.code === 'ENOENT') return null;
+    throw e;
   }
 }
 
-export function writeUserCredentials(credentials: Credentials): void {
-  mkdirSync(join(homedir(), '.leanix'), { recursive: true });
-  writeFileSync(getUserCredentialsPath(), JSON.stringify(credentials, null, 2), { mode: 0o600 });
+function saveLxrJson(path: string, credentials: Credentials): void {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify(credentials, null, 2), { mode: 0o600 });
 }
 
-export function deleteUserCredentials(): void {
-  try {
-    unlinkSync(getUserCredentialsPath());
-  } catch (e: any) {
-    if (e?.code !== 'ENOENT') throw e;
+export function readCredentials(): { credentials: Credentials; path: string } | null {
+  for (const path of [getProjectLxrJsonPath(), getUserLxrJsonPath()]) {
+    const credentials = readLxrJson(path);
+    if (credentials) return { credentials, path };
+  }
+  return null;
+}
+
+export function saveCredentials(credentials: Credentials, path = getUserLxrJsonPath()): void {
+  saveLxrJson(path, credentials);
+}
+
+export function clearCredentials(path: string): void {
+  const existing = readLxrJson(path);
+  if (!existing) return;
+  const { host, proxyURL } = existing;
+  if (host !== undefined || proxyURL !== undefined) {
+    saveLxrJson(path, { host, proxyURL });
+  } else {
+    unlinkSync(path);
   }
 }

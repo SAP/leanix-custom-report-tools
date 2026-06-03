@@ -1,6 +1,5 @@
 import type { CustomReportMetadata } from '@lxr/core/models/custom-report-metadata';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
-import type { Credentials } from '@lxr/core/models/leanix-credentials';
 import type { ResolvedAuth } from '@lxr/core/index';
 import type { AddressInfo } from 'node:net';
 import type { Logger, Plugin, ResolvedConfig } from 'vite';
@@ -11,7 +10,6 @@ import {
   createBundle,
   decodeBearerToken,
   getLaunchUrl,
-  readLxrJson,
   readMetadataJson,
   resolveAccessToken,
   uploadBundle,
@@ -22,23 +20,16 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import { ZodError } from 'zod';
 import { resolveHostname } from './helpers';
 
-export interface LeanIXPluginOptions {
-  packageJsonPath?: string;
-}
-
-export default function leanixPlugin(
-  pluginOptions?: LeanIXPluginOptions
-): Plugin[] {
+export default function leanixPlugin(): Plugin[] {
   let logger: Logger;
   let resolvedAuth: ResolvedAuth | null = null;
   let claims: JwtClaims | null = null;
   let shouldUpload: boolean = false;
   let loadWorkspaceCredentials: boolean = false;
-  let lxrJson: Credentials | null = null;
   let viteDevServerUrl: string;
   let launchUrl: string;
   let relayServer: ReturnType<typeof createHttpServer> | null = null;
-  let devMetadata: CustomReportMetadata | null = null;
+  let metadata: CustomReportMetadata;
 
   const lxrPlugin: Plugin = {
     name: 'vite-plugin-leanix-custom-report',
@@ -51,28 +42,37 @@ export default function leanixPlugin(
       if (loadWorkspaceCredentials) {
         config.base = '';
         config.server = { ...(config.server ?? {}), host: true, cors: true };
-        try {
-          lxrJson = await readLxrJson();
-        } catch (error) {
-          const code = (error as { code: string })?.code ?? null;
-          if (code !== 'ENOENT') {
-            logger = logger ?? console;
-            logger.error(error as string);
-            process.exit(1);
-          }
-          lxrJson = null;
-        }
       }
     },
 
     async configResolved(resolvedConfig: ResolvedConfig) {
       logger = resolvedConfig.logger;
-      devMetadata = await readMetadataJson(
-        join(resolvedConfig.root, 'package.json')
-      ).catch(() => null);
+      
+      try {
+        metadata = readMetadataJson(join(resolvedConfig.root, 'package.json'));
+      } catch (err: any) {
+        if (err?.code === 'ENOENT') {
+          logger.error(`💥 Could not find metadata file at "${err.path}"`);
+        } else if (err instanceof ZodError) {
+          logger.error(`💥 Found ${err.issues.length} errors while validating metadata`);
+          for (const issue of err.issues) {
+            if (issue.code === 'invalid_type') {
+              const { code, expected, path, message } = issue;
+              logger.error(` ${message} ${path} - ${code}, expected ${expected}`);
+            } else {
+              const { code, path, message } = issue;
+              logger.error(` ${message} ${path} - ${code}`);
+            }
+          }
+        } else {
+          logger.error(`💥 Unknown error`, err);
+        }
+        process.exit(1);
+      }
+
       if (loadWorkspaceCredentials) {
         try {
-          resolvedAuth = await resolveAccessToken(lxrJson ?? undefined);
+          resolvedAuth = await resolveAccessToken();
           if (resolvedAuth.proxyURL) {
             logger?.info(`  Using proxy: ${resolvedAuth.proxyURL}`);
           }
@@ -169,7 +169,7 @@ export default function leanixPlugin(
             viteDevServerUrl,
             resolvedAuth.bearerToken,
             relayUrl,
-            devMetadata?.title
+            metadata?.title
           );
 
           // Override Vite's resolved URLs BEFORE they are printed
@@ -197,40 +197,6 @@ export default function leanixPlugin(
     // On a normal build we only write lxreport.json metadata alongside the output.
     // On upload mode we also package and ship the bundle to the workspace.
     async writeBundle(options, _outputBundle) {
-
-      // Read and validate metadata from package.json
-      let metadata: CustomReportMetadata | undefined;
-      try {
-        metadata = await readMetadataJson(pluginOptions?.packageJsonPath);
-      } catch (err: any) {
-        if (err?.code === 'ENOENT') {
-          const path: string = err.path;
-          logger?.error(`💥 Could not find metadata file at "${path}"`);
-          logger?.warn('🙋 Have you initialized this project?"');
-        } else if (err instanceof ZodError) {
-          const issues = err.issues;
-          logger.error(
-            `\n💥 Found ${issues.length} errors while validating metadata`
-          );
-          let i = 0;
-          for (const issue of issues) {
-            i++;
-            if (issue.code === 'invalid_type') {
-              const { code, expected, path, message } = issue;
-              logger?.error(
-                `💥 #${i} ${message} ${path} - ${code}, expected ${expected}`
-              );
-            } else {
-              const { code, path, message } = issue;
-              logger?.error(`💥 #${i} ${message} ${path} - ${code}`);
-            }
-          }
-        } else {
-          logger.error(`💥 Unknown error`, err);
-        }
-        process.exit(1);
-      }
-
       // Guard: output.file mode is not supported (custom reports always use output.dir)
       if (options.dir === undefined) {
         logger?.error('💥 No output directory configured.');

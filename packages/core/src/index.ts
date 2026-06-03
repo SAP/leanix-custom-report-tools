@@ -1,35 +1,32 @@
 import type { AccessToken } from '@lxr/core/models/access-token';
-import type { CustomReportMetadata } from '@lxr/core/models/custom-report-metadata';
+import { customReportMetadataSchema, type CustomReportMetadata } from '@lxr/core/models/custom-report-metadata';
 import type { Credentials } from './models/leanix-credentials';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
-import type { PackageJsonLXR } from '@lxr/core/models/package-json';
 import type {
   ReportUploadResponseData,
   ReportsResponseData
 } from '@lxr/core/models/report-response-data';
 import type { RequestInit } from 'node-fetch';
-import type { ZodObject } from 'zod';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { URL } from 'node:url';
-import { customReportMetadataSchema } from '@lxr/core/models/custom-report-metadata';
-import { credentialsSchema } from './models/leanix-credentials';
-import { packageJsonLxrSchema } from '@lxr/core/models/package-json';
 import { FormData } from 'formdata-node';
 import { jwtDecode } from 'jwt-decode';
 import fetch from 'node-fetch';
 import { c } from 'tar';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import { PackageJsonLXR, packageJsonLxrSchema } from './models/package-json';
 
 export type { ResolvedAuth } from './auth';
 export type { Credentials } from './models/leanix-credentials';
 
-export { resolveAccessToken } from './auth';
+export { EXP_BUFFER_SECONDS, resolveAccessToken } from './auth';
 export {
-  readUserCredentials,
-  writeUserCredentials,
-  deleteUserCredentials
+  readCredentials,
+  saveCredentials,
+  clearCredentials
 } from './credentials';
+export { LXR_JSON_FILENAME, getProjectLxrJsonPath, getUserLxrJsonPath } from './constants';
 export {
   deriveCodeChallenge,
   generateCodeVerifier,
@@ -48,70 +45,12 @@ export function createProxyAgent(proxyURL: string): HttpsProxyAgent<string> {
 const snakeToCamel = (s: string): string =>
   s.replace(/([-_]\w)/g, (g) => g[1].toUpperCase());
 
-export async function validateDocument(
-  document: unknown,
-  name: 'lxr.json' | 'lxreport.json' | 'package.json'
-): Promise<PackageJsonLXR | Credentials | CustomReportMetadata> {
-  let schema: ZodObject<any>;
-  let output: PackageJsonLXR | Credentials | CustomReportMetadata;
-  switch (name) {
-    case 'package.json':
-      schema = packageJsonLxrSchema;
-      output = document as PackageJsonLXR;
-      break;
-    case 'lxr.json':
-      schema = credentialsSchema;
-      output = document as Credentials;
-      break;
-    case 'lxreport.json':
-      schema = customReportMetadataSchema;
-      output = document as CustomReportMetadata;
-      break;
-    default:
-      throw new Error(`unknown document name ${name}`);
-  }
-  
-  schema.parse(document);
-  return output;
-}
-
-export async function readLxrJson(path?: string): Promise<Credentials> {
-  if ((path ?? '').length === 0) {
-    path = join(process.cwd(), 'lxr.json');
-  }
-  const {
-    host,
-    apitoken,
-    proxyURL = null,
-    store = null
-  } = JSON.parse(path !== undefined ? readFileSync(path).toString() : '{}');
-  const config: Credentials = { host, apitoken };
-  if (proxyURL !== null) {
-    config.proxyURL = proxyURL;
-  }
-  if (store !== null) {
-    config.store = store;
-  }
-  await validateDocument(config, 'lxr.json');
-  return config;
-}
-
-export async function readMetadataJson(
-  path = resolve(process.cwd(), 'package.json')
-): Promise<CustomReportMetadata> {
-  const fileContent = readFileSync(path).toString();
-  const pkg: PackageJsonLXR = JSON.parse(fileContent);
-  await validateDocument(pkg, 'package.json');
+export function readMetadataJson(path: string): CustomReportMetadata {
+  const pkg: PackageJsonLXR = packageJsonLxrSchema.parse(
+    JSON.parse(readFileSync(path, 'utf8'))
+  );
   const { name, version, author, description, leanixReport } = pkg;
-  const metadata: CustomReportMetadata = {
-    name,
-    version,
-    author,
-    description,
-    ...leanixReport
-  };
-  await validateDocument(metadata, 'lxreport.json');
-  return metadata;
+  return customReportMetadataSchema.parse({ name, version, author, description, ...leanixReport });
 }
 
 export async function getAccessToken(
