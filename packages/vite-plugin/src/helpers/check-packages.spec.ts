@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -44,14 +44,20 @@ function mockNpmView(
   }) as unknown as typeof execFile);
 }
 
-function setInstalled(
+function writeLockFile(
   projectRoot: string,
-  name: string,
-  version: string
+  packages: Record<string, string>
 ): void {
-  const dir = join(projectRoot, 'node_modules', ...name.split('/'));
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name, version }));
+  const lockPackages = Object.fromEntries(
+    Object.entries(packages).map(([name, version]) => [
+      `node_modules/${name}`,
+      { version }
+    ])
+  );
+  writeFileSync(
+    join(projectRoot, 'package-lock.json'),
+    JSON.stringify({ lockfileVersion: 3, packages: lockPackages })
+  );
 }
 
 const PLUGIN = '@sap/vite-plugin-leanix-custom-report';
@@ -84,8 +90,7 @@ describe('checkPackageVersions', () => {
   });
 
   it('does nothing when packages are up-to-date and not deprecated', async () => {
-    setInstalled(projectRoot, REPORTING, '0.4.178');
-    setInstalled(projectRoot, PLUGIN, '8.7.0');
+    writeLockFile(projectRoot, { [REPORTING]: '0.4.178', [PLUGIN]: '8.7.0' });
     mockNpmView({
       [`${REPORTING} version`]: { stdout: '0.4.178' },
       [`${REPORTING} deprecated`]: { stdout: '' },
@@ -101,7 +106,7 @@ describe('checkPackageVersions', () => {
   });
 
   it('blocks with an error when an installed version is deprecated', async () => {
-    setInstalled(projectRoot, REPORTING, '0.4.100');
+    writeLockFile(projectRoot, { [REPORTING]: '0.4.100' });
     mockNpmView({
       [`${REPORTING} version`]: { stdout: '0.4.178' },
       [`${REPORTING} deprecated`]: {
@@ -117,7 +122,7 @@ describe('checkPackageVersions', () => {
   });
 
   it('blocks with a warning when an installed version is outdated', async () => {
-    setInstalled(projectRoot, PLUGIN, '8.6.0');
+    writeLockFile(projectRoot, { [PLUGIN]: '8.6.0' });
     mockNpmView({
       [`${PLUGIN} version`]: { stdout: '8.7.0' },
       [`${PLUGIN} deprecated`]: { stdout: '' }
@@ -131,7 +136,7 @@ describe('checkPackageVersions', () => {
   });
 
   it('continues silently when npm view fails (offline / registry down)', async () => {
-    setInstalled(projectRoot, REPORTING, '0.4.178');
+    writeLockFile(projectRoot, { [REPORTING]: '0.4.178' });
     mockNpmView({
       [`${REPORTING} version`]: { error: new Error('ENOTFOUND') },
       [`${REPORTING} deprecated`]: { error: new Error('ENOTFOUND') }
@@ -144,8 +149,8 @@ describe('checkPackageVersions', () => {
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
-  it('skips packages that are not installed in node_modules', async () => {
-    // Nothing installed; npm view should never be called.
+  it('skips packages absent from package-lock.json', async () => {
+    // No lock file — npm view should never be called.
     await checkPackageVersions(projectRoot, logger);
 
     expect(execFile).not.toHaveBeenCalled();

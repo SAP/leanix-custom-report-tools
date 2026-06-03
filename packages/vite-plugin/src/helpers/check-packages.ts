@@ -22,15 +22,13 @@ async function getInstalledVersion(
   pkg: string
 ): Promise<string | null> {
   try {
-    const pkgJsonPath = join(
-      projectRoot,
-      'node_modules',
-      ...pkg.split('/'),
-      'package.json'
-    );
-    const raw = await readFile(pkgJsonPath, 'utf-8');
-    const json = JSON.parse(raw) as { version?: string };
-    return json.version ?? null;
+    const lockPath = join(projectRoot, 'package-lock.json');
+    const raw = await readFile(lockPath, 'utf-8');
+    const lock = JSON.parse(raw) as {
+      packages?: Record<string, { version?: string }>;
+    };
+    const key = `node_modules/${pkg}`;
+    return lock.packages?.[key]?.version ?? null;
   } catch {
     return null;
   }
