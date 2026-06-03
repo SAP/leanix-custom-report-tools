@@ -33,6 +33,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Type check
+        run: npm run type-check
+
       - name: Build
         run: npm run build
 
@@ -54,7 +57,7 @@ jobs:
         run: |
           node packages/create-custom-report/dist/index.cjs my-report \
             --id net.leanix.myreport \
-            --author "LeanIX GmbH" \
+            --author "SAP LeanIX" \
             --title "My Custom Report" \
             --description "A custom report for LeanIX" \
             --packageName my-report \

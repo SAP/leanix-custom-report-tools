@@ -1,19 +1,54 @@
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { platform } from 'node:os';
+import { execFileSync } from 'node:child_process';
 
 interface GenerateMcpConfigParams {
   targetDir: string;
   host: string;
 }
 
+/**
+ * Picks the Playwright MCP `--browser` value at scaffold time so verification
+ * works without forcing the user to install a browser.
+ *
+ * - Windows → 'msedge'   (Edge ships with Windows; zero download)
+ * - macOS   → 'chrome'   if /Applications/Google Chrome.app is installed,
+ *             else 'chromium' (Playwright-bundled, ~150 MB on first run)
+ * - Linux   → 'chrome'   if google-chrome / google-chrome-stable is on PATH,
+ *             else 'chromium' (Playwright-bundled, ~150 MB on first run)
+ */
+export const detectBrowser = (): string => {
+  // 'win32' is Node's identifier for all Windows (32-bit and 64-bit alike)
+  if (platform() === 'win32') return 'msedge';
+
+  if (platform() === 'darwin') {
+    return existsSync('/Applications/Google Chrome.app')
+      ? 'chrome'
+      : 'chromium';
+  }
+
+  // Linux and other Unix-likes — match what Playwright's chrome channel looks for
+  for (const bin of ['google-chrome', 'google-chrome-stable']) {
+    try {
+      execFileSync('which', [bin], { stdio: 'ignore' });
+      return 'chrome';
+    } catch {
+      // not installed under this name; try the next
+    }
+  }
+  return 'chromium';
+};
 export const generateMcpConfig = (params: GenerateMcpConfigParams): void => {
   const { targetDir, host } = params;
 
+  const browserArgs = ['--browser', detectBrowser()];
+
   // Server configuration (shared between IDEs)
   const serverConfig = {
-    'chrome-devtools': {
+    playwright: {
       command: 'npx',
-      args: ['-y', 'chrome-devtools-mcp@latest', '--headless']
+      args: ['-y', '@playwright/mcp@latest', '--headless', ...browserArgs]
     },
     'leanix-mcp-server': {
       command: 'npx',

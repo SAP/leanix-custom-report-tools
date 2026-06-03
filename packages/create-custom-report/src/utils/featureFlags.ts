@@ -1,19 +1,14 @@
-import type { RequestInit } from 'node-fetch';
 import type { AccessToken } from '@lxr/core/models/access-token';
 import type { FeatureBundleResponse } from '../models/feature-flag';
-import { createProxyAgent, getAccessTokenClaims } from '@lxr/core/index';
-import fetch from 'node-fetch';
+import { getAccessTokenClaims } from '@lxr/core/index';
+import { fetch as undiciFetch } from 'undici';
 
-/**
- * Check if a specific feature flag is enabled for the workspace.
- */
 export async function checkFeatureFlag(options: {
   host: string;
   tokenResponse: AccessToken;
   featureFlagId: string;
-  proxyURL?: string;
 }): Promise<boolean> {
-  const { host, tokenResponse, featureFlagId, proxyURL } = options;
+  const { host, tokenResponse, featureFlagId } = options;
   const accessToken = tokenResponse.accessToken;
 
   // Extract workspace ID from token claims
@@ -26,18 +21,10 @@ export async function checkFeatureFlag(options: {
 
   // Fetch feature bundle
   const url = `https://${host}/services/mtm/v1/workspaces/${workspaceId}/featureBundle`;
-  const fetchOptions: RequestInit = {
+  const response = await undiciFetch(url, {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${accessToken}`
-    }
-  };
-
-  if (typeof proxyURL === 'string' && proxyURL.length > 0) {
-    fetchOptions.agent = createProxyAgent(proxyURL);
-  }
-
-  const response = await fetch(url, fetchOptions);
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
   if (!response.ok) {
     throw new Error(
       `Failed to get feature bundle: ${response.status} ${response.statusText}`

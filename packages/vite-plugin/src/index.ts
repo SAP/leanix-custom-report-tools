@@ -10,13 +10,16 @@ import {
   createBundle,
   decodeBearerToken,
   getLaunchUrl,
+  npmPackBundle,
+  pollReportState,
   readMetadataJson,
+  ReportStateError,
   resolveAccessToken,
   uploadBundle,
+  uploadReportV2,
   writeReportMetadata
 } from '@lxr/core/index';
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import { ZodError } from 'zod';
 import { resolveHostname } from './helpers';
 
@@ -29,7 +32,8 @@ export default function leanixPlugin(): Plugin[] {
   let viteDevServerUrl: string;
   let launchUrl: string;
   let relayServer: ReturnType<typeof createHttpServer> | null = null;
-  let metadata: CustomReportMetadata;
+  let metadata!: CustomReportMetadata;
+  let projectRoot: string = '';
 
   const lxrPlugin: Plugin = {
     name: 'vite-plugin-leanix-custom-report',
@@ -47,18 +51,23 @@ export default function leanixPlugin(): Plugin[] {
 
     async configResolved(resolvedConfig: ResolvedConfig) {
       logger = resolvedConfig.logger;
-      
+      projectRoot = resolvedConfig.root;
+
       try {
         metadata = readMetadataJson(join(resolvedConfig.root, 'package.json'));
       } catch (err: any) {
         if (err?.code === 'ENOENT') {
           logger.error(`💥 Could not find metadata file at "${err.path}"`);
         } else if (err instanceof ZodError) {
-          logger.error(`💥 Found ${err.issues.length} errors while validating metadata`);
+          logger.error(
+            `💥 Found ${err.issues.length} errors while validating metadata`
+          );
           for (const issue of err.issues) {
             if (issue.code === 'invalid_type') {
               const { code, expected, path, message } = issue;
-              logger.error(` ${message} ${path} - ${code}, expected ${expected}`);
+              logger.error(
+                ` ${message} ${path} - ${code}, expected ${expected}`
+              );
             } else {
               const { code, path, message } = issue;
               logger.error(` ${message} ${path} - ${code}`);
@@ -83,7 +92,9 @@ export default function leanixPlugin(): Plugin[] {
             );
           }
         } catch (err) {
-          logger?.error(err === 401 ? '💥 Invalid LeanIX API token' : `${err}`);
+          logger?.error(
+            err === 401 ? '💥 Invalid SAP LeanIX API token' : `${err}`
+          );
           process.exit(1);
         }
       }
@@ -111,9 +122,6 @@ export default function leanixPlugin(): Plugin[] {
           target: targetOrigin,
           changeOrigin: true,
           secure: true,
-          agent: resolvedAuth?.proxyURL
-            ? new HttpsProxyAgent(resolvedAuth.proxyURL)
-            : undefined,
           on: {
             proxyReq: (proxyReq, req) => {
               // Rewrite Origin header: localhost -> LeanIX host
@@ -131,9 +139,19 @@ export default function leanixPlugin(): Plugin[] {
               // So we prepend the workspace name to paths that need it
               // Root-level paths like /frontends/, /services/, /favicon, etc. should pass through unchanged
               const originalPath = proxyReq.path;
-              const rootPaths = ['/frontends/', '/services/', '/favicon.ico', '/lx-frontend-meta.json', '/Shibboleth.sso/'];
-              const isRootPath = rootPaths.some(p => originalPath.startsWith(p));
-              const hasWorkspacePrefix = originalPath.startsWith(`/${workspaceName}/`);
+              const rootPaths = [
+                '/frontends/',
+                '/services/',
+                '/favicon.ico',
+                '/lx-frontend-meta.json',
+                '/Shibboleth.sso/'
+              ];
+              const isRootPath = rootPaths.some((p) =>
+                originalPath.startsWith(p)
+              );
+              const hasWorkspacePrefix = originalPath.startsWith(
+                `/${workspaceName}/`
+              );
               if (!isRootPath && !hasWorkspacePrefix && req.method === 'GET') {
                 proxyReq.path = `/${workspaceName}${originalPath}`;
               }
@@ -179,7 +197,7 @@ export default function leanixPlugin(): Plugin[] {
           };
           viteDevServer.printUrls = () => {
             logger.info(
-              `  Your LeanIX Custom Report is running at:\n  ${launchUrl}\n`
+              `  Your SAP LeanIX Custom Report is running at:\n  ${launchUrl}\n`
             );
           };
         });
@@ -203,19 +221,76 @@ export default function leanixPlugin(): Plugin[] {
         process.exit(1);
       }
 
-      // Write lxreport.json to dist/
-      writeReportMetadata(metadata, options.dir);
       if (!shouldUpload) {
+        writeReportMetadata(metadata, options.dir);
         return;
       }
 
+      const bearerToken = resolvedAuth!.bearerToken;
+      const { name, version } = metadata;
+
+      // v2 upload (Reports Service): opt-in via leanixReport.uploadVersion = 2 in package.json
+      if (metadata.uploadVersion === 2) {
+        logger?.warn('⚠️  Using EXPERIMENTAL v2 upload (Reports Service).');
+        if (claims === null) {
+          throw new Error('Cannot upload: missing access token claims.');
+        }
+        const { workspaceName } = claims.principal.permission;
+        try {
+          const tarball = await npmPackBundle(projectRoot);
+          const bundle = await openAsBlob(tarball);
+          logger?.info(
+            `Uploading "${name}" v${version} to workspace "${workspaceName}" via Reports Service...`
+          );
+          const { customReportVersionId } = await uploadReportV2({
+            host: resolvedAuth!.host,
+            bearerToken,
+            bundle
+          });
+          logger?.info(`  customReportVersionId: ${customReportVersionId}`);
+          await pollReportState({
+            host: resolvedAuth!.host,
+            customReportVersionId,
+            bearerToken,
+            onUpdate: (state) => logger?.info(`  state: ${state}`)
+          });
+          logger?.info('🚀 Upload complete.');
+        } catch (err: any) {
+          logger?.error('💥 Error during upload to Reports Service...');
+          if (err instanceof ReportStateError) {
+            if (err.status === 'VULNERABLE' && err.scanResult !== null) {
+              logger?.error('🛡  Scan result:');
+              logger?.error(JSON.stringify(err.scanResult, null, 2));
+            } else if (err.buildLog) {
+              const lines = err.buildLog.split('\n');
+              const MAX_LINES = 50;
+              const tail =
+                lines.length > MAX_LINES ? lines.slice(-MAX_LINES) : lines;
+              logger?.error('📜 Build log:');
+              if (lines.length > MAX_LINES) {
+                logger?.error(
+                  `  … (showing last ${MAX_LINES} of ${lines.length} lines)`
+                );
+              }
+              for (const line of tail) {
+                logger?.error(`  ${line}`);
+              }
+            }
+          }
+          logger?.error(`💣 ${err}`);
+          process.exit(1);
+        }
+        return;
+      }
+
+      // Write lxreport.json to dist/ (legacy v1 upload only)
+      writeReportMetadata(metadata, options.dir);
+
+      const { id } = metadata;
       // Upload mode: package the dist and upload to the workspace
       const bundlePath = await createBundle(options.dir);
       const bundle = await openAsBlob(bundlePath);
       try {
-        const bearerToken = resolvedAuth!.bearerToken;
-        const proxyURL = resolvedAuth?.proxyURL;
-        const { id, version } = metadata;
         if (claims !== null) {
           logger.info(
             `😅 Uploading report ${id} with version "${version}" to workspace "${claims.principal.permission.workspaceName}"...`
@@ -223,8 +298,7 @@ export default function leanixPlugin(): Plugin[] {
         }
         const result = await uploadBundle({
           bundle,
-          bearerToken,
-          proxyURL
+          bearerToken
         });
         if (result.status === 'ERROR') {
           logger?.error(

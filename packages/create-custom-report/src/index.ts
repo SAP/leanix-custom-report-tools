@@ -5,28 +5,78 @@ import { join, relative } from 'node:path';
 import { red } from 'kolorist';
 import minimist from 'minimist';
 import prompts from 'prompts';
-import { getUserLxrJsonPath } from '@lxr/core/index';
 import {
   isValidPackageName,
   pkgFromUserAgent,
   toValidPackageName
 } from './helpers';
+import { getAccessToken, initProxy } from '@lxr/core/index';
 import banner from './utils/banner';
 import { deployTemplate } from './utils/deployTemplate';
 import { generateLeanIXFiles } from './utils/leanix';
 import { generateMcpConfig } from './utils/generateMcpConfig';
+import { checkFeatureFlag } from './utils/featureFlags';
 import type {
   LeanIXOptions,
   ProjectOptions,
   PromptResult
 } from './models/project-options';
+import { parseTriStateBoolean } from './utils/parseTriStateBoolean';
 
 export type { LeanIXOptions, ProjectOptions, PromptResult };
+export { parseTriStateBoolean };
 
 const cwd = process.cwd();
 
 // Fixed template: React with TypeScript
 const TEMPLATE = 'react-ts';
+
+const getCredentialQuestions = (options?: {
+  host?: string;
+  apitoken?: string;
+  proxyURL?: string;
+  skipIfProvided?: boolean;
+}): Array<
+  prompts.PromptObject<'host' | 'apitoken' | 'behindProxy' | 'proxyURL'>
+> => [
+  {
+    type:
+      options?.skipIfProvided && options?.host !== undefined ? null : 'text',
+    name: 'host',
+    initial: options?.host ?? 'demo-eu.leanix.net',
+    message: 'Which host do you want to work with?'
+  },
+  {
+    type:
+      options?.skipIfProvided && options?.apitoken !== undefined
+        ? null
+        : 'text',
+    name: 'apitoken',
+    message:
+      'Technical User API-Token for Authentication (see: https://help.sap.com/docs/leanix/ea/technical-users)\n  ⚠️  Security advice: API token will be persisted in the report config file'
+  },
+  {
+    type:
+      options?.skipIfProvided && options?.proxyURL !== undefined
+        ? null
+        : options?.skipIfProvided &&
+            options?.host !== undefined &&
+            options?.apitoken !== undefined
+          ? null // full auth provided without proxy — skip toggle
+          : 'toggle',
+    name: 'behindProxy',
+    message: 'Are you behind a proxy?',
+    initial: !!options?.proxyURL,
+    active: 'Yes',
+    inactive: 'No'
+  },
+  {
+    type: (prev: boolean) => prev && 'text',
+    name: 'proxyURL',
+    message: 'Proxy URL?',
+    initial: options?.proxyURL
+  }
+];
 
 const getLeanIXQuestions = (
   argv: minimist.ParsedArgs
@@ -40,27 +90,45 @@ const getLeanIXQuestions = (
   {
     type: argv?.author === undefined ? 'text' : null,
     name: 'author',
-    message: 'Who is the author of this report (e.g. LeanIX GmbH)'
+    message: 'Who is the author of this report (e.g. SAP LeanIX)'
   },
   {
     type: argv?.title === undefined ? 'text' : null,
     name: 'title',
-    message: 'A title to be shown in LeanIX when report is installed'
+    message: 'A title to be shown in SAP LeanIX when report is installed'
   },
   {
     type: argv?.description === undefined ? 'text' : null,
     name: 'description',
     message: 'Description of your project'
-  }
+  },
+  ...(argv.skipAuth
+    ? []
+    : getCredentialQuestions({
+        host: argv?.host,
+        apitoken: argv?.apitoken,
+        proxyURL: argv?.proxyURL,
+        skipIfProvided: true
+      }))
 ];
 
 export async function init(): Promise<void> {
   console.log(`\n${banner}\n`);
   const argv = minimist(process.argv.slice(2), {
-    string: ['id', 'author', 'title', 'description', 'packageName', 'host', 'apitoken', 'proxyURL'],
-    boolean: ['overwrite', 'help', 'skipAuth'],
+    string: [
+      'id',
+      'author',
+      'title',
+      'description',
+      'host',
+      'apitoken',
+      'proxyURL',
+      'packageName'
+    ],
+    boolean: ['overwrite', 'skipAuth', 'help'],
     default: {
-      overwrite: false
+      overwrite: false,
+      skipAuth: false
     }
   });
 
@@ -73,15 +141,17 @@ Arguments:
 
 Options:
   --id <string>           Unique report id in Java package notation (e.g. net.leanix.barcharts)
-  --author <string>       Report author (e.g. LeanIX GmbH)
-  --title <string>        Title shown in LeanIX when the report is installed
+  --author <string>       Report author (e.g. SAP LeanIX)
+  --title <string>        Title shown in SAP LeanIX when the report is installed
   --description <string>  Short description of the report
   --packageName <string>  npm package name (default: derived from project-name)
-  --host <string>         LeanIX workspace host (e.g. demo-eu.leanix.net)
-  --apitoken <string>     LeanIX API token for authentication
-  --proxyURL <string>     HTTP proxy URL (e.g. http://proxy.example.com:8080)
-  --skipAuth              Write lxr.json directly from --host/--apitoken without OAuth flow
+  --host <string>         SAP LeanIX host (default: demo-eu.leanix.net)
+  --apitoken <string>     API token for authentication
+  --proxyURL <string>     HTTP/S proxy URL to use for requests to SAP LeanIX
   --overwrite             Overwrite target directory if it exists (default: false)
+  --skipAuth              Skip SAP LeanIX authentication entirely (default: false)
+  --setupMcpServers       Generate MCP server config files (requires feature flag)
+  --no-setupMcpServers    Skip MCP server config generation without prompting
   --help                  Show this help message and exit
 `);
     process.exit(0);
@@ -90,18 +160,24 @@ Options:
   let targetDir = argv?._?.[0] ?? null;
   const defaultProjectName = targetDir ?? 'leanix-custom-report';
 
+  // leanix-specific answers
   let {
     id,
     author,
     title,
     description,
-    packageName,
-    overwrite = false,
     host,
     apitoken,
-    proxyURL
+    proxyURL,
+    packageName,
+    overwrite = false
   } = argv;
-  const { localCliPath } = argv;
+
+  // tri-state: undefined = not supplied (will prompt), true/false = skip prompt
+  let setupMcpServers = parseTriStateBoolean(
+    process.argv.slice(2),
+    'setupMcpServers'
+  );
 
   let result: PromptResult = {};
   try {
@@ -154,67 +230,100 @@ Options:
         }
       }
     );
-  } catch (cancelled: any) {
-    console.log(cancelled?.message);
+  } catch (cancelled: unknown) {
+    console.log(
+      cancelled instanceof Error ? cancelled.message : String(cancelled)
+    );
     process.exit(1);
   }
 
+  // leanix-specific answers
   ({
     id = id,
     author = author,
     title = title,
     description = description,
-    packageName = packageName,
     host = host,
     apitoken = apitoken,
     proxyURL = proxyURL,
+    packageName = packageName,
     setupMcpServers = setupMcpServers,
     overwrite = overwrite
   } = result);
+  initProxy(proxyURL);
   const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent) ?? null;
   const pkgManager = pkgInfo != null ? pkgInfo.name : 'npm';
 
-  // Try feature flag check using existing credentials from ~/.leanix/credentials
+  // Validate credentials by getting access token, retry if invalid
+  let tokenResponse = null;
   let mcpCustomReportsEnabled = false;
-  const existingCreds = readUserCredentials();
-  if (existingCreds?.host && existingCreds.oauth?.access_token) {
-    const fakeAccessToken: AccessToken = {
-      accessToken: existingCreds.oauth.access_token,
-      expired: false,
-      expiresIn: 0,
-      scope: '',
-      tokenType: 'Bearer'
-    };
+
+  if (!argv.skipAuth) {
+    while (!tokenResponse) {
+      try {
+        if (!host || !apitoken) {
+          throw new Error('Host and API token are required');
+        }
+        tokenResponse = await getAccessToken({ host, apitoken, proxyURL });
+        console.log('✓ Successfully authenticated with SAP LeanIX');
+      } catch (error) {
+        console.log(
+          `${red('✖')} Failed to authenticate: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        console.log(
+          'Please check your host, API token, and proxy settings and try again.\n'
+        );
+
+        const retryResult = await prompts(
+          getCredentialQuestions({ host, apitoken, proxyURL }),
+          {
+            onCancel: () => {
+              throw new Error(`${red('✖')} Operation cancelled`);
+            }
+          }
+        );
+
+        host = retryResult.host;
+        apitoken = retryResult.apitoken;
+        proxyURL = retryResult.proxyURL;
+      }
+    }
+
+    // Check feature flag from LeanIX workspace
     try {
       mcpCustomReportsEnabled = await checkFeatureFlag({
-        host: existingCreds.host,
-        tokenResponse: fakeAccessToken,
+        host,
+        tokenResponse,
         featureFlagId: 'mcpserver.custom-reports'
       });
-    } catch {
+    } catch (error) {
+      console.log(
+        `${red('✖')} Could not check feature flags: ${error instanceof Error ? error?.message : 'Unknown error'}`
+      );
+      console.log('AGENTS.md will not be included in the generated project.\n');
       mcpCustomReportsEnabled = false;
     }
-  }
 
-  // Ask about MCP setup only if feature flag is enabled
-  if (mcpCustomReportsEnabled && setupMcpServers === undefined) {
-    const mcpPromptResult = await prompts(
-      {
-        type: 'toggle',
-        name: 'setupMcpServers',
-        message:
-          'Set up local MCP servers for AI development?\n  - Chrome DevTools MCP (requires Chrome browser)\n  - LeanIX MCP Server (workspace data access)\n  Config files are gitignored and take precedence over global settings.',
-        initial: true,
-        active: 'Yes',
-        inactive: 'No'
-      },
-      {
-        onCancel: () => {
-          throw new Error(`${red('✖')} Operation cancelled`);
+    // Ask about MCP setup only if feature flag is enabled
+    if (mcpCustomReportsEnabled && setupMcpServers === undefined) {
+      const mcpPromptResult = await prompts(
+        {
+          type: 'toggle',
+          name: 'setupMcpServers',
+          message:
+            'Set up local MCP servers for AI development?\n  - Playwright MCP (browser-based report verification)\n  - SAP LeanIX MCP Server (workspace data access)\n  ⚠️  Security advice: API token will be persisted in the MCP server config files\n  Config files are gitignored and take precedence over global settings.',
+          initial: true,
+          active: 'Yes',
+          inactive: 'No'
+        },
+        {
+          onCancel: () => {
+            throw new Error(`${red('✖')} Operation cancelled`);
+          }
         }
-      }
-    );
-    setupMcpServers = mcpPromptResult.setupMcpServers;
+      );
+      setupMcpServers = mcpPromptResult.setupMcpServers;
+    }
   }
 
   const root = join(cwd, targetDir ?? '');
@@ -238,6 +347,9 @@ Options:
       author,
       title,
       description,
+      host,
+      apitoken,
+      proxyURL,
       overwrite
     },
     mcpCustomReportsEnabled: mcpCustomReportsEnabled
@@ -250,18 +362,19 @@ Options:
       author,
       title,
       description,
-      overwrite,
       host,
       apitoken,
-      proxyURL
+      proxyURL,
+      overwrite
     }
   });
 
   // Generate MCP configuration files if feature flag enabled and user opted in
-  if (setupMcpServers === true && mcpCustomReportsEnabled && existingCreds?.host) {
+  if (setupMcpServers === true && mcpCustomReportsEnabled && host && apitoken) {
     generateMcpConfig({
       targetDir: root,
-      host: existingCreds.host
+      host,
+      apitoken
     });
   }
 
@@ -283,23 +396,18 @@ Options:
 
   // MCP setup status
   if (setupMcpServers === false) {
-    console.log('ℹ️  MCP servers not configured - you can set up manually later.');
-    console.log('   See https://help.sap.com/docs/leanix/ea/mcp-server for setup instructions.');
+    console.log(
+      'ℹ️  MCP servers not configured - you can set up manually later.'
+    );
+    console.log(
+      '   See https://help.sap.com/docs/leanix/ea/mcp-server for setup instructions.'
+    );
     console.log();
   } else if (setupMcpServers === true) {
     console.log('✓ MCP servers configured (.vscode/mcp.json, .mcp.json)');
     console.log('  Supports: GitHub Copilot (VS Code) and Claude Code');
-    console.log('  - Chrome DevTools MCP (AI report verification)');
-    console.log('  - LeanIX MCP Server (workspace data access)');
-    console.log();
-  }
-
-  // Post-scaffold login prompt (task 6.3)
-  const credentialsPath = join(homedir(), '.leanix', 'credentials');
-  if (!existsSync(credentialsPath)) {
-    console.log(
-      'To use npm run dev or npm run upload, log in to your LeanIX workspace first. Run: npm run login'
-    );
+    console.log('  - Playwright MCP (AI report verification)');
+    console.log('  - SAP LeanIX MCP Server (workspace data access)');
     console.log();
   }
 }

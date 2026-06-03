@@ -6,7 +6,11 @@ import { mkdirpSync, readdirSync, statSync, writeFileSync } from 'fs-extra';
 import { generate as uuid } from 'short-uuid';
 import pkg from '../package.json' with { type: 'json' };
 
-const CLI_PATH = resolve(__dirname, '..', pkg.bin);
+const CLI_PATH = resolve(
+  __dirname,
+  '..',
+  Object.values(pkg.bin as Record<string, string>)[0]
+);
 const projectName = 'test-app';
 let tempDir: string;
 
@@ -113,7 +117,7 @@ it('successfully scaffolds a project based on react-ts template', async () => {
   const description = uuid();
   const host = uuid();
   const apitoken = uuid();
-  const proxyURL = uuid();
+  const proxyURL = 'http://proxy.example.com:8080';
 
   const args = [
     '--overwrite',
@@ -134,9 +138,10 @@ it('successfully scaffolds a project based on react-ts template', async () => {
     proxyURL
   ];
 
-  const { stdout, stderr } = run([projectName, ...args], {
+  const { stdout, stderr, exitCode } = run([projectName, ...args], {
     cwd: tempDir
   });
+  expect(exitCode).toBe(0);
   expect(typeof stderr).toEqual('string');
 
   const projectDir = join(tempDir, projectName);
@@ -183,12 +188,44 @@ it('--packageName skips the package-name prompt and is used in package.json', ()
     customPkgName
   ];
 
-  const { stdout } = run([projectName, ...args], { cwd: tempDir });
+  const { stdout, exitCode } = run([projectName, ...args], { cwd: tempDir });
+  expect(exitCode).toBe(0);
 
   expect((stdout as string)?.includes('Package name:')).toBe(false);
 
   const pkg = getPackageJson(join(tempDir, projectName));
   expect(pkg.name).toEqual(customPkgName);
+});
+
+// ---------------------------------------------------------------------------
+// C. --no-setupMcpServers produces no MCP config files
+// ---------------------------------------------------------------------------
+
+it('--no-setupMcpServers does not generate MCP config files', () => {
+  const args = [
+    '--skipAuth',
+    '--overwrite',
+    '--no-setupMcpServers',
+    '--id',
+    uuid(),
+    '--author',
+    uuid(),
+    '--title',
+    uuid(),
+    '--description',
+    uuid(),
+    '--host',
+    uuid(),
+    '--apitoken',
+    uuid()
+  ];
+
+  const { exitCode } = run([projectName, ...args], { cwd: tempDir });
+  expect(exitCode).toBe(0);
+
+  const projectDir = join(tempDir, projectName);
+  expect(existsSync(join(projectDir, '.vscode', 'mcp.json'))).toBe(false);
+  expect(existsSync(join(projectDir, '.mcp.json'))).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
@@ -203,7 +240,7 @@ it('fully non-interactive invocation succeeds with all flags supplied', () => {
   const customPkgName = 'full-non-interactive';
   const host = uuid();
   const apitoken = uuid();
-  const proxyURL = uuid();
+  const proxyURL = 'http://proxy.example.com:8080';
 
   const args = [
     '--skipAuth',
@@ -309,9 +346,9 @@ it('omitting --title still prompts for it', () => {
     ],
     { cwd: tempDir }
   );
-  expect((stdout as string)?.includes('A title to be shown in LeanIX')).toBe(
-    true
-  );
+  expect(
+    (stdout as string)?.includes('A title to be shown in SAP LeanIX')
+  ).toBe(true);
 });
 
 // ---------------------------------------------------------------------------
