@@ -78,7 +78,6 @@ describe('checkPackageVersions', () => {
       error: vi.fn<(msg: string) => void>()
     };
     vi.mocked(execFile).mockReset();
-    // Don't actually exit during tests; capture the call instead.
     exitSpy = vi
       .spyOn(process, 'exit')
       .mockImplementation((() => undefined) as never);
@@ -121,7 +120,7 @@ describe('checkPackageVersions', () => {
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
 
-  it('blocks with a warning when an installed version is outdated', async () => {
+  it('warns but continues when an installed version is outdated', async () => {
     writeLockFile(projectRoot, { [PLUGIN]: '8.6.0' });
     mockNpmView({
       [`${PLUGIN} version`]: { stdout: '8.7.0' },
@@ -132,7 +131,7 @@ describe('checkPackageVersions', () => {
 
     expect(logger.warn).toHaveBeenCalledOnce();
     expect(logger.warn.mock.calls[0][0]).toContain('outdated');
-    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 
   it('continues silently when npm view fails (offline / registry down)', async () => {

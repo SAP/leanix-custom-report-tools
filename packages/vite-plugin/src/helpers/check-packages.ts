@@ -48,7 +48,8 @@ export async function checkPackageVersions(
         runNpmView(pkg, 'deprecated').catch(() => null)
       ]);
 
-      // npm view returns an empty string when the field is not set
+      // `npm view <pkg>@<version> deprecated` prints the deprecation message
+      // when set, or nothing (empty stdout) when the version is not deprecated.
       const isDeprecated =
         typeof deprecatedMessage === 'string' && deprecatedMessage.length > 0;
 
@@ -64,21 +65,18 @@ export async function checkPackageVersions(
       if (latestVersion !== null && latestVersion !== installedVersion) {
         logger.warn(
           `\n⚠️  Package "${pkg}" is outdated (${installedVersion} → ${latestVersion}).\n` +
-            `   Please upgrade by running:\n\n` +
+            `   Consider upgrading by running:\n\n` +
             `     npm install ${pkg}@latest\n`
         );
-        return 'outdated';
       }
     })
   );
 
-  const mustBlock = checks.some(
-    (result) =>
-      result.status === 'fulfilled' &&
-      (result.value === 'deprecated' || result.value === 'outdated')
+  const isDeprecatedInstalled = checks.some(
+    (result) => result.status === 'fulfilled' && result.value === 'deprecated'
   );
 
-  if (mustBlock) {
+  if (isDeprecatedInstalled) {
     process.exit(1);
   }
 }
