@@ -339,7 +339,7 @@ export class ReportStateError extends Error {
   constructor(
     public readonly status: CustomReportState,
     public readonly buildLog: string | null,
-    public readonly scanResult: ScanResult | null,
+    public readonly securityScan: ScanResult | null,
     message: string
   ) {
     super(message);
@@ -377,16 +377,11 @@ export async function pollReportState(params: {
         JSON.stringify({ status: response.status, message: error })
       );
     }
-    // scanResult is not yet declared in the OpenAPI spec; the reports service
-    // adds it on terminal states (notably VULNERABLE) so the CLI can render
-    // npm audit findings. Cast until openapi-typescript regen catches up.
-    const scanResult =
-      (data as { scanResult?: ScanResult | null }).scanResult ?? null;
     const row: CustomReportRow = {
       id: data.id,
       status: data.status,
       buildLog: data.buildLog ?? null,
-      scanResult
+      securityScan: data.securityScan ?? null
     };
     if (row.status !== lastState) {
       lastState = row.status;
@@ -402,7 +397,7 @@ export async function pollReportState(params: {
       throw new ReportStateError(
         row.status,
         row.buildLog,
-        row.scanResult,
+        row.securityScan,
         `${row.status}: ${reason}`
       );
     }
