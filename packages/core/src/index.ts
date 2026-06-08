@@ -3,7 +3,7 @@ import type {
   CustomReportRow,
   CustomReportState,
   CustomReportVersionUploadResponse,
-  ScanResult
+  SecurityScan
 } from '@lxr/core/models/custom-report-row';
 import type { CustomReportMetadata } from '@lxr/core/models/custom-report-metadata';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
@@ -339,7 +339,7 @@ export class ReportStateError extends Error {
   constructor(
     public readonly status: CustomReportState,
     public readonly buildLog: string | null,
-    public readonly securityScan: ScanResult | null,
+    public readonly securityScan: SecurityScan | null,
     message: string
   ) {
     super(message);
