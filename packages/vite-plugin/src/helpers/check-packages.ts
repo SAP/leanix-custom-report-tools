@@ -45,7 +45,7 @@ export async function checkPackageVersions(
 
       const [latestVersion, deprecatedMessage] = await Promise.all([
         runNpmView(pkg, 'version').catch(() => null),
-        runNpmView(pkg, 'deprecated').catch(() => null)
+        runNpmView(`${pkg}@${installedVersion}`, 'deprecated').catch(() => null)
       ]);
 
       // `npm view <pkg>@<version> deprecated` prints the deprecation message

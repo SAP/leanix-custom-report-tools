@@ -92,9 +92,9 @@ describe('checkPackageVersions', () => {
     writeLockFile(projectRoot, { [REPORTING]: '0.4.178', [PLUGIN]: '8.7.0' });
     mockNpmView({
       [`${REPORTING} version`]: { stdout: '0.4.178' },
-      [`${REPORTING} deprecated`]: { stdout: '' },
+      [`${REPORTING}@0.4.178 deprecated`]: { stdout: '' },
       [`${PLUGIN} version`]: { stdout: '8.7.0' },
-      [`${PLUGIN} deprecated`]: { stdout: '' }
+      [`${PLUGIN}@8.7.0 deprecated`]: { stdout: '' }
     });
 
     await checkPackageVersions(projectRoot, logger);
@@ -108,7 +108,7 @@ describe('checkPackageVersions', () => {
     writeLockFile(projectRoot, { [REPORTING]: '0.4.100' });
     mockNpmView({
       [`${REPORTING} version`]: { stdout: '0.4.178' },
-      [`${REPORTING} deprecated`]: {
+      [`${REPORTING}@0.4.100 deprecated`]: {
         stdout: 'Please upgrade — pathfinder upload endpoint will be removed.'
       }
     });
@@ -124,7 +124,7 @@ describe('checkPackageVersions', () => {
     writeLockFile(projectRoot, { [PLUGIN]: '8.6.0' });
     mockNpmView({
       [`${PLUGIN} version`]: { stdout: '8.7.0' },
-      [`${PLUGIN} deprecated`]: { stdout: '' }
+      [`${PLUGIN}@8.6.0 deprecated`]: { stdout: '' }
     });
 
     await checkPackageVersions(projectRoot, logger);
@@ -138,7 +138,7 @@ describe('checkPackageVersions', () => {
     writeLockFile(projectRoot, { [REPORTING]: '0.4.178' });
     mockNpmView({
       [`${REPORTING} version`]: { error: new Error('ENOTFOUND') },
-      [`${REPORTING} deprecated`]: { error: new Error('ENOTFOUND') }
+      [`${REPORTING}@0.4.178 deprecated`]: { error: new Error('ENOTFOUND') }
     });
 
     await checkPackageVersions(projectRoot, logger);
