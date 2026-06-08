@@ -2,29 +2,26 @@ import type { Credentials } from './models/leanix-credentials';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import * as os from 'node:os';
 import { join } from 'node:path';
+import { vi } from 'vitest';
 
 // Mock node:os so homedir() can be overridden per-test (must be before first import of index)
-jest.mock('node:os', () => {
-  const actual = jest.requireActual<typeof import('node:os')>('node:os');
-  return { ...actual, homedir: jest.fn(() => actual.homedir()) };
+vi.mock('node:os', async () => {
+  const actual = await vi.importActual<typeof import('node:os')>('node:os');
+  return { ...actual, homedir: vi.fn(() => actual.homedir()) };
 });
 
-// Mock node-fetch (ESM default export)
-jest.mock('node-fetch', () => ({ __esModule: true, default: jest.fn() }));
-
-// Mock open (ESM-only package, incompatible with Jest CJS runner)
-jest.mock('open', () => ({ __esModule: true, default: jest.fn() }));
+// Mock open (ESM-only package, incompatible with CJS runner)
+vi.mock('open', () => ({ default: vi.fn() }));
 
 // Mock oauth module — keep all real implementations except runOAuthFlow to prevent browser opening
-jest.mock('@lxr/core/oauth', () => ({
-  ...jest.requireActual('@lxr/core/oauth'),
-  runOAuthFlow: jest.fn().mockRejectedValue(new Error('OAuth flow not available in unit tests'))
+vi.mock('@lxr/core/oauth', async () => ({
+  ...(await vi.importActual('@lxr/core/oauth')),
+  runOAuthFlow: vi
+    .fn()
+    .mockRejectedValue(new Error('OAuth flow not available in unit tests'))
 }));
 
-import {
-  readCredentials,
-  saveCredentials
-} from './credentials';
+import { readCredentials, saveCredentials } from './credentials';
 import {
   deriveCodeChallenge,
   generateCodeVerifier,
@@ -35,20 +32,28 @@ import {
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function makeFakeJwt(payload: Record<string, unknown> = {}): string {
-  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
-  const body = Buffer.from(JSON.stringify({
-    exp: 9999999999,
-    iss: 'https://test.leanix.net',
-    jti: 'jti-123',
-    sub: 'sub-123',
-    instanceUrl: 'https://test.leanix.net',
-    principal: { permission: { workspaceName: 'test-ws', workspaceId: 'ws-1' } },
-    ...payload
-  })).toString('base64url');
+  const header = Buffer.from(
+    JSON.stringify({ alg: 'HS256', typ: 'JWT' })
+  ).toString('base64url');
+  const body = Buffer.from(
+    JSON.stringify({
+      exp: 9999999999,
+      iss: 'https://test.leanix.net',
+      jti: 'jti-123',
+      sub: 'sub-123',
+      instanceUrl: 'https://test.leanix.net',
+      principal: {
+        permission: { workspaceName: 'test-ws', workspaceId: 'ws-1' }
+      },
+      ...payload
+    })
+  ).toString('base64url');
   return `${header}.${body}.fakesig`;
 }
 
-const makeCredentials = (overrideOauth: Partial<NonNullable<Credentials['oauth']>> = {}): Credentials => ({
+const makeCredentials = (
+  overrideOauth: Partial<NonNullable<Credentials['oauth']>> = {}
+): Credentials => ({
   _description: 'test',
   host: 'test.leanix.net',
   oauth: {
@@ -97,7 +102,9 @@ describe('getHostFromAccessToken', () => {
   });
 
   it('strips protocol and path', () => {
-    const token = makeFakeJwt({ instanceUrl: 'https://my-workspace.leanix.net/some/path' });
+    const token = makeFakeJwt({
+      instanceUrl: 'https://my-workspace.leanix.net/some/path'
+    });
     expect(getHostFromAccessToken(token)).toBe('my-workspace.leanix.net');
   });
 });
@@ -106,17 +113,17 @@ describe('getHostFromAccessToken', () => {
 
 describe('credential storage', () => {
   let tmpDir: string;
-  const realTmpdir = jest.requireActual<typeof import('node:os')>('node:os').tmpdir;
+  const realTmpdir = os.tmpdir;
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(realTmpdir(), 'lxr-cred-test-'));
-    (os.homedir as jest.Mock).mockReturnValue(tmpDir);
-    jest.spyOn(process, 'cwd').mockReturnValue(tmpDir);
+    (os.homedir as ReturnType<typeof vi.fn>).mockReturnValue(tmpDir);
+    vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
   });
 
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('readCredentials (user file)', () => {
@@ -149,12 +156,15 @@ describe('credential storage', () => {
 // ── refreshAccessToken ─────────────────────────────────────────────────────
 
 describe('refreshAccessToken', () => {
-  let fetchMock: jest.Mock;
+  let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    fetchMock = (require('node-fetch') as { default: jest.Mock }).default;
-    fetchMock.mockReset();
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('returns updated credentials on a successful refresh', async () => {
@@ -192,30 +202,32 @@ import { resolveAccessToken } from '@lxr/core/index';
 
 describe('resolveAccessToken', () => {
   let tmpDir: string;
-  const realTmpdir = jest.requireActual<typeof import('node:os')>('node:os').tmpdir;
-  let fetchMock: jest.Mock;
+  const realTmpdir = os.tmpdir;
+  let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(realTmpdir(), 'lxr-resolve-test-'));
-    (os.homedir as jest.Mock).mockReturnValue(tmpDir);
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    fetchMock = (require('node-fetch') as { default: jest.Mock }).default;
-    fetchMock.mockReset();
-    jest.spyOn(console, 'log').mockImplementation(() => {});
+    (os.homedir as ReturnType<typeof vi.fn>).mockReturnValue(tmpDir);
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
-    jest.clearAllMocks();
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   it('uses lxr.json apitoken path when apitoken and host are set', async () => {
-    jest.spyOn(process, 'cwd').mockReturnValue(tmpDir);
+    vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
     writeFileSync(
       join(tmpDir, 'lxr.json'),
       JSON.stringify({ host: 'lxrjson.leanix.net', apitoken: 'mytoken' })
     );
-    const accessToken = makeFakeJwt({ instanceUrl: 'https://lxrjson.leanix.net' });
+    const accessToken = makeFakeJwt({
+      instanceUrl: 'https://lxrjson.leanix.net'
+    });
     fetchMock.mockResolvedValueOnce({
       ok: true,
       headers: { get: () => 'application/json' },
@@ -272,7 +284,9 @@ describe('resolveAccessToken', () => {
     fetchMock.mockResolvedValueOnce({ ok: false, status: 401 });
 
     // runOAuthFlow is mocked to throw — browser must NOT be opened
-    await expect(resolveAccessToken()).rejects.toThrow('OAuth flow not available in unit tests');
+    await expect(resolveAccessToken()).rejects.toThrow(
+      'OAuth flow not available in unit tests'
+    );
 
     // Verify the refresh was attempted first
     expect(fetchMock).toHaveBeenCalledTimes(1);
