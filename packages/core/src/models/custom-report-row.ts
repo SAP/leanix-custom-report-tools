@@ -8,13 +8,15 @@ export type CustomReportVersionUploadResponse =
 
 export type CustomReportState = GeneratedMetadata['status'];
 
-export type ScanResult = components['schemas']['ScanResult'];
+// The security scan block returned on GET /customReportVersions/:id.
+export type SecurityScan =
+  components['schemas']['CustomReportVersionMetadataDtoSecurityScan'];
 
 export interface CustomReportRow {
   id: string;
   status: CustomReportState;
   buildLog: string | null;
-  scanResult: ScanResult | null;
+  securityScan: SecurityScan | null;
 }
 
 // Happy path for an upload: SCANNING -> BUILDING -> READY.

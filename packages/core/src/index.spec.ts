@@ -23,6 +23,7 @@ import {
   npmPackBundle,
   pollReportState,
   readLxrJson,
+  ReportStateError,
   uploadBundle,
   uploadReportV2,
   validateDocument,
@@ -375,6 +376,42 @@ describe('the lxr core package', () => {
 
       expect(row.status).toBe('READY');
       expect(seen).toEqual(['SCANNING', 'BUILDING', 'READY']);
+
+      await new Promise<void>((r) => server.close(() => r()));
+    });
+
+    it('pollReportState rejects on VULNERABLE and exposes securityScan', async () => {
+      const securityScan = {
+        npmAudit: { advisories: [] },
+        blackduck: {},
+        cxone: {}
+      };
+      server = createHttpServer((_req, res) => {
+        res.statusCode = 200;
+        res.setHeader('content-type', 'application/json');
+        res.end(
+          JSON.stringify({
+            id: 'uuid-vuln',
+            status: 'VULNERABLE',
+            buildLog: null,
+            securityScan
+          })
+        );
+      });
+      await new Promise<void>((r) => server.listen(0, r));
+      baseURL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+
+      const err = await pollReportState({
+        host: 'unused',
+        customReportVersionId: 'uuid-vuln',
+        bearerToken: 't',
+        baseURL,
+        intervalMs: 10
+      }).catch((e) => e);
+
+      expect(err).toBeInstanceOf(ReportStateError);
+      expect(err.status).toBe('VULNERABLE');
+      expect(err.securityScan).toEqual(securityScan);
 
       await new Promise<void>((r) => server.close(() => r()));
     });

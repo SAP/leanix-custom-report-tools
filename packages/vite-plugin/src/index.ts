@@ -21,7 +21,8 @@ import {
 } from '@lxr/core/index';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { ZodError } from 'zod';
-import { resolveHostname } from './helpers';
+import { checkPackageVersions } from './helpers/check-packages';
+import { resolveHostname } from './helpers/resolve-hostname';
 
 export default function leanixPlugin(): Plugin[] {
   let logger: Logger;
@@ -80,6 +81,7 @@ export default function leanixPlugin(): Plugin[] {
       }
 
       if (loadWorkspaceCredentials) {
+        await checkPackageVersions(projectRoot, logger);
         try {
           resolvedAuth = await resolveAccessToken();
           if (resolvedAuth.proxyURL) {
@@ -258,9 +260,9 @@ export default function leanixPlugin(): Plugin[] {
         } catch (err: any) {
           logger?.error('💥 Error during upload to Reports Service...');
           if (err instanceof ReportStateError) {
-            if (err.status === 'VULNERABLE' && err.scanResult !== null) {
+            if (err.status === 'VULNERABLE' && err.securityScan !== null) {
               logger?.error('🛡  Scan result:');
-              logger?.error(JSON.stringify(err.scanResult, null, 2));
+              logger?.error(JSON.stringify(err.securityScan, null, 2));
             } else if (err.buildLog) {
               const lines = err.buildLog.split('\n');
               const MAX_LINES = 50;
