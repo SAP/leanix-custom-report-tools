@@ -1,6 +1,4 @@
 import type { Credentials } from './models/leanix-credentials';
-import type { RequestInit } from 'node-fetch';
-import fetch from 'node-fetch';
 import { readCredentials, saveCredentials } from './credentials';
 import { refreshAccessToken, runOAuthFlow } from './oauth';
 
@@ -14,32 +12,29 @@ export type ResolvedAuth = {
 // Treat tokens as expired this many seconds before they actually expire, to avoid using a token that expires mid-request.
 export const EXP_BUFFER_SECONDS = 300;
 
-async function exchangeApiToken(host: string, apitoken: string, proxyURL?: string): Promise<string> {
+async function exchangeApiToken(
+  host: string,
+  apitoken: string
+): Promise<string> {
   const uri = `https://${host}/services/mtm/v1/oauth2/token?grant_type=client_credentials`;
-  const options: RequestInit = {
+  const res = await fetch(uri, {
     method: 'post',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
       Authorization: `Basic ${Buffer.from(`apitoken:${apitoken}`).toString('base64')}`
     }
-  };
-  if (proxyURL) {
-    const { HttpsProxyAgent } = await import('https-proxy-agent');
-    options.agent = new HttpsProxyAgent(new URL(proxyURL));
-  }
-  const res = await fetch(uri, options);
+  });
   if (!res.ok) throw new Error(`Token exchange failed: ${res.status}`);
-  const data = await res.json() as { access_token: string };
+  const data = (await res.json()) as { access_token: string };
   return data.access_token;
 }
 
 async function tryResolve(
   creds: Credentials,
-  effectiveProxy?: string,
   onRefresh?: (refreshed: Credentials) => void
 ): Promise<{ bearerToken: string; host: string; expiresAt?: number } | null> {
   if (creds.apitoken && creds.host) {
-    const bearerToken = await exchangeApiToken(creds.host, creds.apitoken, effectiveProxy);
+    const bearerToken = await exchangeApiToken(creds.host, creds.apitoken);
     return { bearerToken, host: creds.host };
   }
 
@@ -48,14 +43,22 @@ async function tryResolve(
 
   const isExpired = Date.now() >= oauth.expires_at - EXP_BUFFER_SECONDS * 1000;
   if (!isExpired) {
-    return { bearerToken: oauth.access_token, host: creds.host, expiresAt: oauth.expires_at };
+    return {
+      bearerToken: oauth.access_token,
+      host: creds.host,
+      expiresAt: oauth.expires_at
+    };
   }
 
   console.log('Access token expired, refreshing...');
-  const refreshed = await refreshAccessToken(creds, effectiveProxy);
+  const refreshed = await refreshAccessToken(creds);
   if (refreshed?.oauth && refreshed.host) {
     onRefresh?.(refreshed);
-    return { bearerToken: refreshed.oauth.access_token, host: refreshed.host, expiresAt: refreshed.oauth.expires_at };
+    return {
+      bearerToken: refreshed.oauth.access_token,
+      host: refreshed.host,
+      expiresAt: refreshed.oauth.expires_at
+    };
   }
 
   return null;
@@ -66,7 +69,9 @@ export async function resolveAccessToken(): Promise<ResolvedAuth> {
   const proxyURL = entry?.credentials.proxyURL;
 
   if (entry) {
-    const result = await tryResolve(entry.credentials, proxyURL, (refreshed) => saveCredentials(refreshed, entry.path));
+    const result = await tryResolve(entry.credentials, (refreshed) =>
+      saveCredentials(refreshed, entry.path)
+    );
     if (result) return { ...result, proxyURL };
     console.log('Session expired, re-authenticating...');
   }
@@ -78,5 +83,10 @@ export async function resolveAccessToken(): Promise<ResolvedAuth> {
   } else {
     saveCredentials(newCreds);
   }
-  return { bearerToken: newCreds.oauth!.access_token, host: newCreds.host!, proxyURL, expiresAt: newCreds.oauth!.expires_at };
+  return {
+    bearerToken: newCreds.oauth!.access_token,
+    host: newCreds.host!,
+    proxyURL,
+    expiresAt: newCreds.oauth!.expires_at
+  };
 }

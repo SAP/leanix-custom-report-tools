@@ -1,20 +1,13 @@
 import type { Credentials } from './models/leanix-credentials';
-import type { RequestInit } from 'node-fetch';
 import { createHash, randomBytes } from 'node:crypto';
 import open from 'open';
 import { createServer } from 'node:http';
 import { URL } from 'node:url';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import { jwtDecode } from 'jwt-decode';
-import fetch from 'node-fetch';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
 import { readCredentials } from './credentials';
 
 const OAUTH_BASE_URL = 'https://mcp.leanix.net/services/mcp-server/v1/oauth';
-
-function createProxyAgent(proxyURL: string): HttpsProxyAgent<string> {
-  return new HttpsProxyAgent(new URL(proxyURL));
-}
 
 export function getHostFromAccessToken(accessToken: string): string {
   const claims: JwtClaims = jwtDecode(accessToken);
@@ -35,10 +28,12 @@ export function startCallbackServer(): {
 } {
   let resolveCode!: (v: { code: string; state: string }) => void;
   let rejectCode!: (e: Error) => void;
-  const codePromise = new Promise<{ code: string; state: string }>((res, rej) => {
-    resolveCode = res;
-    rejectCode = rej;
-  });
+  const codePromise = new Promise<{ code: string; state: string }>(
+    (res, rej) => {
+      resolveCode = res;
+      rejectCode = rej;
+    }
+  );
 
   const server = createServer((req, res) => {
     const url = new URL(req.url!, 'http://localhost');
@@ -46,7 +41,9 @@ export function startCallbackServer(): {
     const state = url.searchParams.get('state');
     if (code && state) {
       res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end('<html><body><h2>Login successful! You can close this tab.</h2></body></html>');
+      res.end(
+        '<html><body><h2>Login successful! You can close this tab.</h2></body></html>'
+      );
       resolveCode({ code, state });
     } else {
       res.writeHead(400, { 'Content-Type': 'text/plain' });
@@ -72,27 +69,27 @@ export async function openBrowser(url: string): Promise<boolean> {
 
 export async function registerOAuthClient(
   oauthBaseUrl: string,
-  redirectUri: string,
-  proxyURL?: string
+  redirectUri: string
 ): Promise<{ client_id: string; client_secret: string }> {
-  const options: RequestInit = {
+  const res = await fetch(`${oauthBaseUrl}/register`, {
     method: 'post',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       client_name: 'LeanIX Custom Report Tools',
       redirect_uris: [redirectUri]
     })
+  });
+  if (!res.ok)
+    throw new Error(`OAuth client registration failed: ${res.status}`);
+  const data = (await res.json()) as {
+    client_id: string;
+    client_secret: string;
   };
-  if (proxyURL) options.agent = createProxyAgent(proxyURL);
-  const res = await fetch(`${oauthBaseUrl}/register`, options);
-  if (!res.ok) throw new Error(`OAuth client registration failed: ${res.status}`);
-  const data = (await res.json()) as { client_id: string; client_secret: string };
   return { client_id: data.client_id, client_secret: data.client_secret };
 }
 
 export async function refreshAccessToken(
-  credentials: Credentials,
-  proxyURL?: string
+  credentials: Credentials
 ): Promise<Credentials | null> {
   const { client_id, client_secret, refresh_token } = credentials.oauth ?? {};
   if (!client_id || !client_secret || !refresh_token) return null;
@@ -103,13 +100,11 @@ export async function refreshAccessToken(
     client_id,
     client_secret
   });
-  const options: RequestInit = {
+  const res = await fetch(`${OAUTH_BASE_URL}/token`, {
     method: 'post',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: params.toString()
-  };
-  if (proxyURL) options.agent = createProxyAgent(proxyURL);
-  const res = await fetch(`${OAUTH_BASE_URL}/token`, options);
+  });
   if (!res.ok) return null;
   const data = (await res.json()) as {
     access_token: string;
@@ -140,7 +135,7 @@ export async function runOAuthFlow(
   const redirectUri = `http://localhost:${port}/callback`;
 
   if (!client_id || !client_secret) {
-    const reg = await registerOAuthClient(oauthBaseUrl, redirectUri, proxyURL);
+    const reg = await registerOAuthClient(oauthBaseUrl, redirectUri);
     client_id = reg.client_id;
     client_secret = reg.client_secret;
   }
@@ -159,7 +154,9 @@ export async function runOAuthFlow(
 
   const opened = await openBrowser(authorizeUrl.toString());
   if (!opened) {
-    console.log(`\nOpen this URL in your browser to log in:\n${authorizeUrl.toString()}\n`);
+    console.log(
+      `\nOpen this URL in your browser to log in:\n${authorizeUrl.toString()}\n`
+    );
   }
 
   const { code, state: returnedState } = await waitForCode();
@@ -175,13 +172,11 @@ export async function runOAuthFlow(
     client_id,
     client_secret
   });
-  const tokenOptions: RequestInit = {
+  const tokenRes = await fetch(`${oauthBaseUrl}/token`, {
     method: 'post',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: tokenParams.toString()
-  };
-  if (proxyURL) tokenOptions.agent = createProxyAgent(proxyURL);
-  const tokenRes = await fetch(`${oauthBaseUrl}/token`, tokenOptions);
+  });
   if (!tokenRes.ok) {
     const body = await tokenRes.text();
     throw new Error(`Token exchange failed (${tokenRes.status}): ${body}`);
