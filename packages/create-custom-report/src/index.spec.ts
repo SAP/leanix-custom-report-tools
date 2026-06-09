@@ -7,7 +7,11 @@ import { generate as uuid } from 'short-uuid';
 import pkg from '../package.json' with { type: 'json' };
 import { parseTriStateBoolean } from './utils/parseTriStateBoolean';
 
-const CLI_PATH = resolve(__dirname, '..', Object.values(pkg.bin as Record<string, string>)[0]);
+const CLI_PATH = resolve(
+  __dirname,
+  '..',
+  Object.values(pkg.bin as Record<string, string>)[0]
+);
 const projectName = 'test-app';
 let tempDir: string;
 
@@ -107,7 +111,7 @@ it('asks to overwrite non-empty current directory', () => {
   );
 });
 
-it('successfully scaffolds a project based on react-ts template', async () => {
+it('successfully creates a project based on react-ts template', async () => {
   const reportId = uuid();
   const author = uuid();
   const title = uuid();
@@ -302,15 +306,11 @@ it('fully non-interactive invocation succeeds with all flags supplied', () => {
   expect((stdout as string)?.includes('Project name:')).toBe(false);
   expect((stdout as string)?.includes('Package name:')).toBe(false);
   expect((stdout as string)?.includes('Unique id for this report')).toBe(false);
-  expect((stdout as string)?.includes('Who is the author')).toBe(false);
-  expect((stdout as string)?.includes('A title to be shown')).toBe(false);
-  expect((stdout as string)?.includes('Description of your project')).toBe(
-    false
-  );
-  expect((stdout as string)?.includes('Which host do you want')).toBe(false);
-  expect((stdout as string)?.includes('API-Token for Authentication')).toBe(
-    false
-  );
+  expect((stdout as string)?.includes('Author of the report')).toBe(false);
+  expect((stdout as string)?.includes('Report title')).toBe(false);
+  expect((stdout as string)?.includes('Report description')).toBe(false);
+  expect((stdout as string)?.includes('Which workspace instance')).toBe(false);
+  expect((stdout as string)?.includes('Technical User Token')).toBe(false);
   expect((stdout as string)?.includes('Are you behind a proxy?')).toBe(false);
 
   const projectDir = join(tempDir, projectName);
@@ -377,9 +377,7 @@ it('omitting --title still prompts for it', () => {
     ],
     { cwd: tempDir }
   );
-  expect((stdout as string)?.includes('A title to be shown in SAP LeanIX')).toBe(
-    true
-  );
+  expect((stdout as string)?.includes('Report title')).toBe(true);
 });
 
 // ---------------------------------------------------------------------------

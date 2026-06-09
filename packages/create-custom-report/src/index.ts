@@ -44,7 +44,7 @@ const getCredentialQuestions = (options?: {
       options?.skipIfProvided && options?.host !== undefined ? null : 'text',
     name: 'host',
     initial: options?.host ?? 'demo-eu.leanix.net',
-    message: 'Which host do you want to work with?'
+    message: 'Which workspace instance? (e.g. demo-eu-1.leanix.net)'
   },
   {
     type:
@@ -53,7 +53,7 @@ const getCredentialQuestions = (options?: {
         : 'text',
     name: 'apitoken',
     message:
-      'Technical User API-Token for Authentication (see: https://help.sap.com/docs/leanix/ea/technical-users)\n  ⚠️  Security advice: API token will be persisted in the report config file'
+      'Technical User Token (see: https://help.sap.com/docs/leanix/ea/technical-users)\n  ⚠️  Security notice: Technical User Token will be persisted in the report config file'
   },
   {
     type:
@@ -90,24 +90,26 @@ const getLeanIXQuestions = (
   {
     type: argv?.author === undefined ? 'text' : null,
     name: 'author',
-    message: 'Who is the author of this report (e.g. SAP LeanIX)'
+    message: 'Author of the report (e.g. Jane Doe)'
   },
   {
     type: argv?.title === undefined ? 'text' : null,
     name: 'title',
-    message: 'A title to be shown in SAP LeanIX when report is installed'
+    message: 'Report title'
   },
   {
     type: argv?.description === undefined ? 'text' : null,
     name: 'description',
-    message: 'Description of your project'
+    message: 'Report description'
   },
-  ...(argv.skipAuth ? [] : getCredentialQuestions({
-    host: argv?.host,
-    apitoken: argv?.apitoken,
-    proxyURL: argv?.proxyURL,
-    skipIfProvided: true
-  }))
+  ...(argv.skipAuth
+    ? []
+    : getCredentialQuestions({
+        host: argv?.host,
+        apitoken: argv?.apitoken,
+        proxyURL: argv?.proxyURL,
+        skipIfProvided: true
+      }))
 ];
 
 export async function init(): Promise<void> {
@@ -229,7 +231,9 @@ Options:
       }
     );
   } catch (cancelled: unknown) {
-    console.log(cancelled instanceof Error ? cancelled.message : String(cancelled));
+    console.log(
+      cancelled instanceof Error ? cancelled.message : String(cancelled)
+    );
     process.exit(1);
   }
 
@@ -290,7 +294,7 @@ Options:
       mcpCustomReportsEnabled = await checkFeatureFlag({
         host,
         tokenResponse,
-        featureFlagId: 'mcpserver.custom-reports',
+        featureFlagId: 'mcpserver.custom-reports'
       });
     } catch (error) {
       console.log(
@@ -392,8 +396,12 @@ Options:
 
   // MCP setup status
   if (setupMcpServers === false) {
-    console.log('ℹ️  MCP servers not configured - you can set up manually later.');
-    console.log('   See https://help.sap.com/docs/leanix/ea/mcp-server for setup instructions.');
+    console.log(
+      'ℹ️  MCP servers not configured - you can set up manually later.'
+    );
+    console.log(
+      '   See https://help.sap.com/docs/leanix/ea/mcp-server for setup instructions.'
+    );
     console.log();
   } else if (setupMcpServers === true) {
     console.log('✓ MCP servers configured (.vscode/mcp.json, .mcp.json)');
