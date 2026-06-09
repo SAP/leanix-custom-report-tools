@@ -138,14 +138,25 @@ export async function resolveAccessToken(): Promise<ResolvedAuth> {
     );
     if (result) return { ...result, proxyURL };
     console.log('Session expired, re-authenticating...');
+    const { client_id, registration_access_token, issuer } =
+      entry.credentials.oauth ?? {};
+    if (client_id && registration_access_token) {
+      try {
+        await deregisterOAuthClient(
+          issuer ?? OAUTH_BASE_URL,
+          client_id,
+          registration_access_token
+        );
+      } catch (err: unknown) {
+        console.warn(
+          `Warning: could not deregister OAuth client: ${err instanceof Error ? err.message : err}`
+        );
+      }
+    }
   }
 
   console.log('No credentials found. Opening browser to log in to LeanIX...');
-  const newCreds = await runOAuthFlow(
-    undefined,
-    proxyURL,
-    entry?.credentials.oauth
-  );
+  const newCreds = await runOAuthFlow(undefined, proxyURL);
   if (entry) {
     saveCredentials({ ...entry.credentials, ...newCreds }, entry.path);
   } else {
