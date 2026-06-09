@@ -6,8 +6,8 @@ async function login(): Promise<void> {
   const workspaceName = getWorkspaceNameFromAccessToken(
     credentials.oauth!.access_token
   );
-  console.log(`Credentials saved to ${path}.`);
-  console.log(`\nLogged in to ${credentials.host}/${workspaceName}`);
+  console.log(`Logged in to https://${credentials.host}/${workspaceName}`);
+  console.log(`Credentials saved to ${path}`);
 }
 
 async function logout(): Promise<void> {
