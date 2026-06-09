@@ -7,7 +7,7 @@ import { validateDocument } from '@lxr/core/index';
 export async function generateLeanIXFiles(
   params: AddLeanIXMetadataToPackageJson
 ): Promise<void> {
-  const { targetDir, result } = params;
+  const { targetDir, result, isV2 = false } = params;
   const {
     author,
     description,
@@ -29,10 +29,14 @@ export async function generateLeanIXFiles(
       .at(-1);
   const version = pkg.version ?? '0.0.0';
   const pkgMetadataFields = { name, author, description, version };
-  const leanixReport = { id, title, aiAssisted: false, defaultConfig: {} };
+  const leanixReport = isV2
+    ? { title, aiAssisted: false, defaultConfig: {} }
+    : { id, title, aiAssisted: false, defaultConfig: {} };
   pkg = { ...pkg, ...pkgMetadataFields, name, leanixReport };
   const lxreportJson = { ...leanixReport, ...pkgMetadataFields };
-  validateDocument(lxreportJson, 'lxreport.json');
+  if (!isV2) {
+    validateDocument(lxreportJson, 'lxreport.json');
+  }
   const lxrJson = { host, apitoken, proxyURL };
 
   validateDocument(lxrJson, 'lxr.json');

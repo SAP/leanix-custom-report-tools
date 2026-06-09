@@ -46,3 +46,23 @@ it('it updates package.json and generates lxr.json files', async () => {
     description: result.description
   });
 });
+
+it('v2: omits id from leanixReport in package.json', async () => {
+  const result: PromptResult = {
+    targetDir,
+    packageName: uuid(),
+    author: uuid(),
+    description: uuid(),
+    title: uuid(),
+    host: uuid(),
+    apitoken: uuid(),
+    proxyURL: uuid()
+  };
+  await generateLeanIXFiles({ targetDir, result, isV2: true });
+  const packageJson = await readFile(join(targetDir, 'package.json')).then(
+    (buffer) => JSON.parse(buffer.toString())
+  );
+
+  expect(packageJson?.leanixReport?.id).toBeUndefined();
+  expect(packageJson?.leanixReport?.title).toEqual(result.title);
+});
