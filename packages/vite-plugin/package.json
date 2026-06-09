@@ -13,6 +13,9 @@
     "vite-plugin",
     "leanix"
   ],
+  "bin": {
+    "lxr": "./dist/cli.js"
+  },
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "exports": {
