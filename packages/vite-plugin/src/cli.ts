@@ -8,7 +8,7 @@ const CREDENTIALS_PATH = join(homedir(), '.leanix', 'lxr.json');
 
 async function login(): Promise<void> {
   console.log(
-    'Credentials will be saved to ~/.leanix/lxr.json and shared across all LeanIX custom reports on this machine.'
+    `Credentials will be saved to ${CREDENTIALS_PATH} and shared across all LeanIX custom reports on this machine.`
   );
   if (existsSync(CREDENTIALS_PATH)) clearCredentials(CREDENTIALS_PATH);
   const credentials = await runOAuthFlow();
@@ -18,7 +18,7 @@ async function login(): Promise<void> {
 function logout(): void {
   if (existsSync(CREDENTIALS_PATH)) {
     clearCredentials(CREDENTIALS_PATH);
-    console.log('Logged out. Credentials removed from ~/.leanix/lxr.json');
+    console.log(`Logged out. Credentials removed from ${CREDENTIALS_PATH}`);
   } else {
     console.log('Not logged in.');
   }
