@@ -10,6 +10,10 @@ const getConfigDir = (): string => {
   return join(homedir(), '.leanix');
 };
 
-export const getProjectLxrJsonPath = (): string => join(process.cwd(), LXR_JSON_FILENAME);
+export const getProjectLxrJsonPath = (): string =>
+  join(process.cwd(), LXR_JSON_FILENAME);
 
-export const getUserLxrJsonPath = (): string => join(getConfigDir(), LXR_JSON_FILENAME);
+export const getUserLxrJsonPath = (): string =>
+  join(getConfigDir(), LXR_JSON_FILENAME);
+
+export const OAUTH_BASE_URL = 'https://mcp.leanix.net/services/mcp-server/v1';

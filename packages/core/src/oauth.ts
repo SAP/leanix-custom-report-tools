@@ -1,25 +1,20 @@
+import * as oauth from 'oauth4webapi';
 import type { Credentials } from './models/leanix-credentials';
-import { createHash, randomBytes } from 'node:crypto';
 import open from 'open';
 import { createServer } from 'node:http';
 import { URL } from 'node:url';
 import { jwtDecode } from 'jwt-decode';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
-import { readCredentials } from './credentials';
-
-const OAUTH_BASE_URL = 'https://mcp.leanix.net/services/mcp-server/v1/oauth';
+import { OAUTH_BASE_URL } from './constants';
 
 export function getHostFromAccessToken(accessToken: string): string {
   const claims: JwtClaims = jwtDecode(accessToken);
   return new URL(claims.instanceUrl).hostname;
 }
 
-export function generateCodeVerifier(): string {
-  return randomBytes(32).toString('base64url');
-}
-
-export function deriveCodeChallenge(verifier: string): string {
-  return createHash('sha256').update(verifier).digest('base64url');
+export function getWorkspaceNameFromAccessToken(accessToken: string): string {
+  const claims: JwtClaims = jwtDecode(accessToken);
+  return claims.principal.permission.workspaceName;
 }
 
 export function startCallbackServer(): {
@@ -67,84 +62,111 @@ export async function openBrowser(url: string): Promise<boolean> {
   }
 }
 
-export async function registerOAuthClient(
+export async function deregisterOAuthClient(
   oauthBaseUrl: string,
-  redirectUri: string
-): Promise<{ client_id: string; client_secret: string }> {
-  const res = await fetch(`${oauthBaseUrl}/register`, {
-    method: 'post',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      client_name: 'LeanIX Custom Report Tools',
-      redirect_uris: [redirectUri]
-    })
-  });
-  if (!res.ok)
-    throw new Error(`OAuth client registration failed: ${res.status}`);
-  const data = (await res.json()) as {
-    client_id: string;
-    client_secret: string;
-  };
-  return { client_id: data.client_id, client_secret: data.client_secret };
+  clientId: string,
+  registrationAccessToken: string
+): Promise<void> {
+  const res = await fetch(
+    `${oauthBaseUrl}/oauth/register/${encodeURIComponent(clientId)}`,
+    {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${registrationAccessToken}` }
+    }
+  );
+  if (!res.ok && res.status !== 404)
+    throw new Error(`OAuth client deregistration failed: ${res.status}`);
+}
+
+async function discover(issuer: string): Promise<oauth.AuthorizationServer> {
+  const issuerUrl = new URL(issuer);
+  const res = await oauth.discoveryRequest(issuerUrl, { algorithm: 'oauth2' });
+  return oauth.processDiscoveryResponse(issuerUrl, res);
 }
 
 export async function refreshAccessToken(
   credentials: Credentials
 ): Promise<Credentials | null> {
-  const { client_id, client_secret, refresh_token } = credentials.oauth ?? {};
+  const { client_id, client_secret, refresh_token, issuer } =
+    credentials.oauth ?? {};
   if (!client_id || !client_secret || !refresh_token) return null;
 
-  const params = new URLSearchParams({
-    grant_type: 'refresh_token',
-    refresh_token,
-    client_id,
-    client_secret
-  });
-  const res = await fetch(`${OAUTH_BASE_URL}/token`, {
-    method: 'post',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString()
-  });
-  if (!res.ok) return null;
-  const data = (await res.json()) as {
-    access_token: string;
-    refresh_token: string;
-    expires_in: number;
-  };
-  return {
-    ...credentials,
-    oauth: {
-      client_id,
-      client_secret,
-      access_token: data.access_token,
-      refresh_token: data.refresh_token,
-      expires_at: Date.now() + data.expires_in * 1000
-    }
-  };
+  try {
+    const as = await discover(issuer ?? OAUTH_BASE_URL);
+    const client: oauth.Client = { client_id };
+    const clientAuth = oauth.ClientSecretPost(client_secret);
+
+    const res = await oauth.refreshTokenGrantRequest(
+      as,
+      client,
+      clientAuth,
+      refresh_token
+    );
+    const tokens = await oauth.processRefreshTokenResponse(as, client, res);
+
+    return {
+      ...credentials,
+      oauth: {
+        ...credentials.oauth!,
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token ?? refresh_token,
+        expires_at: Date.now() + (tokens.expires_in ?? 3600) * 1000
+      }
+    };
+  } catch {
+    return null;
+  }
 }
+
+export type ExistingOAuthClient = {
+  client_id: string;
+  client_secret: string;
+  registration_access_token?: string;
+};
 
 export async function runOAuthFlow(
   oauthBaseUrl = OAUTH_BASE_URL,
-  proxyURL?: string
+  proxyURL?: string,
+  existingClient?: ExistingOAuthClient
 ): Promise<Credentials> {
-  const existing = readCredentials();
-  let client_id = existing?.credentials.oauth?.client_id;
-  let client_secret = existing?.credentials.oauth?.client_secret;
+  let client_id = existingClient?.client_id;
+  let client_secret = existingClient?.client_secret;
+  let registration_access_token = existingClient?.registration_access_token;
 
   const { port, waitForCode } = startCallbackServer();
   const redirectUri = `http://localhost:${port}/callback`;
 
+  const as = await discover(oauthBaseUrl);
+
   if (!client_id || !client_secret) {
-    const reg = await registerOAuthClient(oauthBaseUrl, redirectUri);
+    const regReq = await oauth.dynamicClientRegistrationRequest(as, {
+      client_name: 'LeanIX Custom Report Tools',
+      redirect_uris: [redirectUri]
+    });
+    const reg = await oauth.processDynamicClientRegistrationResponse(regReq);
     client_id = reg.client_id;
+    if (typeof reg.client_secret !== 'string' || !reg.client_secret) {
+      throw new Error(
+        'Dynamic client registration did not return a client_secret'
+      );
+    }
     client_secret = reg.client_secret;
+    registration_access_token = reg.registration_access_token as
+      | string
+      | undefined;
   }
 
-  const codeVerifier = generateCodeVerifier();
-  const codeChallenge = deriveCodeChallenge(codeVerifier);
-  const state = randomBytes(16).toString('hex');
+  const codeVerifier = oauth.generateRandomCodeVerifier();
+  const codeChallenge = await oauth.calculatePKCECodeChallenge(codeVerifier);
+  const state = oauth.generateRandomState();
 
-  const authorizeUrl = new URL(`${oauthBaseUrl}/authorize`);
+  // Build authorization URL manually — oauth4webapi does not export buildAuthorizationUrl
+  if (!as.authorization_endpoint) {
+    throw new Error(
+      'Authorization server metadata is missing authorization_endpoint'
+    );
+  }
+  const authorizeUrl = new URL(as.authorization_endpoint);
   authorizeUrl.searchParams.set('response_type', 'code');
   authorizeUrl.searchParams.set('client_id', client_id);
   authorizeUrl.searchParams.set('redirect_uri', redirectUri);
@@ -160,46 +182,53 @@ export async function runOAuthFlow(
   }
 
   const { code, state: returnedState } = await waitForCode();
-  if (returnedState !== state) {
-    throw new Error('OAuth state mismatch — possible CSRF attack');
+
+  const client: oauth.Client = { client_id };
+  const clientAuth = oauth.ClientSecretPost(client_secret);
+
+  // Build callback URLSearchParams and validate via oauth4webapi (handles state check internally)
+  const callbackSearchParams = new URLSearchParams();
+  callbackSearchParams.set('code', code);
+  callbackSearchParams.set('state', returnedState);
+
+  const validatedParams = oauth.validateAuthResponse(
+    as,
+    client,
+    callbackSearchParams,
+    state
+  );
+
+  const tokenRes = await oauth.authorizationCodeGrantRequest(
+    as,
+    client,
+    clientAuth,
+    validatedParams,
+    redirectUri,
+    codeVerifier
+  );
+  const tokens = await oauth.processAuthorizationCodeResponse(
+    as,
+    client,
+    tokenRes
+  );
+  if (!tokens.refresh_token) {
+    throw new Error('Authorization server did not return a refresh_token');
   }
 
-  const tokenParams = new URLSearchParams({
-    grant_type: 'authorization_code',
-    code,
-    redirect_uri: redirectUri,
-    code_verifier: codeVerifier,
-    client_id,
-    client_secret
-  });
-  const tokenRes = await fetch(`${oauthBaseUrl}/token`, {
-    method: 'post',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: tokenParams.toString()
-  });
-  if (!tokenRes.ok) {
-    const body = await tokenRes.text();
-    throw new Error(`Token exchange failed (${tokenRes.status}): ${body}`);
-  }
-  const tokenData = (await tokenRes.json()) as {
-    access_token: string;
-    refresh_token: string;
-    expires_in: number;
-  };
-
-  const host = getHostFromAccessToken(tokenData.access_token);
-  const credentials: Credentials = {
+  const host = getHostFromAccessToken(tokens.access_token);
+  return {
     _description:
       'This file is managed by LeanIX Custom Report Tools. It contains your login credentials and is shared across all custom reports on this machine. To log out, run: npm run logout',
     host,
     oauth: {
+      issuer: oauthBaseUrl,
       client_id,
       client_secret,
-      access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token,
-      expires_at: Date.now() + tokenData.expires_in * 1000
+      registration_access_token,
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      expires_at: Date.now() + (tokens.expires_in ?? 3600) * 1000
     },
     ...(proxyURL ? { proxyURL } : {})
   };
-  return credentials;
 }

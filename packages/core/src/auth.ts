@@ -1,6 +1,16 @@
+import * as oauth from 'oauth4webapi';
 import type { Credentials } from './models/leanix-credentials';
-import { readCredentials, saveCredentials } from './credentials';
-import { refreshAccessToken, runOAuthFlow } from './oauth';
+import {
+  clearCredentials,
+  readCredentials,
+  saveCredentials
+} from './credentials';
+import { getUserLxrJsonPath, OAUTH_BASE_URL } from './constants';
+import {
+  deregisterOAuthClient,
+  refreshAccessToken,
+  runOAuthFlow
+} from './oauth';
 
 export type ResolvedAuth = {
   bearerToken: string;
@@ -12,21 +22,60 @@ export type ResolvedAuth = {
 // Treat tokens as expired this many seconds before they actually expire, to avoid using a token that expires mid-request.
 export const EXP_BUFFER_SECONDS = 300;
 
+export async function login(
+  proxyURL?: string
+): Promise<{ credentials: Credentials; path: string }> {
+  const entry = readCredentials();
+  if (entry) clearCredentials(entry.path);
+  const credentials = await runOAuthFlow(
+    undefined,
+    proxyURL,
+    entry?.credentials.oauth
+  );
+  const path = entry?.path ?? getUserLxrJsonPath();
+  saveCredentials(credentials, path);
+  return { credentials, path };
+}
+
+export async function logout(): Promise<{ path: string } | null> {
+  const entry = readCredentials();
+  if (!entry) return null;
+  const { client_id, registration_access_token, issuer } =
+    entry.credentials.oauth ?? {};
+  if (client_id && registration_access_token) {
+    try {
+      await deregisterOAuthClient(
+        issuer ?? OAUTH_BASE_URL,
+        client_id,
+        registration_access_token
+      );
+    } catch (err: unknown) {
+      console.warn(
+        `Warning: could not deregister OAuth client: ${err instanceof Error ? err.message : err}`
+      );
+    }
+  }
+  clearCredentials(entry.path);
+  return { path: entry.path };
+}
+
 async function exchangeApiToken(
   host: string,
   apitoken: string
 ): Promise<string> {
-  const uri = `https://${host}/services/mtm/v1/oauth2/token?grant_type=client_credentials`;
-  const res = await fetch(uri, {
-    method: 'post',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `Basic ${Buffer.from(`apitoken:${apitoken}`).toString('base64')}`
-    }
-  });
-  if (!res.ok) throw new Error(`Token exchange failed: ${res.status}`);
-  const data = (await res.json()) as { access_token: string };
-  return data.access_token;
+  const as: oauth.AuthorizationServer = {
+    issuer: `https://${host}`,
+    token_endpoint: `https://${host}/services/mtm/v1/oauth2/token`
+  };
+  const client: oauth.Client = { client_id: 'apitoken' };
+  const res = await oauth.clientCredentialsGrantRequest(
+    as,
+    client,
+    oauth.ClientSecretBasic(apitoken),
+    new URLSearchParams()
+  );
+  const tokens = await oauth.processClientCredentialsResponse(as, client, res);
+  return tokens.access_token;
 }
 
 async function tryResolve(
@@ -77,7 +126,11 @@ export async function resolveAccessToken(): Promise<ResolvedAuth> {
   }
 
   console.log('No credentials found. Opening browser to log in to LeanIX...');
-  const newCreds = await runOAuthFlow(undefined, proxyURL);
+  const newCreds = await runOAuthFlow(
+    undefined,
+    proxyURL,
+    entry?.credentials.oauth
+  );
   if (entry) {
     saveCredentials({ ...entry.credentials, ...newCreds }, entry.path);
   } else {
