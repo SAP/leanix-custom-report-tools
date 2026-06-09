@@ -64,7 +64,10 @@ describe('the lxr core package', () => {
 
   it('validate "lxr.json" and "lxreport.json" against document schemas', async () => {
     const validMetadataDocument = getDummyReportMetadata();
-    const invalidMetadataDocument = { ...validMetadataDocument, id: undefined };
+    const invalidMetadataDocument = {
+      ...validMetadataDocument,
+      title: undefined
+    };
 
     expect(() =>
       validateDocument(validMetadataDocument, 'lxreport.json')
@@ -92,11 +95,14 @@ describe('the lxr core package', () => {
   it('readLxrJson sets global proxy dispatcher when proxyURL is present', async () => {
     const originalDispatcher = getGlobalDispatcher();
     const tmpFile = join(tmpdir(), `lxr-proxy-test-${Date.now()}.json`);
-    writeFileSync(tmpFile, JSON.stringify({
-      host: 'eu.leanix.net',
-      apitoken: 'dummy',
-      proxyURL: 'http://proxy.example.com:8080'
-    }));
+    writeFileSync(
+      tmpFile,
+      JSON.stringify({
+        host: 'eu.leanix.net',
+        apitoken: 'dummy',
+        proxyURL: 'http://proxy.example.com:8080'
+      })
+    );
     await readLxrJson(tmpFile);
     const dispatcher = getGlobalDispatcher();
     setGlobalDispatcher(originalDispatcher);
@@ -108,7 +114,10 @@ describe('the lxr core package', () => {
   it('readLxrJson does not change dispatcher when proxyURL is absent', async () => {
     const originalDispatcher = getGlobalDispatcher();
     const tmpFile = join(tmpdir(), `lxr-no-proxy-test-${Date.now()}.json`);
-    writeFileSync(tmpFile, JSON.stringify({ host: 'eu.leanix.net', apitoken: 'dummy' }));
+    writeFileSync(
+      tmpFile,
+      JSON.stringify({ host: 'eu.leanix.net', apitoken: 'dummy' })
+    );
     await readLxrJson(tmpFile);
     const dispatcher = getGlobalDispatcher();
     rmSync(tmpFile);
@@ -233,7 +242,10 @@ describe('the lxr core package', () => {
       ({ id, version }) => id === metadata.id && version === metadata.version
     );
     if (hasTestReportInWorkspace !== undefined) {
-      await deleteWorkspaceReportById(hasTestReportInWorkspace.id, bearerToken);
+      await deleteWorkspaceReportById(
+        hasTestReportInWorkspace.id!,
+        bearerToken
+      );
     }
     writeReportMetadata(metadata, outDir);
     const bundlePath = await createBundle(outDir);
@@ -299,9 +311,7 @@ describe('the lxr core package', () => {
           receivedBody = Buffer.concat(chunks);
           res.statusCode = 201;
           res.setHeader('content-type', 'application/json');
-          res.end(
-            JSON.stringify({ customReportVersionId: 'uuid-123' })
-          );
+          res.end(JSON.stringify({ customReportVersionId: 'uuid-123' }));
         });
       });
       await new Promise<void>((r) => server.listen(0, r));
@@ -377,12 +387,21 @@ describe('the lxr core package', () => {
     });
 
     it('pollReportState rejects on VULNERABLE and exposes securityScan', async () => {
-      const securityScan = { npmAudit: { advisories: [] }, blackduck: {}, cxone: {} };
+      const securityScan = {
+        npmAudit: { advisories: [] },
+        blackduck: {},
+        cxone: {}
+      };
       server = createHttpServer((_req, res) => {
         res.statusCode = 200;
         res.setHeader('content-type', 'application/json');
         res.end(
-          JSON.stringify({ id: 'uuid-vuln', status: 'VULNERABLE', buildLog: null, securityScan })
+          JSON.stringify({
+            id: 'uuid-vuln',
+            status: 'VULNERABLE',
+            buildLog: null,
+            securityScan
+          })
         );
       });
       await new Promise<void>((r) => server.listen(0, r));
@@ -406,33 +425,42 @@ describe('the lxr core package', () => {
     it.each([
       ['VULNERABLE', /security scan found vulnerabilities/],
       ['FAILED', /build failed/]
-    ])('pollReportState rejects on %s', async (status: string, expectedMessage: RegExp) => {
-      server = createHttpServer((_req, res) => {
-        res.statusCode = 200;
-        res.setHeader('content-type', 'application/json');
-        res.end(JSON.stringify({ id: 'uuid-err', status, buildLog: null }));
-      });
-      await new Promise<void>((r) => server.listen(0, r));
-      baseURL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    ])(
+      'pollReportState rejects on %s',
+      async (status: string, expectedMessage: RegExp) => {
+        server = createHttpServer((_req, res) => {
+          res.statusCode = 200;
+          res.setHeader('content-type', 'application/json');
+          res.end(JSON.stringify({ id: 'uuid-err', status, buildLog: null }));
+        });
+        await new Promise<void>((r) => server.listen(0, r));
+        baseURL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
-      await expect(
-        pollReportState({
-          host: 'unused',
-          customReportVersionId: 'uuid-err',
-          bearerToken: 't',
-          baseURL,
-          intervalMs: 10
-        })
-      ).rejects.toThrow(expectedMessage);
+        await expect(
+          pollReportState({
+            host: 'unused',
+            customReportVersionId: 'uuid-err',
+            bearerToken: 't',
+            baseURL,
+            intervalMs: 10
+          })
+        ).rejects.toThrow(expectedMessage);
 
-      await new Promise<void>((r) => server.close(() => r()));
-    });
+        await new Promise<void>((r) => server.close(() => r()));
+      }
+    );
 
     it('pollReportState rejects on timeout', async () => {
       server = createHttpServer((_req, res) => {
         res.statusCode = 200;
         res.setHeader('content-type', 'application/json');
-        res.end(JSON.stringify({ id: 'uuid-stuck', status: 'BUILDING', buildLog: null }));
+        res.end(
+          JSON.stringify({
+            id: 'uuid-stuck',
+            status: 'BUILDING',
+            buildLog: null
+          })
+        );
       });
       await new Promise<void>((r) => server.listen(0, r));
       baseURL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
