@@ -1,7 +1,8 @@
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { clearCredentials, runOAuthFlow } from '@lxr/core/index';
+import { clearCredentials } from '@lxr/core/credentials';
+import { runOAuthFlow } from '@lxr/core/oauth';
 
 const CREDENTIALS_PATH = join(homedir(), '.leanix', 'lxr.json');
 

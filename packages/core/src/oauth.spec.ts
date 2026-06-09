@@ -27,7 +27,7 @@ import {
   generateCodeVerifier,
   getHostFromAccessToken,
   refreshAccessToken
-} from '@lxr/core/index';
+} from './oauth';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -198,7 +198,7 @@ describe('refreshAccessToken', () => {
 
 // ── resolveAccessToken auth resolution order ───────────────────────────────
 
-import { resolveAccessToken } from '@lxr/core/index';
+import { resolveAccessToken } from './auth';
 
 describe('resolveAccessToken', () => {
   let tmpDir: string;

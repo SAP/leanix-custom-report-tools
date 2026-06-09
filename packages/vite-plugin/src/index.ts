@@ -1,6 +1,6 @@
 import type { CustomReportMetadata } from '@lxr/core/models/custom-report-metadata';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
-import type { ResolvedAuth } from '@lxr/core/index';
+import type { ResolvedAuth } from '@lxr/core/auth';
 import type { AddressInfo } from 'node:net';
 import type { Logger, Plugin, ResolvedConfig } from 'vite';
 import { openAsBlob } from 'node:fs';
@@ -14,11 +14,11 @@ import {
   pollReportState,
   readMetadataJson,
   ReportStateError,
-  resolveAccessToken,
   uploadBundle,
   uploadReportV2,
   writeReportMetadata
 } from '@lxr/core/index';
+import { resolveAccessToken } from '@lxr/core/auth';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { ZodError } from 'zod';
 import { checkPackageVersions } from './helpers/check-packages';
