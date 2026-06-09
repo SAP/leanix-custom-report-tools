@@ -3,6 +3,7 @@ import type { Credentials } from './models/leanix-credentials';
 import {
   clearCredentials,
   readCredentials,
+  readCredentialsPath,
   saveCredentials
 } from './credentials';
 import { getUserLxrJsonPath, OAUTH_BASE_URL } from './constants';
@@ -26,13 +27,27 @@ export async function login(
   proxyURL?: string
 ): Promise<{ credentials: Credentials; path: string }> {
   const entry = readCredentials();
-  if (entry) clearCredentials(entry.path);
-  const credentials = await runOAuthFlow(
-    undefined,
-    proxyURL,
-    entry?.credentials.oauth
-  );
-  const path = entry?.path ?? getUserLxrJsonPath();
+  if (entry) {
+    clearCredentials(entry.path);
+    const { client_id, registration_access_token, issuer } =
+      entry.credentials.oauth ?? {};
+    if (client_id && registration_access_token) {
+      try {
+        await deregisterOAuthClient(
+          issuer ?? OAUTH_BASE_URL,
+          client_id,
+          registration_access_token
+        );
+      } catch (err: unknown) {
+        console.warn(
+          `Warning: could not deregister OAuth client: ${err instanceof Error ? err.message : err}`
+        );
+      }
+    }
+  }
+  const existing = readCredentialsPath();
+  const credentials = await runOAuthFlow(undefined, proxyURL);
+  const path = existing?.path ?? getUserLxrJsonPath();
   saveCredentials(credentials, path);
   return { credentials, path };
 }

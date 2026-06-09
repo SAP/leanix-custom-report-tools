@@ -34,6 +34,14 @@ export function readCredentials(): {
   return null;
 }
 
+export function readCredentialsPath(): { path: string; host?: string } | null {
+  for (const path of [getProjectLxrJsonPath(), getUserLxrJsonPath()]) {
+    const credentials = readLxrJson(path);
+    if (credentials !== null) return { path, host: credentials.host };
+  }
+  return null;
+}
+
 export function saveCredentials(
   credentials: Credentials,
   path = getUserLxrJsonPath()

@@ -144,7 +144,7 @@ describe('credential storage', () => {
 // ── refreshAccessToken ─────────────────────────────────────────────────────
 
 describe('refreshAccessToken', () => {
-  const ISSUER = 'https://mcp.leanix.net/services/mcp-server/v1';
+  const ISSUER = 'https://mcp.leanix.net';
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -194,7 +194,7 @@ describe('refreshAccessToken', () => {
   });
 
   it('uses the issuer stored in credentials for discovery', async () => {
-    const customIssuer = 'https://staging.leanix.net/services/mcp-server/v1';
+    const customIssuer = 'https://staging.leanix.net';
     const newToken = makeFakeJwt({ instanceUrl: 'https://staging.leanix.net' });
     fetchMock
       .mockResolvedValueOnce(makeDiscoveryResponse(customIssuer))

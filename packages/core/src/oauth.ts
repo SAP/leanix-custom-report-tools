@@ -63,12 +63,14 @@ export async function openBrowser(url: string): Promise<boolean> {
 }
 
 export async function deregisterOAuthClient(
-  oauthBaseUrl: string,
+  issuer: string,
   clientId: string,
   registrationAccessToken: string
 ): Promise<void> {
+  const as = await discover(issuer);
+  if (!as.registration_endpoint) return;
   const res = await fetch(
-    `${oauthBaseUrl}/oauth/register/${encodeURIComponent(clientId)}`,
+    `${as.registration_endpoint}/${encodeURIComponent(clientId)}`,
     {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${registrationAccessToken}` }
@@ -80,7 +82,9 @@ export async function deregisterOAuthClient(
 
 async function discover(issuer: string): Promise<oauth.AuthorizationServer> {
   const issuerUrl = new URL(issuer);
-  const res = await oauth.discoveryRequest(issuerUrl, { algorithm: 'oauth2' });
+  const res = await fetch(
+    `${issuer}/.well-known/oauth-authorization-server/services/mcp-server/v1`
+  );
   return oauth.processDiscoveryResponse(issuerUrl, res);
 }
 
@@ -143,7 +147,21 @@ export async function runOAuthFlow(
       client_name: 'LeanIX Custom Report Tools',
       redirect_uris: [redirectUri]
     });
-    const reg = await oauth.processDynamicClientRegistrationResponse(regReq);
+    // Server omits client_secret_expires_at (required by RFC 7591 §3.2.1).
+    // Inject 0 (never expires) so oauth4webapi validation passes.
+    const regJson = (await regReq.json()) as Record<string, unknown>;
+    if (
+      regJson.client_secret &&
+      regJson.client_secret_expires_at === undefined
+    ) {
+      regJson.client_secret_expires_at = 0;
+    }
+    const patchedRes = new Response(JSON.stringify(regJson), {
+      status: 201,
+      headers: { 'content-type': 'application/json' }
+    });
+    const reg =
+      await oauth.processDynamicClientRegistrationResponse(patchedRes);
     client_id = reg.client_id;
     if (typeof reg.client_secret !== 'string' || !reg.client_secret) {
       throw new Error(
