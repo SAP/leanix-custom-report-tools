@@ -370,10 +370,9 @@ Options:
   });
 
   // Generate MCP configuration files if feature flag enabled and user opted in
-  if (setupMcpServers === true && mcpCustomReportsEnabled && host) {
+  if (setupMcpServers === true && mcpCustomReportsEnabled) {
     generateMcpConfig({
-      targetDir: root,
-      host
+      targetDir: root
     });
   }
 
