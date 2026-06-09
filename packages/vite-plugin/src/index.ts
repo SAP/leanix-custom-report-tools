@@ -174,10 +174,6 @@ export default function leanixPlugin(): Plugin[] {
       // pathfinder-web can call them directly (absolute URLs bypass the relay proxy).
       relayServer.listen(4200, () => {
         httpServer.once('listening', () => {
-          if (resolvedAuth === null) {
-            throw new Error('Missing resolved auth');
-          }
-
           const { name: hostname } = resolveHostname(config.server.host);
           const port = (httpServer.address() as AddressInfo).port;
           viteDevServerUrl = `http://${hostname}:${port}`;
@@ -187,7 +183,7 @@ export default function leanixPlugin(): Plugin[] {
 
           launchUrl = getLaunchUrl(
             viteDevServerUrl,
-            resolvedAuth.bearerToken,
+            resolvedAuth!.bearerToken,
             relayUrl,
             metadata?.title
           );
