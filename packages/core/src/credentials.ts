@@ -18,15 +18,26 @@ function saveLxrJson(path: string, credentials: Credentials): void {
   writeFileSync(path, JSON.stringify(credentials, null, 2), { mode: 0o600 });
 }
 
-export function readCredentials(): { credentials: Credentials; path: string } | null {
+export function readCredentials(): {
+  credentials: Credentials;
+  path: string;
+} | null {
   for (const path of [getProjectLxrJsonPath(), getUserLxrJsonPath()]) {
     const credentials = readLxrJson(path);
-    if (credentials) return { credentials, path };
+    if (
+      credentials?.apitoken !== undefined ||
+      credentials?.oauth !== undefined
+    ) {
+      return { credentials, path };
+    }
   }
   return null;
 }
 
-export function saveCredentials(credentials: Credentials, path = getUserLxrJsonPath()): void {
+export function saveCredentials(
+  credentials: Credentials,
+  path = getUserLxrJsonPath()
+): void {
   saveLxrJson(path, credentials);
 }
 
