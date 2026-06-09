@@ -1,27 +1,22 @@
-import { existsSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
-import { clearCredentials } from '@lxr/core/credentials';
-import { runOAuthFlow } from '@lxr/core/oauth';
-
-const CREDENTIALS_PATH = join(homedir(), '.leanix', 'lxr.json');
+import { login as coreLogin, logout as coreLogout } from '@lxr/core/auth';
+import { getWorkspaceNameFromAccessToken } from '@lxr/core/oauth';
 
 async function login(): Promise<void> {
-  console.log(
-    `Credentials will be saved to ${CREDENTIALS_PATH} and shared across all LeanIX custom reports on this machine.`
+  const { credentials, path } = await coreLogin();
+  const workspaceName = getWorkspaceNameFromAccessToken(
+    credentials.oauth!.access_token
   );
-  if (existsSync(CREDENTIALS_PATH)) clearCredentials(CREDENTIALS_PATH);
-  const credentials = await runOAuthFlow();
-  console.log(`\nLogged in to ${credentials.host ?? 'LeanIX'}`);
+  console.log(`Credentials saved to ${path}.`);
+  console.log(`\nLogged in to ${credentials.host}/${workspaceName}`);
 }
 
-function logout(): void {
-  if (existsSync(CREDENTIALS_PATH)) {
-    clearCredentials(CREDENTIALS_PATH);
-    console.log(`Logged out. Credentials removed from ${CREDENTIALS_PATH}`);
-  } else {
+async function logout(): Promise<void> {
+  const result = await coreLogout();
+  if (!result) {
     console.log('Not logged in.');
+    return;
   }
+  console.log(`Logged out. Credentials removed from ${result.path}`);
 }
 
 const command = process.argv[2];
@@ -31,7 +26,10 @@ if (command === 'login') {
     process.exit(1);
   });
 } else if (command === 'logout') {
-  logout();
+  logout().catch((err) => {
+    console.error(`Logout failed: ${err?.message ?? err}`);
+    process.exit(1);
+  });
 } else {
   console.error(`Usage: lxr <login|logout>`);
   process.exit(1);
