@@ -1,26 +1,23 @@
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import {
-  deleteUserCredentials,
-  runOAuthFlow
-} from '@lxr/core/index';
+import { clearCredentials, runOAuthFlow } from '@lxr/core/index';
 
-const CREDENTIALS_PATH = join(homedir(), '.leanix', 'credentials');
+const CREDENTIALS_PATH = join(homedir(), '.leanix', 'lxr.json');
 
 async function login(): Promise<void> {
   console.log(
-    'Credentials will be saved to ~/.leanix/credentials and shared across all LeanIX custom reports on this machine.'
+    'Credentials will be saved to ~/.leanix/lxr.json and shared across all LeanIX custom reports on this machine.'
   );
-  deleteUserCredentials();
+  if (existsSync(CREDENTIALS_PATH)) clearCredentials(CREDENTIALS_PATH);
   const credentials = await runOAuthFlow();
   console.log(`\nLogged in to ${credentials.host ?? 'LeanIX'}`);
 }
 
 function logout(): void {
   if (existsSync(CREDENTIALS_PATH)) {
-    deleteUserCredentials();
-    console.log('Logged out. Credentials removed from ~/.leanix/credentials');
+    clearCredentials(CREDENTIALS_PATH);
+    console.log('Logged out. Credentials removed from ~/.leanix/lxr.json');
   } else {
     console.log('Not logged in.');
   }
