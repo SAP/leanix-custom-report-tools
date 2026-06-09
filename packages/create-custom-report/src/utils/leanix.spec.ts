@@ -65,4 +65,5 @@ it('v2: omits id from leanixReport in package.json', async () => {
 
   expect(packageJson?.leanixReport?.id).toBeUndefined();
   expect(packageJson?.leanixReport?.title).toEqual(result.title);
+  expect(packageJson?.leanixReport?.uploadVersion).toEqual(2);
 });

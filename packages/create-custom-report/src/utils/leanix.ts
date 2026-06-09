@@ -30,7 +30,7 @@ export async function generateLeanIXFiles(
   const version = pkg.version ?? '0.0.0';
   const pkgMetadataFields = { name, author, description, version };
   const leanixReport = isV2
-    ? { title, aiAssisted: false, defaultConfig: {} }
+    ? { title, aiAssisted: false, defaultConfig: {}, uploadVersion: 2 as const }
     : { id, title, aiAssisted: false, defaultConfig: {} };
   pkg = { ...pkg, ...pkgMetadataFields, name, leanixReport };
   const lxreportJson = { ...leanixReport, ...pkgMetadataFields };
