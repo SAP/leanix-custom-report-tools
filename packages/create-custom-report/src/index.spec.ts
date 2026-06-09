@@ -401,9 +401,103 @@ it('--help prints usage and exits with code 0', () => {
     '--overwrite',
     '--skipAuth',
     '--setupMcpServers',
+    '-v2',
     '--help'
   ];
   for (const flag of flags) {
     expect((stdout as string)?.includes(flag)).toBe(true);
   }
+});
+
+// ---------------------------------------------------------------------------
+// H. -v2: no report ID prompt or field, new wording, identity warning
+// ---------------------------------------------------------------------------
+
+it('-v2 skips the id prompt and does not write id to leanixReport', () => {
+  const author = uuid();
+  const title = uuid();
+  const description = uuid();
+  const packageName = 'my-v2-report';
+
+  const args = [
+    '-v2',
+    '--skipAuth',
+    '--overwrite',
+    '--author',
+    author,
+    '--title',
+    title,
+    '--description',
+    description,
+    '--packageName',
+    packageName,
+    '--host',
+    uuid(),
+    '--apitoken',
+    uuid()
+  ];
+
+  const { exitCode, stdout } = run([projectName, ...args], { cwd: tempDir });
+  expect(exitCode).toBe(0);
+
+  expect((stdout as string)?.includes('Unique id for this report')).toBe(false);
+
+  const pkg = getPackageJson(join(tempDir, projectName));
+  expect(pkg.name).toEqual(packageName);
+  expect(pkg?.leanixReport?.id).toBeUndefined();
+  expect(pkg?.leanixReport?.title).toEqual(title);
+});
+
+it('-v2 uses "Author of the report" prompt wording', () => {
+  const { stdout } = run(
+    [
+      projectName,
+      '-v2',
+      '--skipAuth',
+      '--packageName',
+      'some-report',
+      '--title',
+      uuid(),
+      '--description',
+      uuid()
+    ],
+    { cwd: tempDir }
+  );
+  expect((stdout as string)?.includes('Author of the report')).toBe(true);
+});
+
+it('-v2 uses "Report title" prompt wording', () => {
+  const { stdout } = run(
+    [
+      projectName,
+      '-v2',
+      '--skipAuth',
+      '--packageName',
+      'some-report',
+      '--author',
+      uuid(),
+      '--description',
+      uuid()
+    ],
+    { cwd: tempDir }
+  );
+  expect((stdout as string)?.includes('Report title')).toBe(true);
+});
+
+it('-v2 uses "Report description" prompt wording', () => {
+  const { stdout } = run(
+    [
+      projectName,
+      '-v2',
+      '--skipAuth',
+      '--packageName',
+      'some-report',
+      '--author',
+      uuid(),
+      '--title',
+      uuid()
+    ],
+    { cwd: tempDir }
+  );
+  expect((stdout as string)?.includes('Report description')).toBe(true);
 });

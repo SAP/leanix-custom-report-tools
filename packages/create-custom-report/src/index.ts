@@ -79,14 +79,19 @@ const getCredentialQuestions = (options?: {
 ];
 
 const getLeanIXQuestions = (
-  argv: minimist.ParsedArgs
+  argv: minimist.ParsedArgs,
+  isV2: boolean
 ): Array<prompts.PromptObject<keyof LeanIXOptions | 'behindProxy'>> => [
-  {
-    type: argv?.id === undefined ? 'text' : null,
-    name: 'id',
-    message:
-      'Unique id for this report in Java package notation (e.g. net.leanix.barcharts)'
-  },
+  ...(isV2
+    ? []
+    : [
+        {
+          type: (argv?.id === undefined ? 'text' : null) as 'text' | null,
+          name: 'id' as const,
+          message:
+            'Unique id for this report in Java package notation (e.g. net.leanix.barcharts)'
+        }
+      ]),
   {
     type: argv?.author === undefined ? 'text' : null,
     name: 'author',
@@ -132,6 +137,9 @@ export async function init(): Promise<void> {
     }
   });
 
+  // Feature flag: -v2 activates the new creation UX
+  const isV2 = process.argv.slice(2).some((a) => a === '-v2' || a === 'v2');
+
   if (argv.help) {
     console.log(`
 Usage: npm create @sap/leanix-custom-report [project-name] [options]
@@ -150,6 +158,7 @@ Options:
   --proxyURL <string>     HTTP/S proxy URL to use for requests to SAP LeanIX
   --overwrite             Overwrite target directory if it exists (default: false)
   --skipAuth              Skip SAP LeanIX authentication entirely (default: false)
+  -v2                     Use new creation UX (package name as report identity, no report ID)
   --setupMcpServers       Generate MCP server config files (requires feature flag)
   --no-setupMcpServers    Skip MCP server config generation without prompting
   --help                  Show this help message and exit
@@ -157,7 +166,10 @@ Options:
     process.exit(0);
   }
 
-  let targetDir = argv?._?.[0] ?? null;
+  // In v2 mode the positional arg may be "v2" itself (npm create ... v2) — ignore it
+  const positional = argv?._?.[0];
+  let targetDir =
+    positional === 'v2' || positional === '-v2' ? null : (positional ?? null);
   const defaultProjectName = targetDir ?? 'leanix-custom-report';
 
   // leanix-specific answers
@@ -184,7 +196,7 @@ Options:
     result = await prompts(
       [
         {
-          type: targetDir !== null ? null : 'text',
+          type: isV2 || targetDir !== null ? null : 'text',
           name: 'projectName',
           message: 'Project name:',
           initial: defaultProjectName,
@@ -193,7 +205,8 @@ Options:
         },
         {
           name: 'overwrite',
-          type: () => (!existsSync(targetDir) || overwrite ? null : 'confirm'),
+          type: () =>
+            !existsSync(targetDir ?? '') || overwrite ? null : 'confirm',
           message: () => {
             const dirForPrompt =
               targetDir === '.'
@@ -213,16 +226,22 @@ Options:
         },
         {
           name: 'packageName',
-          type: () =>
-            isValidPackageName(targetDir) || packageName !== undefined
-              ? null
-              : 'text',
-          message: 'Package name:',
-          initial: () => toValidPackageName(targetDir),
+          type: () => {
+            if (packageName !== undefined) return null;
+            if (!isV2 && isValidPackageName(targetDir ?? '')) return null;
+            return 'text';
+          },
+          message: isV2
+            ? 'Package name (the report identity, used together with version to uniquely identify a report in a workspace)'
+            : 'Package name:',
+          initial: isV2 ? undefined : () => toValidPackageName(targetDir ?? ''),
           validate: (dir) =>
-            isValidPackageName(dir) ?? 'Invalid package.json name'
+            isValidPackageName(dir) ||
+            (isV2
+              ? 'Invalid package name, may only contain lowercase letters (a-z), digits (0-9), dots (.), underscores (_), and minus (-)'
+              : 'Invalid package.json name')
         },
-        ...getLeanIXQuestions(argv)
+        ...getLeanIXQuestions(argv, isV2)
       ],
       {
         onCancel: () => {
@@ -250,6 +269,11 @@ Options:
     setupMcpServers = setupMcpServers,
     overwrite = overwrite
   } = result);
+
+  // In v2 the package name is also the project directory
+  if (isV2 && targetDir === null) {
+    targetDir = packageName ?? defaultProjectName;
+  }
   initProxy(proxyURL);
   const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent) ?? null;
   const pkgManager = pkgInfo != null ? pkgInfo.name : 'npm';
@@ -328,7 +352,7 @@ Options:
 
   const root = join(cwd, targetDir ?? '');
 
-  console.log(`🚀Scaffolding project in ${root}...`);
+  console.log(`\nCreating project in ${root}...`);
   console.log(`Using React + TypeScript template`);
 
   if (overwrite === true) {
@@ -366,7 +390,8 @@ Options:
       apitoken,
       proxyURL,
       overwrite
-    }
+    },
+    isV2
   });
 
   // Generate MCP configuration files if feature flag enabled and user opted in
@@ -378,7 +403,7 @@ Options:
     });
   }
 
-  console.log('\n🔥Done. Now run:\n');
+  console.log('\nDone ✅ Now run:\n');
   if (root !== cwd) {
     console.log(`  cd ${relative(cwd, root)}`);
   }
