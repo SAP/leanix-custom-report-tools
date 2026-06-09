@@ -335,7 +335,7 @@ Options:
           type: 'toggle',
           name: 'setupMcpServers',
           message:
-            'Set up local MCP servers for AI development?\n  - Playwright MCP (browser-based report verification)\n  - SAP LeanIX MCP Server (workspace data access)\n  ⚠️  Security advice: API token will be persisted in the MCP server config files\n  Config files are gitignored and take precedence over global settings.',
+            'Set up local MCP servers for AI development?\n  - Playwright MCP (browser-based report verification)\n  - SAP LeanIX MCP Server (workspace data access)\n  ⚠️  Security notice: Technical User Token will be persisted in the MCP server config files\n  Config files are gitignored and take precedence over global settings.',
           initial: true,
           active: 'Yes',
           inactive: 'No'
