@@ -7,7 +7,7 @@
 SAP LeanIX custom report tools: command line interface to initialize, develop and upload custom reports for SAP LeanIX Enterprise Architecture Management.
 
 - **`@lxr/core`** - Core utilities and types for SAP LeanIX reporting
-- **`@sap/create-leanix-custom-report`** - Scaffolding tool to quickly bootstrap new SAP LeanIX custom reports
+- **`@sap/create-leanix-custom-report`** - Creation tool to quickly create new SAP LeanIX custom reports
 - **`@sap/vite-plugin-leanix-custom-report`** - Vite plugin for fast development with hot reload and seamless deployment
 
 ### Features
@@ -23,7 +23,7 @@ SAP LeanIX custom report tools: command line interface to initialize, develop an
 For detailed documentation on each package see:
 
 - [@sap/vite-plugin-leanix-custom-report](./packages/vite-plugin/README.md) - Vite plugin documentation
-- [@sap/create-leanix-custom-report](./packages/create-custom-report/README.md) - Project scaffolding documentation
+- [@sap/create-leanix-custom-report](./packages/create-custom-report/README.md) - Project creation documentation
 
 ## Requirements and Setup
 
@@ -44,7 +44,7 @@ npm run create-custom-report-local
 This script will:
 
 1. Build all packages
-2. Run the @sap/create-leanix-custom-report scaffolding tool (and create a scaffolded report in `../REPORT_NAME`)
+2. Run the @sap/create-leanix-custom-report creation tool (and create a report in `../REPORT_NAME`)
 3. Automatically link the local @sap/vite-plugin-leanix-custom-report to your new project
 
 ### Using published artifacts
@@ -62,7 +62,7 @@ yarn create @sap/leanix-custom-report
 pnpm create @sap/leanix-custom-report
 ```
 
-to scaffold the report.
+to create the report.
 
 ## Support, Feedback, Contributing
 
