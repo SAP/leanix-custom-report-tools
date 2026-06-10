@@ -5,6 +5,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "upload": "tsc && vite build --mode upload",
+    "login": "lxr login",
+    "logout": "lxr logout",
     "lint": "eslint --fix",
     "format": "prettier --write ."
   },

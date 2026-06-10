@@ -11,6 +11,7 @@ This project uses the **SAP LeanIX MCP Server** for AI-assisted development.
 The token exists in `lxr.json` (always present) and optionally in `.mcp.json`/`.vscode/mcp.json` (if MCP was configured). These files are gitignored.
 
 **NEVER:**
+
 - Hardcode token in `src/` files (`*.tsx`, `*.ts`, `*.js`)
 - Copy token from config files into code
 - Use token in fetch/axios calls
