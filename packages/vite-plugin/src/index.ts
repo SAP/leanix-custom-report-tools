@@ -42,10 +42,14 @@ export default function leanixPlugin(): Plugin[] {
     apply: undefined,
 
     async config(config, env) {
+      // Use relative base so dist assets resolve correctly when index.html
+      // is served from a sub-path (e.g. .../dist/index.html).
+      config.base = './';
+
       shouldUpload = env.mode === 'upload';
       requiresServerConnection = env.command === 'serve' || shouldUpload;
+
       if (requiresServerConnection) {
-        config.base = '';
         config.server = { ...(config.server ?? {}), host: true, cors: true };
       }
     },
