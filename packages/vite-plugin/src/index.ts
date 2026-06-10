@@ -18,7 +18,7 @@ import {
   uploadReportV2,
   writeReportMetadata
 } from '@lxr/core/index';
-import { resolveAccessToken } from '@lxr/core/auth';
+import { authenticate } from '@lxr/core/auth';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { ZodError } from 'zod';
 import { checkPackageVersions } from './helpers/check-packages';
@@ -87,7 +87,7 @@ export default function leanixPlugin(): Plugin[] {
       if (requiresServerConnection) {
         await checkPackageVersions(projectRoot, logger);
         try {
-          resolvedAuth = await resolveAccessToken();
+          resolvedAuth = await authenticate();
           if (resolvedAuth.proxyURL) {
             logger?.info(`  Using proxy: ${resolvedAuth.proxyURL}`);
           }
