@@ -261,11 +261,11 @@ describe('refreshAccessToken', () => {
   });
 });
 
-// ── resolveAccessToken auth resolution order ───────────────────────────────
+// ── authenticate auth resolution order ───────────────────────────────
 
-import { resolveAccessToken } from './auth';
+import { authenticate } from './auth';
 
-describe('resolveAccessToken', () => {
+describe('authenticate', () => {
   let tmpDir: string;
   const realTmpdir = os.tmpdir;
   let fetchMock: ReturnType<typeof vi.fn>;
@@ -305,7 +305,7 @@ describe('resolveAccessToken', () => {
       )
     );
 
-    const result = await resolveAccessToken();
+    const result = await authenticate();
     expect(result.host).toBe('lxrjson.leanix.net');
     expect(result.bearerToken).toBe(accessToken);
     expect(result.expiresAt).toBeUndefined();
@@ -318,7 +318,7 @@ describe('resolveAccessToken', () => {
     });
     saveConnectionConfig(config);
 
-    const result = await resolveAccessToken();
+    const result = await authenticate();
     expect(result.bearerToken).toBe(config.oauth!.access_token);
     expect(result.host).toBe(config.host);
     expect(result.expiresAt).toBe(config.oauth!.expires_at);
@@ -339,7 +339,7 @@ describe('resolveAccessToken', () => {
     });
     vi.mocked(refreshAccessToken).mockResolvedValueOnce(refreshed);
 
-    const result = await resolveAccessToken();
+    const result = await authenticate();
     expect(result.bearerToken).toBe(newToken);
     expect(result.expiresAt).toBeGreaterThan(Date.now());
     expect(fetchMock).not.toHaveBeenCalled();
@@ -354,7 +354,7 @@ describe('resolveAccessToken', () => {
     vi.mocked(refreshAccessToken).mockResolvedValueOnce(null);
 
     // runOAuthFlow is mocked to throw — browser must NOT be opened
-    await expect(resolveAccessToken()).rejects.toThrow(
+    await expect(authenticate()).rejects.toThrow(
       'OAuth flow not available in unit tests'
     );
     expect(fetchMock).not.toHaveBeenCalled();
