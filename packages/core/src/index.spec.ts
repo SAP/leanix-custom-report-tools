@@ -2,39 +2,25 @@ import type { CustomReportMetadata } from '@lxr/core/models/custom-report-metada
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { ReadEntry } from 'tar';
-import {
-  createReadStream,
-  mkdtempSync,
-  openAsBlob,
-  rmSync,
-  writeFileSync
-} from 'node:fs';
+import { createReadStream, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer as createHttpServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { URL } from 'node:url';
 import {
   createBundle,
-  deleteWorkspaceReportById,
-  fetchWorkspaceReports,
-  getAccessToken,
   getLaunchUrl,
-  initProxy,
   npmPackBundle,
   pollReportState,
-  readLxrJson,
   ReportStateError,
   uploadBundle,
   uploadReportV2,
   validateDocument,
   writeReportMetadata
 } from '@lxr/core/index';
-import appRoot from 'app-root-path';
+import { initProxy } from '@lxr/core/proxy';
 import { t as tarT } from 'tar';
-import ProxyServer from 'transparent-proxy';
 import { getGlobalDispatcher, setGlobalDispatcher } from 'undici';
-
-const LXR_JSON_PATH = resolve(appRoot.path, 'lxr.json');
 
 const getDummyReportMetadata = (): CustomReportMetadata => ({
   id: 'net.testReport',
@@ -47,22 +33,7 @@ const getDummyReportMetadata = (): CustomReportMetadata => ({
 });
 
 describe('the lxr core package', () => {
-  let proxy: Server;
-  let proxyPort: number = 0;
-  beforeAll(async () => {
-    await new Promise<void>((resolve) => {
-      proxy = new ProxyServer();
-      proxy.listen(() => {
-        proxyPort = (proxy.address() as AddressInfo).port;
-        resolve();
-      });
-    });
-  });
-  afterAll(async () => {
-    proxy.close();
-  });
-
-  it('validate "lxr.json" and "lxreport.json" against document schemas', async () => {
+  it('validate "lxreport.json" against document schema', async () => {
     const validMetadataDocument = getDummyReportMetadata();
     const invalidMetadataDocument = {
       ...validMetadataDocument,
@@ -76,66 +47,23 @@ describe('the lxr core package', () => {
       async () =>
         await validateDocument(invalidMetadataDocument, 'lxreport.json')
     ).rejects.toThrow();
-    expect(() =>
-      validateDocument(
-        { host: 'demo-us.leanix.net', apitoken: 'token' },
-        'lxr.json'
-      )
-    ).not.toThrow();
-    await expect(
-      async () =>
-        await validateDocument({ host: 'demo-us.leanix.net' }, 'lxr.json')
-    ).rejects.toThrow();
-  });
-
-  it("readLxrJson throws error if json file doesn't have all required fields", async () => {
-    await readLxrJson(LXR_JSON_PATH);
   });
 
   it('readLxrJson sets global proxy dispatcher when proxyURL is present', async () => {
     const originalDispatcher = getGlobalDispatcher();
-    const tmpFile = join(tmpdir(), `lxr-proxy-test-${Date.now()}.json`);
-    writeFileSync(
-      tmpFile,
-      JSON.stringify({
-        host: 'eu.leanix.net',
-        apitoken: 'dummy',
-        proxyURL: 'http://proxy.example.com:8080'
-      })
-    );
-    await readLxrJson(tmpFile);
+    initProxy('http://proxy.example.com:8080');
     const dispatcher = getGlobalDispatcher();
     setGlobalDispatcher(originalDispatcher);
-    rmSync(tmpFile);
 
     expect(dispatcher.constructor.name).toBe('ProxyAgent');
   });
 
   it('readLxrJson does not change dispatcher when proxyURL is absent', async () => {
     const originalDispatcher = getGlobalDispatcher();
-    const tmpFile = join(tmpdir(), `lxr-no-proxy-test-${Date.now()}.json`);
-    writeFileSync(
-      tmpFile,
-      JSON.stringify({ host: 'eu.leanix.net', apitoken: 'dummy' })
-    );
-    await readLxrJson(tmpFile);
+    initProxy(undefined);
     const dispatcher = getGlobalDispatcher();
-    rmSync(tmpFile);
 
     expect(dispatcher).toBe(originalDispatcher);
-  });
-
-  it('getAccessToken returns a token', async () => {
-    const credentials = await readLxrJson(LXR_JSON_PATH);
-    const accessToken = await getAccessToken(credentials);
-    expect(typeof accessToken.accessToken).toBe('string'); // accessToken is a string
-    expect(accessToken.accessToken).toBeTruthy();
-    expect(typeof accessToken.expired).toBe('boolean');
-    expect(accessToken.expired).toBe(false);
-    expect(typeof accessToken.expiresIn).toBe('number');
-    expect(accessToken.expiresIn > 0).toBe(true);
-    expect(typeof accessToken.scope).toBe('string');
-    expect(accessToken.tokenType).toBe('bearer');
   });
 
   it('initProxy calls setGlobalDispatcher with a ProxyAgent', () => {
@@ -148,19 +76,6 @@ describe('the lxr core package', () => {
     expect(dispatcher.constructor.name).toBe('ProxyAgent');
   });
 
-  it('getAccessToken with proxy returns a token', async () => {
-    initProxy(`http://127.0.0.1:${proxyPort}`);
-    const credentials = await readLxrJson(LXR_JSON_PATH);
-    const accessToken = await getAccessToken(credentials);
-    expect(typeof accessToken.accessToken).toBe('string');
-    expect(accessToken.accessToken).toBeTruthy();
-    expect(typeof accessToken.expired).toBe('boolean');
-    expect(accessToken.expired).toBe(false);
-    expect(typeof accessToken.expiresIn).toBe('number');
-    expect(accessToken.expiresIn > 0).toBe(true);
-    expect(typeof accessToken.scope).toBe('string');
-    expect(accessToken.tokenType).toBe('bearer');
-  });
   it('getLaunchUrl returns a url', async () => {
     const devServerUrl = 'https://localhost:8080';
     const relayServerUrl = 'http://localhost:3000';
@@ -226,44 +141,51 @@ describe('the lxr core package', () => {
     rmSync(outDir, { recursive: true });
   });
 
-  it('uploadBundle', async () => {
-    const credentials = await readLxrJson(LXR_JSON_PATH);
-    const outDir = mkdtempSync(join(tmpdir(), 'uploadBundle-'));
-    const metadata = getDummyReportMetadata();
-
-    writeFileSync(
-      resolve(outDir, 'index.html'),
-      '<html><body>Hi from demo project</body></html>'
-    );
-    writeFileSync(resolve(outDir, 'index.js'), 'console.log("hello world")');
-    const { accessToken: bearerToken } = await getAccessToken(credentials);
-    const reports = await fetchWorkspaceReports(bearerToken);
-    const hasTestReportInWorkspace = reports.find(
-      ({ id, version }) => id === metadata.id && version === metadata.version
-    );
-    if (hasTestReportInWorkspace !== undefined) {
-      await deleteWorkspaceReportById(
-        hasTestReportInWorkspace.id!,
-        bearerToken
-      );
-    }
-    writeReportMetadata(metadata, outDir);
-    const bundlePath = await createBundle(outDir);
-    const bundle = await openAsBlob(bundlePath);
-    const reportUploadResponseData = await uploadBundle({
-      bundle,
-      bearerToken
+  it('uploadBundle posts multipart form and returns response data', async () => {
+    let receivedAuth: string | undefined;
+    let receivedMethod: string | undefined;
+    const server = createHttpServer((req, res) => {
+      receivedAuth = req.headers.authorization;
+      receivedMethod = req.method;
+      req.resume();
+      req.on('end', () => {
+        res.statusCode = 200;
+        res.setHeader('content-type', 'application/json');
+        res.end(
+          JSON.stringify({
+            status: 'OK',
+            type: 'ReportUploadResponseData',
+            data: { id: 'report-uuid-1' }
+          })
+        );
+      });
     });
-    expect(reportUploadResponseData.status).toBe('OK');
-    expect(reportUploadResponseData.type).toBe('ReportUploadResponseData');
-    expect(typeof reportUploadResponseData.data.id).toBe('string');
-    const status = await deleteWorkspaceReportById(
-      reportUploadResponseData.data.id,
-      bearerToken
-    );
-    expect(status).toBe(204);
-    rmSync(outDir, { recursive: true });
-  }, 60000);
+    await new Promise<void>((r) => server.listen(0, r));
+    const port = (server.address() as AddressInfo).port;
+
+    const fakeToken = [
+      Buffer.from(JSON.stringify({ alg: 'RS256' })).toString('base64url'),
+      Buffer.from(
+        JSON.stringify({
+          sub: 'test',
+          instanceUrl: `http://127.0.0.1:${port}`,
+          exp: 9999999999
+        })
+      ).toString('base64url'),
+      'sig'
+    ].join('.');
+
+    const bundle = new Blob([new Uint8Array([1, 2, 3])]);
+    const result = await uploadBundle({ bundle, bearerToken: fakeToken });
+
+    expect(result.status).toBe('OK');
+    expect(result.type).toBe('ReportUploadResponseData');
+    expect(result.data.id).toBe('report-uuid-1');
+    expect(receivedMethod).toBe('POST');
+    expect(receivedAuth).toBe(`Bearer ${fakeToken}`);
+
+    await new Promise<void>((r) => server.close(() => r()));
+  });
 
   describe('v2 upload (Reports Service)', () => {
     let server: Server;

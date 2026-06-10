@@ -1,4 +1,3 @@
-import type { AccessToken } from '@lxr/core/models/access-token';
 import type {
   CustomReportRow,
   CustomReportState,
@@ -7,7 +6,6 @@ import type {
 } from '@lxr/core/models/custom-report-row';
 import type { CustomReportMetadata } from '@lxr/core/models/custom-report-metadata';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
-import type { LeanIXCredentials } from '@lxr/core/models/leanix-credentials';
 import type { PackageJsonLXR } from '@lxr/core/models/package-json';
 import type {
   ReportUploadResponseData,
@@ -15,7 +13,6 @@ import type {
 } from '@lxr/core/models/report-response-data';
 import type { paths } from './generated/reports-service';
 import type { ZodObject } from 'zod';
-import { ProxyAgent, setGlobalDispatcher } from 'undici';
 import { execFile } from 'node:child_process';
 import {
   existsSync,
@@ -30,7 +27,6 @@ import { URL } from 'node:url';
 import { promisify } from 'node:util';
 import { customReportMetadataSchema } from '@lxr/core/models/custom-report-metadata';
 import { CUSTOM_REPORT_TERMINAL_FAILURE_STATES } from '@lxr/core/models/custom-report-row';
-import { leanixCredentialsSchema } from '@lxr/core/models/leanix-credentials';
 import { packageJsonLxrSchema } from '@lxr/core/models/package-json';
 import { jwtDecode } from 'jwt-decode';
 import createClient from 'openapi-fetch';
@@ -38,23 +34,16 @@ import { c } from 'tar';
 
 const execFileAsync = promisify(execFile);
 
-const snakeToCamel = (s: string): string =>
-  s.replace(/([-_]\w)/g, (g) => g[1].toUpperCase());
-
 export async function validateDocument(
   document: unknown,
-  name: 'lxr.json' | 'lxreport.json' | 'package.json'
-): Promise<PackageJsonLXR | LeanIXCredentials | CustomReportMetadata> {
+  name: 'lxreport.json' | 'package.json'
+): Promise<PackageJsonLXR | CustomReportMetadata> {
   let schema: ZodObject<any>;
-  let output: PackageJsonLXR | LeanIXCredentials | CustomReportMetadata;
+  let output: PackageJsonLXR | CustomReportMetadata;
   switch (name) {
     case 'package.json':
       schema = packageJsonLxrSchema;
       output = document as PackageJsonLXR;
-      break;
-    case 'lxr.json':
-      schema = leanixCredentialsSchema;
-      output = document as LeanIXCredentials;
       break;
     case 'lxreport.json':
       schema = customReportMetadataSchema;
@@ -68,89 +57,22 @@ export async function validateDocument(
   return output;
 }
 
-export async function readLxrJson(path?: string): Promise<LeanIXCredentials> {
-  if ((path ?? '').length === 0) {
-    path = join(process.cwd(), 'lxr.json');
-  }
-  const {
-    host,
-    apitoken,
-    proxyURL = null,
-    store = null
-  } = JSON.parse(path !== undefined ? readFileSync(path).toString() : '{}');
-  const credentials: LeanIXCredentials = { host, apitoken };
-  if (proxyURL !== null) {
-    credentials.proxyURL = proxyURL;
-  }
-  if (store !== null) {
-    credentials.store = store;
-  }
-  await validateDocument(credentials, 'lxr.json');
-  initProxy(credentials.proxyURL);
-  return credentials;
-}
-
-export async function readMetadataJson(
-  path = join(process.cwd(), 'package.json')
-): Promise<CustomReportMetadata> {
-  const fileContent = readFileSync(path).toString();
-  const pkg: PackageJsonLXR = JSON.parse(fileContent);
-  await validateDocument(pkg, 'package.json');
+export function readMetadataJson(path: string): CustomReportMetadata {
+  const pkg: PackageJsonLXR = packageJsonLxrSchema.parse(
+    JSON.parse(readFileSync(path, 'utf8'))
+  );
   const { name, version, author, description, leanixReport } = pkg;
-  const metadata: CustomReportMetadata = {
+  return customReportMetadataSchema.parse({
     name,
     version,
     author,
     description,
     ...leanixReport
-  };
-  await validateDocument(metadata, 'lxreport.json');
-  return metadata;
-}
-
-export function initProxy(proxyURL?: string): void {
-  if (typeof proxyURL === 'string' && proxyURL.length > 0) {
-    // Applies to all outgoing requests, including Node's native fetch.
-    // https://github.com/nodejs/undici#undicisetglobaldispatcherdispatcher
-    setGlobalDispatcher(new ProxyAgent(proxyURL));
-  }
-}
-
-export async function getAccessToken(
-  credentials: LeanIXCredentials
-): Promise<AccessToken> {
-  const uri = `https://${credentials.host}/services/mtm/v1/oauth2/token?grant_type=client_credentials`;
-  const res = await fetch(uri, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `Basic ${Buffer.from(`apitoken:${credentials.apitoken}`).toString('base64')}`
-    }
   });
-  const content =
-    res.headers.get('content-type') === 'application/json'
-      ? await res.json()
-      : await res.text();
-  if (!res.ok) {
-    return await Promise.reject(res.status);
-  }
-  return Object.entries(content as AccessToken).reduce(
-    (accumulator, [key, value]) => ({
-      ...accumulator,
-      [snakeToCamel(key)]: value
-    }),
-    {
-      accessToken: '',
-      expired: false,
-      expiresIn: 0,
-      scope: '',
-      tokenType: ''
-    }
-  ) as AccessToken;
 }
 
-export function getAccessTokenClaims(accessToken: AccessToken): JwtClaims {
-  return jwtDecode(accessToken.accessToken);
+export function decodeBearerToken(bearerToken: string): JwtClaims {
+  return jwtDecode(bearerToken);
 }
 
 export function getLaunchUrl(
@@ -217,7 +139,7 @@ export async function uploadBundle(params: {
   const res = await fetch(url, {
     method: 'POST',
     headers: { Authorization: `Bearer ${bearerToken}` },
-    body: form,
+    body: form
   });
   const contentType = res.headers.get('content-type');
   const content =
@@ -244,7 +166,7 @@ export async function fetchWorkspaceReports(
     }
     const res = await fetch(url.toString(), {
       method: 'GET',
-      headers,
+      headers
     });
     return (await res.json()) as ReportsResponseData;
   };
@@ -275,7 +197,7 @@ export async function deleteWorkspaceReportById(
   );
   const { status } = await fetch(url.toString(), {
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${bearerToken}` },
+    headers: { Authorization: `Bearer ${bearerToken}` }
   });
   return status === 204
     ? await Promise.resolve(status)
@@ -307,7 +229,7 @@ function reportsServiceClient(params: {
   const { host, bearerToken, baseURL } = params;
   return createClient<paths>({
     baseUrl: baseURL ?? `https://${host}/services/reports/v1`,
-    headers: { Authorization: `Bearer ${bearerToken}` },
+    headers: { Authorization: `Bearer ${bearerToken}` }
   });
 }
 
@@ -391,7 +313,8 @@ export async function pollReportState(params: {
       return row;
     }
     if (CUSTOM_REPORT_TERMINAL_FAILURE_STATES.includes(row.status)) {
-      const reason = row.status === 'VULNERABLE'
+      const reason =
+        row.status === 'VULNERABLE'
           ? 'security scan found vulnerabilities'
           : 'build failed';
       throw new ReportStateError(
