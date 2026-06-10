@@ -30,7 +30,12 @@ import {
   readConnectionConfig,
   saveConnectionConfig
 } from './connection-config';
-import { getHostFromAccessToken, refreshAccessToken } from './oauth';
+import {
+  getHostFromAccessToken,
+  getWorkspaceNameFromAccessToken,
+  refreshAccessToken,
+  startCallbackServer
+} from './oauth';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -97,6 +102,41 @@ describe('getHostFromAccessToken', () => {
       instanceUrl: 'https://my-workspace.leanix.net/some/path'
     });
     expect(getHostFromAccessToken(token)).toBe('my-workspace.leanix.net');
+  });
+});
+
+// ── getWorkspaceNameFromAccessToken ───────────────────────────────────────────
+
+describe('getWorkspaceNameFromAccessToken', () => {
+  it('extracts workspaceName from the JWT principal', () => {
+    const token = makeFakeJwt({
+      principal: {
+        permission: { workspaceName: 'my-workspace', workspaceId: 'ws-1' }
+      }
+    });
+    expect(getWorkspaceNameFromAccessToken(token)).toBe('my-workspace');
+  });
+});
+
+// ── startCallbackServer ───────────────────────────────────────────────────────
+
+describe('startCallbackServer', () => {
+  it('resolves with code and state when callback URL contains both', async () => {
+    const { port, waitForCode } = await startCallbackServer();
+    const code = 'auth-code-abc';
+    const state = 'state-xyz';
+    await fetch(`http://localhost:${port}/?code=${code}&state=${state}`);
+    const result = await waitForCode();
+    expect(result).toEqual({ code, state });
+  });
+
+  it('rejects when callback URL is missing code or state', async () => {
+    const { port, waitForCode } = await startCallbackServer();
+    const pending = waitForCode();
+    fetch(`http://localhost:${port}/?code=only-code`).catch(() => {});
+    await expect(pending).rejects.toThrow(
+      'OAuth callback missing code or state'
+    );
   });
 });
 
