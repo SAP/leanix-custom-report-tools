@@ -63,6 +63,7 @@ export function clearConnectionConfig(): void {
   const existing = readLxrJson(path);
   if (!existing) return;
   const { host, proxyURL } = existing;
+  // Keep the file if there's anything worth preserving (host/proxy config); otherwise delete it.
   if (host !== undefined || proxyURL !== undefined) {
     saveLxrJson(path, {
       _description: connectionConfigDescription(path),
