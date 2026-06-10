@@ -140,7 +140,7 @@ async function runV2Auth(file: ConnectionConfigFile | null): Promise<{
   const configPath = file?.path ?? getUserLxrJsonPath();
   try {
     const { bearerToken, host } = await authenticate(file);
-
+    
     const workspaceName = getWorkspaceNameFromAccessToken(bearerToken);
     return { host, workspaceName, configPath };
   } catch (error) {
@@ -152,7 +152,7 @@ async function runV2Auth(file: ConnectionConfigFile | null): Promise<{
       `${red('✖')} Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
     console.log(
-      'Connection config written without credentials. Set up auth manually later.'
+      '  Connection config written without credentials. Set up auth manually later.'
     );
     return { host: '', workspaceName: '', configPath };
   }
@@ -243,26 +243,27 @@ Options:
 
     let result: PromptResult = {};
     try {
+      console.log('  The project name is your report\'s permanent identity in the workspace — choose it carefully.');
       result = await prompts(
         [
           {
-            type: targetDir !== null ? null : 'text',
-            name: 'projectName',
+            name: 'packageName',
+            type: () => (packageName !== undefined ? null : 'text'),
             message: 'Project name:',
-            initial: defaultProjectName,
-            onState: (state) =>
-              (targetDir = state.value.trim() ?? defaultProjectName)
+            initial: toValidPackageName(targetDir ?? defaultProjectName),
+            validate: (dir) =>
+              isValidPackageName(dir) ||
+              'Invalid package name, may only contain lowercase letters (a-z), digits (0-9), dots (.), underscores (_), and minus (-)'
           },
           {
             name: 'overwrite',
-            type: () =>
-              !existsSync(targetDir ?? '') || overwrite ? null : 'confirm',
-            message: () => {
-              const dirForPrompt =
-                targetDir === '.'
-                  ? 'Current directory'
-                  : `Target directory "${targetDir}"`;
-              return `${dirForPrompt} is not empty. Remove existing files and continue?`;
+            type: (_, { packageName: pkg }: { packageName?: string }) => {
+              const dir = packageName ?? pkg ?? '';
+              return !existsSync(dir) || overwrite ? null : 'confirm';
+            },
+            message: (_, { packageName: pkg }: { packageName?: string }) => {
+              const dir = packageName ?? pkg ?? '';
+              return `Target directory "${dir}" is not empty. Remove existing files and continue?`;
             }
           },
           {
@@ -273,15 +274,6 @@ Options:
               }
               return null;
             }
-          },
-          {
-            name: 'packageName',
-            type: () => (packageName !== undefined ? null : 'text'),
-            message:
-              'Package name (the report identity, used together with version to uniquely identify a report in a workspace)',
-            validate: (dir) =>
-              isValidPackageName(dir) ||
-              'Invalid package name, may only contain lowercase letters (a-z), digits (0-9), dots (.), underscores (_), and minus (-)'
           },
           {
             type: argv?.author === undefined ? 'text' : null,
@@ -340,15 +332,11 @@ Options:
       overwrite = overwrite
     } = result);
 
-    // Proxy — use saved config if no proxy was provided via prompt or flag
+    console.log();
+
+    // In v2, project directory = package name
+    targetDir = packageName ?? defaultProjectName;
     const savedProxyURL = configFile?.config.proxyURL;
-    if (configFile && !argv?.proxyURL && !result.proxyURL) {
-      if (savedProxyURL) {
-        console.log(`  Using proxy from ${configFile.path}: ${savedProxyURL}`);
-      } else {
-        console.log(`  No proxy configured in ${configFile.path}`);
-      }
-    }
     proxyURL = proxyURL ?? savedProxyURL;
     initProxy(proxyURL);
 
@@ -363,21 +351,18 @@ Options:
         configPath
       } = await runV2Auth(configFile);
 
+      console.log(`  Config:    ${configPath}`);
+      console.log(`  Proxy:     ${proxyURL ?? 'none'}`);
       if (oauthHost) {
         host = oauthHost;
-        console.log(`✓ Host:      ${host}`);
-        console.log(`✓ Workspace: ${workspaceName}`);
+        console.log(`  Host:      ${host}`);
+        console.log(`  Workspace: ${workspaceName}`);
       }
-      console.log(`  Connection config: ${configPath}`);
     }
 
     // Scaffold project
-    if (targetDir === null) {
-      targetDir = packageName ?? defaultProjectName;
-    }
-    const root = join(cwd, targetDir ?? '');
-    console.log(`\nCreating project in ${root}...`);
-    console.log(`Using React + TypeScript template`);
+    const root = join(cwd, targetDir);
+    console.log(`\nCreating project in ${root}\n`);
 
     if (overwrite === true) {
       rmSync(root, { recursive: true, force: true });
@@ -385,9 +370,6 @@ Options:
     if (!existsSync(root)) {
       mkdirSync(root);
     }
-
-    const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent) ?? null;
-    const pkgManager = pkgInfo != null ? pkgInfo.name : 'npm';
 
     deployTemplate({
       defaultProjectName,
@@ -410,31 +392,21 @@ Options:
     });
 
     generateMcpConfig({ targetDir: root });
+    console.log('✓ MCP servers configured for GitHub Copilot (VS Code) and Claude Code:');
+    console.log('  - Playwright MCP (AI report verification)');
+    console.log('  - SAP LeanIX MCP Server (workspace data access)');
+    console.log('    The SAP LeanIX MCP Server uses its own OAuth session.');
+    console.log('    When your AI tool first connects to it, a second browser');
+    console.log('    login will open to authorize MCP workspace access.');
+    console.log();
 
     // Done
     console.log('\nDone ✅ Now run:\n');
     if (root !== cwd) {
       console.log(`  cd ${relative(cwd, root)}`);
     }
-    switch (pkgManager) {
-      case 'yarn':
-        console.log('  yarn');
-        console.log('  yarn dev');
-        break;
-      default:
-        console.log(`  ${pkgManager} install`);
-        console.log(`  ${pkgManager} run dev`);
-        break;
-    }
-    console.log();
-    console.log('✓ MCP servers configured (.vscode/mcp.json, .mcp.json)');
-    console.log('  Supports: GitHub Copilot (VS Code) and Claude Code');
-    console.log('  - Playwright MCP (AI report verification)');
-    console.log('  - SAP LeanIX MCP Server (workspace data access)');
-    console.log();
-    console.log(' ℹ️ The SAP LeanIX MCP Server uses its own OAuth session.');
-    console.log('    When your AI tool first connects to it, a second browser');
-    console.log('    login will open to authorize MCP workspace access.');
+    console.log('  npm install');
+    console.log('  npm run dev');
     console.log();
     return;
   }
@@ -677,7 +649,8 @@ Options:
 }
 
 init().catch((e) => {
-  console.error(e);
+  console.error(e instanceof Error ? e.message : String(e));
+  process.exit(1);
 });
 
 export default init;

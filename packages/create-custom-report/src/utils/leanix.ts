@@ -37,13 +37,13 @@ export async function generateLeanIXFiles(
   if (!isV2) {
     validateDocument(lxreportJson, 'lxreport.json');
   }
-  const lxrJson = { host, apitoken, proxyURL };
-
-  validateDocument(lxrJson, 'lxr.json');
-  await writeFile(
-    join(targetDir, 'lxr.json'),
-    JSON.stringify(lxrJson, null, 2) + '\n'
-  );
+  if (!isV2 && (host || apitoken || proxyURL)) {
+    const lxrJson = { host, apitoken, proxyURL };
+    await writeFile(
+      join(targetDir, 'lxr.json'),
+      JSON.stringify(lxrJson, null, 2) + '\n'
+    );
+  }
   await writeFile(
     join(targetDir, 'package.json'),
     JSON.stringify(pkg, null, 2) + '\n'
