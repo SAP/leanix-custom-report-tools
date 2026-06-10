@@ -401,7 +401,7 @@ it('--help prints usage and exits with code 0', () => {
     '--overwrite',
     '--skipAuth',
     '--setupMcpServers',
-    '-v2',
+    '--v2',
     '--help'
   ];
   for (const flag of flags) {
@@ -410,17 +410,17 @@ it('--help prints usage and exits with code 0', () => {
 });
 
 // ---------------------------------------------------------------------------
-// H. -v2: no report ID prompt or field, new wording, identity warning
+// H. --v2: no report ID prompt or field, new wording, identity warning
 // ---------------------------------------------------------------------------
 
-it('-v2 skips the id prompt and does not write id to leanixReport', () => {
+it('--v2 skips the id prompt and does not write id to leanixReport', () => {
   const author = uuid();
   const title = uuid();
   const description = uuid();
   const packageName = 'my-v2-report';
 
   const args = [
-    '-v2',
+    '--v2',
     '--skipAuth',
     '--overwrite',
     '--author',
@@ -448,11 +448,11 @@ it('-v2 skips the id prompt and does not write id to leanixReport', () => {
   expect(pkg?.leanixReport?.title).toEqual(title);
 });
 
-it('-v2 uses "Author of the report" prompt wording', () => {
+it('--v2 uses "Author of the report" prompt wording', () => {
   const { stdout } = run(
     [
       projectName,
-      '-v2',
+      '--v2',
       '--skipAuth',
       '--packageName',
       'some-report',
@@ -466,11 +466,11 @@ it('-v2 uses "Author of the report" prompt wording', () => {
   expect((stdout as string)?.includes('Author of the report')).toBe(true);
 });
 
-it('-v2 uses "Report title" prompt wording', () => {
+it('--v2 uses "Report title" prompt wording', () => {
   const { stdout } = run(
     [
       projectName,
-      '-v2',
+      '--v2',
       '--skipAuth',
       '--packageName',
       'some-report',
@@ -484,11 +484,11 @@ it('-v2 uses "Report title" prompt wording', () => {
   expect((stdout as string)?.includes('Report title')).toBe(true);
 });
 
-it('-v2 uses "Report description" prompt wording', () => {
+it('--v2 uses "Report description" prompt wording', () => {
   const { stdout } = run(
     [
       projectName,
-      '-v2',
+      '--v2',
       '--skipAuth',
       '--packageName',
       'some-report',

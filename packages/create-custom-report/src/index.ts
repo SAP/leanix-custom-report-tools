@@ -130,15 +130,15 @@ export async function init(): Promise<void> {
       'proxyURL',
       'packageName'
     ],
-    boolean: ['overwrite', 'skipAuth', 'help'],
+    boolean: ['overwrite', 'skipAuth', 'help', 'v2'],
     default: {
+      v2: false,
       overwrite: false,
       skipAuth: false
     }
   });
 
-  // Feature flag: -v2 activates the new creation UX
-  const isV2 = process.argv.slice(2).some((a) => a === '-v2' || a === 'v2');
+  const isV2: boolean = argv.v2;
 
   if (argv.help) {
     console.log(`
@@ -158,7 +158,7 @@ Options:
   --proxyURL <string>     HTTP/S proxy URL to use for requests to SAP LeanIX
   --overwrite             Overwrite target directory if it exists (default: false)
   --skipAuth              Skip SAP LeanIX authentication entirely (default: false)
-  -v2                     Use new creation UX (package name as report identity, no report ID)
+  --v2                    Use new creation UX (package name as report identity, no report ID)
   --setupMcpServers       Generate MCP server config files (requires feature flag)
   --no-setupMcpServers    Skip MCP server config generation without prompting
   --help                  Show this help message and exit
@@ -166,10 +166,8 @@ Options:
     process.exit(0);
   }
 
-  // In v2 mode the positional arg may be "v2" itself (npm create ... v2) — ignore it
-  const positional = argv?._?.[0];
-  let targetDir =
-    positional === 'v2' || positional === '-v2' ? null : (positional ?? null);
+  let targetDir = argv._[0] ?? null;
+
   const defaultProjectName = targetDir ?? 'leanix-custom-report';
 
   // leanix-specific answers
