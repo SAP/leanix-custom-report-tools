@@ -432,6 +432,10 @@ Options:
     console.log('  - Playwright MCP (AI report verification)');
     console.log('  - SAP LeanIX MCP Server (workspace data access)');
     console.log();
+    console.log(' ℹ️ The SAP LeanIX MCP Server uses its own OAuth session.');
+    console.log('    When your AI tool first connects to it, a second browser');
+    console.log('    login will open to authorize MCP workspace access.');
+    console.log();
     return;
   }
 
