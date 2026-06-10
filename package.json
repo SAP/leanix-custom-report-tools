@@ -14,7 +14,7 @@
     "custom-reports",
     "vite",
     "vite-plugin",
-    "scaffolding"
+    "creation"
   ],
   "workspaces": [
     "./packages/*"
