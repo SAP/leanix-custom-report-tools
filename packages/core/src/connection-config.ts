@@ -12,7 +12,13 @@ import { getProjectLxrJsonPath, getUserLxrJsonPath } from './constants';
 import { initProxy } from './proxy';
 
 function readLxrJson(path: string): ConnectionConfig {
-  return connectionConfigSchema.parse(JSON.parse(readFileSync(path, 'utf8')));
+  try {
+    return connectionConfigSchema.parse(JSON.parse(readFileSync(path, 'utf8')));
+  } catch (err) {
+    throw new Error(
+      `Failed to parse ${path}:\n${err instanceof Error ? err.message : String(err)}`, { cause: err }
+    );
+  }
 }
 
 function saveLxrJson(path: string, config: ConnectionConfig): void {

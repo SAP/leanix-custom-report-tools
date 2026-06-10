@@ -65,7 +65,6 @@ async function refreshTokenIfExpired(
   const isExpired = Date.now() >= oauth.expires_at - EXP_BUFFER_SECONDS * 1000;
   if (!isExpired) return config;
 
-  console.warn('Access token expired, refreshing...');
   const refreshed = await refreshAccessToken(config);
   return refreshed?.oauth && refreshed.host ? refreshed : null;
 }
@@ -115,14 +114,10 @@ export async function authenticate(
       const { bearerToken, expiresAt } = await resolveBearerToken(freshConfig);
       return { bearerToken, host: freshConfig.host!, expiresAt, proxyURL };
     }
-
-    console.warn('Session expired, re-authenticating.');
-  } else {
-    console.warn('No credentials found.');
   }
 
   // 3. No valid credentials — open browser OAuth flow
-  console.warn('Opening browser to log in to LeanIX...');
+  console.warn('  Opening browser to log in to LeanIX...');
   const newConfig = await runOAuthFlow(proxyURL);
   saveConnectionConfig(newConfig, file?.path ?? getUserLxrJsonPath());
   return {
