@@ -1,4 +1,3 @@
-import * as oauth from 'oauth4webapi';
 import type { ConnectionConfig } from './models/connection-config';
 import {
   clearConnectionConfig,
@@ -36,19 +35,21 @@ export async function exchangeApiToken(
   host: string,
   apitoken: string
 ): Promise<string> {
-  const as: oauth.AuthorizationServer = {
-    issuer: `https://${host}`,
-    token_endpoint: `https://${host}/services/mtm/v1/oauth2/token`
-  };
-  const client: oauth.Client = { client_id: 'apitoken' };
-  const res = await oauth.clientCredentialsGrantRequest(
-    as,
-    client,
-    oauth.ClientSecretBasic(apitoken),
-    new URLSearchParams()
-  );
-  const tokens = await oauth.processClientCredentialsResponse(as, client, res);
-  return tokens.access_token;
+  // LeanIX MTM requires grant_type as a query parameter, not in the request body.
+  const url = `https://${host}/services/mtm/v1/oauth2/token?grant_type=client_credentials`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: `Basic ${Buffer.from(`apitoken:${apitoken}`).toString('base64')}`
+    }
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => String(res.status));
+    throw new Error(`Token exchange failed (${res.status}): ${text}`);
+  }
+  const { access_token } = (await res.json()) as { access_token: string };
+  return access_token;
 }
 
 async function refreshTokenIfExpired(
