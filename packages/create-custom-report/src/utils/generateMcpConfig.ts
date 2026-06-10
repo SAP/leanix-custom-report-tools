@@ -73,7 +73,10 @@ export const generateMcpConfig = (params: GenerateMcpConfigParams): void => {
 
   const leanixMcpServer = localCliPath
     ? { command: 'node', args: [localCliPath, 'mcp'] }
-    : { command: 'npx', args: ['-y', '@sap/vite-plugin-leanix-custom-report', 'mcp'] };
+    : {
+        command: 'npx',
+        args: ['-y', '@sap/vite-plugin-leanix-custom-report', 'mcp']
+      };
 
   // Server configuration (shared between IDEs)
   const serverConfig = {

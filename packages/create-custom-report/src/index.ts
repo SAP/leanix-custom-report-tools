@@ -173,7 +173,8 @@ export async function init(): Promise<void> {
       'host',
       'apitoken',
       'proxyURL',
-      'packageName'
+      'packageName',
+      'localCliPath'
     ],
     boolean: ['overwrite', 'skipAuth', 'help', 'v2'],
     default: {
@@ -402,7 +403,7 @@ Options:
       isV2: true
     });
 
-    generateMcpConfig({ targetDir: root });
+    generateMcpConfig({ targetDir: root, localCliPath: argv.localCliPath });
     console.log('✓ MCP servers configured for GitHub Copilot (VS Code) and Claude Code:');
     console.log('  - Playwright MCP (AI report verification)');
     console.log('  - SAP LeanIX MCP Server (workspace data access)');

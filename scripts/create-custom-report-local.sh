@@ -27,7 +27,7 @@ echo "-----------------------------------------------------------------"
 # Run creation tool in parent directory (v2 flow)
 cd ..
 TMPOUT=$(mktemp)
-node "$TOOL_DIR/packages/create-custom-report/dist/index.cjs" --v2 "$@" | tee "$TMPOUT"
+node "$TOOL_DIR/packages/create-custom-report/dist/index.cjs" --v2 --localCliPath "$TOOL_DIR/packages/vite-plugin/dist/cli.cjs" "$@" | tee "$TMPOUT"
 EXIT_CODE=${PIPESTATUS[0]}
 PROJECT_DIR=$(grep "^Creating project in" "$TMPOUT" | sed 's/^Creating project in //')
 rm "$TMPOUT"
