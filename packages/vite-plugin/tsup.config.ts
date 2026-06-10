@@ -21,7 +21,8 @@ export default defineConfig([
   {
     name: 'cli',
     entry: { cli: 'src/cli.ts' },
-    format: ['esm'],
+    format: ['cjs'],
+    platform: 'node',
     clean: false,
     splitting: false,
     dts: false,

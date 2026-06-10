@@ -14,7 +14,7 @@
     "leanix"
   ],
   "bin": {
-    "lxr": "./dist/cli.js"
+    "lxr": "./dist/cli.cjs"
   },
   "main": "dist/index.cjs",
   "module": "dist/index.js",
