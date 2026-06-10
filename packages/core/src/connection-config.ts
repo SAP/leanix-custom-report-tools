@@ -20,11 +20,21 @@ function saveLxrJson(path: string, config: ConnectionConfig): void {
   writeFileSync(path, JSON.stringify(config, null, 2), { mode: 0o600 });
 }
 
-export function readConnectionConfig(): {
+function resolveConnectionConfigPath(): string {
+  // Project-level file takes precedence; default to user-level if absent
+  const projectPath = getProjectLxrJsonPath();
+  return existsSync(projectPath) ? projectPath : getUserLxrJsonPath();
+}
+
+export type ConnectionConfigFile = {
   config: ConnectionConfig;
   path: string;
-} | null {
-  const path = resolveConnectionConfigPath();
+};
+
+export function readConnectionConfig(
+  userOnly = false
+): ConnectionConfigFile | null {
+  const path = userOnly ? getUserLxrJsonPath() : resolveConnectionConfigPath();
   if (!existsSync(path)) return null;
   const config = readLxrJson(path);
 
@@ -41,12 +51,6 @@ function connectionConfigDescription(path: string): string {
     : 'This file is managed by LeanIX Custom Report Tools. To log out, run: npm run logout';
 }
 
-function resolveConnectionConfigPath(): string {
-  // Project-level file takes precedence; default to user-level if absent
-  const projectPath = getProjectLxrJsonPath();
-  return existsSync(projectPath) ? projectPath : getUserLxrJsonPath();
-}
-
 export function saveConnectionConfig(
   config: ConnectionConfig,
   path = resolveConnectionConfigPath()
@@ -58,17 +62,16 @@ export function saveConnectionConfig(
   return path;
 }
 
-export function clearConnectionConfig(): void {
-  const path = resolveConnectionConfigPath();
-  const existing = readLxrJson(path);
-  if (!existing) return;
-  const { host, proxyURL } = existing;
+export function clearConnectionConfig(
+  config: ConnectionConfig,
+  path = resolveConnectionConfigPath()
+): void {
   // Keep the file if there's anything worth preserving (host/proxy config); otherwise delete it.
-  if (host !== undefined || proxyURL !== undefined) {
+  if (config?.host !== undefined || config?.proxyURL !== undefined) {
     saveLxrJson(path, {
       _description: connectionConfigDescription(path),
-      host,
-      proxyURL
+      host: config.host,
+      proxyURL: config.proxyURL
     });
   } else {
     unlinkSync(path);

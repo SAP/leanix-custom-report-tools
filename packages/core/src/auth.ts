@@ -3,8 +3,10 @@ import type { ConnectionConfig } from './models/connection-config';
 import {
   clearConnectionConfig,
   readConnectionConfig,
-  saveConnectionConfig
+  saveConnectionConfig,
+  ConnectionConfigFile
 } from './connection-config';
+import { getUserLxrJsonPath } from './constants';
 import { refreshAccessToken, runOAuthFlow } from './oauth';
 
 export type ResolvedAuth = {
@@ -15,21 +17,19 @@ export type ResolvedAuth = {
 };
 
 // Treat tokens as expired this many seconds before they actually expire, to avoid using a token that expires mid-request.
-export const EXP_BUFFER_SECONDS = 300;
+const EXP_BUFFER_SECONDS = 300;
 
-export async function login(
-  proxyURL?: string
-): Promise<{ config: ConnectionConfig; path: string }> {
+export async function login(proxyURL?: string): Promise<ConnectionConfigFile> {
   const config = await runOAuthFlow(proxyURL);
-  const path = saveConnectionConfig(config);
+  const path = saveConnectionConfig(config, getUserLxrJsonPath());
   return { config, path };
 }
 
 export async function logout(): Promise<{ path: string } | null> {
-  const entry = readConnectionConfig();
-  if (!entry) return null;
-  clearConnectionConfig();
-  return { path: entry.path };
+  const file = readConnectionConfig();
+  if (!file) return null;
+  clearConnectionConfig(file.config, file.path);
+  return { path: file.path };
 }
 
 export async function exchangeApiToken(
@@ -87,18 +87,30 @@ async function resolveBearerToken(
   };
 }
 
-export async function resolveAccessToken(): Promise<ResolvedAuth> {
-  const entry = readConnectionConfig();
-  const proxyURL = entry?.config.proxyURL;
+/**
+ * Authenticates against SAP LeanIX and returns a valid bearer token.
+ *
+ * Auth-method agnostic: works with both API token and OAuth credentials.
+ *
+ * @param connectionConfigFile - Optional pre-read config file to use instead of reading from disk.
+ * @returns Resolved authentication.
+ */
+export async function authenticate(
+  connectionConfigFile?: ConnectionConfigFile | null
+): Promise<ResolvedAuth> {
+  // 1. Resolve config — use provided file or fall back to reading from disk
+  const file = connectionConfigFile ?? readConnectionConfig();
+  const proxyURL = file?.config.proxyURL;
 
-  const isLoggedIn = entry && (entry.config.apitoken || entry.config.oauth);
+  // 2. If credentials exist, try to use them (refreshing if expired)
+  const isLoggedIn = file && (file.config.apitoken || file.config.oauth);
 
   if (isLoggedIn) {
-    const { config } = entry;
+    const { config } = file;
     const freshConfig = await refreshTokenIfExpired(config);
 
     if (freshConfig) {
-      saveConnectionConfig(freshConfig);
+      saveConnectionConfig(freshConfig, file.path);
       const { bearerToken, expiresAt } = await resolveBearerToken(freshConfig);
       return { bearerToken, host: freshConfig.host!, expiresAt, proxyURL };
     }
@@ -108,9 +120,10 @@ export async function resolveAccessToken(): Promise<ResolvedAuth> {
     console.warn('No credentials found.');
   }
 
+  // 3. No valid credentials — open browser OAuth flow
   console.warn('Opening browser to log in to LeanIX...');
   const newConfig = await runOAuthFlow(proxyURL);
-  saveConnectionConfig({ ...newConfig, proxyURL });
+  saveConnectionConfig(newConfig, file?.path ?? getUserLxrJsonPath());
   return {
     bearerToken: newConfig.oauth!.access_token,
     host: newConfig.host!,
