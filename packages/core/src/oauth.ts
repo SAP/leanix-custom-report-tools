@@ -54,24 +54,6 @@ export async function startCallbackServer(): Promise<{
   return { port, server, waitForCode: () => codePromise };
 }
 
-export async function deregisterOAuthClient(
-  issuer: string,
-  clientId: string,
-  registrationAccessToken: string
-): Promise<void> {
-  const as = await discover(issuer);
-  if (!as.registration_endpoint) return;
-  const res = await fetch(
-    `${as.registration_endpoint}/${encodeURIComponent(clientId)}`,
-    {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${registrationAccessToken}` }
-    }
-  );
-  if (!res.ok && res.status !== 404)
-    throw new Error(`OAuth client deregistration failed: ${res.status}`);
-}
-
 async function discover(issuer: string): Promise<oauth.AuthorizationServer> {
   const issuerUrl = new URL(issuer);
   const res = await fetch(
