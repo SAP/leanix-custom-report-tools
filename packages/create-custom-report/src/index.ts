@@ -10,7 +10,13 @@ import {
   pkgFromUserAgent,
   toValidPackageName
 } from './helpers';
-import { getAccessToken, initProxy } from '@lxr/core/index';
+import { exchangeApiToken, authenticate } from '@lxr/core/auth';
+import { getWorkspaceNameFromAccessToken } from '@lxr/core/oauth';
+import {
+  clearConnectionConfig,
+  readConnectionConfig
+} from '@lxr/core/connection-config';
+import type { ConnectionConfigFile } from '@lxr/core/connection-config';
 import banner from './utils/banner';
 import { deployTemplate } from './utils/deployTemplate';
 import { generateLeanIXFiles } from './utils/leanix';
@@ -22,7 +28,8 @@ import type {
   PromptResult
 } from './models/project-options';
 import { parseTriStateBoolean } from './utils/parseTriStateBoolean';
-
+import { initProxy } from '@lxr/core/proxy';
+import { getUserLxrJsonPath } from '@lxr/core/constants';
 export type { LeanIXOptions, ProjectOptions, PromptResult };
 export { parseTriStateBoolean };
 
@@ -30,6 +37,10 @@ const cwd = process.cwd();
 
 // Fixed template: React with TypeScript
 const TEMPLATE = 'react-ts';
+
+// ---------------------------------------------------------------------------
+// V1 helpers (unchanged)
+// ---------------------------------------------------------------------------
 
 const getCredentialQuestions = (options?: {
   host?: string;
@@ -117,6 +128,40 @@ const getLeanIXQuestions = (
       }))
 ];
 
+// ---------------------------------------------------------------------------
+// V2 auth flow
+// ---------------------------------------------------------------------------
+
+async function runV2Auth(file: ConnectionConfigFile | null): Promise<{
+  host: string;
+  workspaceName: string;
+  configPath: string;
+}> {
+  const configPath = file?.path ?? getUserLxrJsonPath();
+  try {
+    const { bearerToken, host } = await authenticate(file);
+
+    const workspaceName = getWorkspaceNameFromAccessToken(bearerToken);
+    return { host, workspaceName, configPath };
+  } catch (error) {
+    // Auth failed — write proxy-only config and continue
+    if (file) {
+      clearConnectionConfig(file?.config, configPath);
+    }
+    console.log(
+      `${red('✖')} Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+    console.log(
+      'Connection config written without credentials. Set up auth manually later.'
+    );
+    return { host: '', workspaceName: '', configPath };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+
 export async function init(): Promise<void> {
   console.log(`\n${banner}\n`);
   const argv = minimist(process.argv.slice(2), {
@@ -189,12 +234,221 @@ Options:
     'setupMcpServers'
   );
 
+  // -------------------------------------------------------------------------
+  // V2 path
+  // -------------------------------------------------------------------------
+  if (isV2) {
+    // Read user-level config before prompting — proxy may already be configured
+    let configFile = readConnectionConfig(true);
+
+    let result: PromptResult = {};
+    try {
+      result = await prompts(
+        [
+          {
+            type: targetDir !== null ? null : 'text',
+            name: 'projectName',
+            message: 'Project name:',
+            initial: defaultProjectName,
+            onState: (state) =>
+              (targetDir = state.value.trim() ?? defaultProjectName)
+          },
+          {
+            name: 'overwrite',
+            type: () =>
+              !existsSync(targetDir ?? '') || overwrite ? null : 'confirm',
+            message: () => {
+              const dirForPrompt =
+                targetDir === '.'
+                  ? 'Current directory'
+                  : `Target directory "${targetDir}"`;
+              return `${dirForPrompt} is not empty. Remove existing files and continue?`;
+            }
+          },
+          {
+            name: 'overwriteChecker',
+            type: (_, { overwrite }: { overwrite?: boolean }) => {
+              if (overwrite === false) {
+                throw new Error(`${red('✖')} Operation cancelled`);
+              }
+              return null;
+            }
+          },
+          {
+            name: 'packageName',
+            type: () => (packageName !== undefined ? null : 'text'),
+            message:
+              'Package name (the report identity, used together with version to uniquely identify a report in a workspace)',
+            validate: (dir) =>
+              isValidPackageName(dir) ||
+              'Invalid package name, may only contain lowercase letters (a-z), digits (0-9), dots (.), underscores (_), and minus (-)'
+          },
+          {
+            type: argv?.author === undefined ? 'text' : null,
+            name: 'author',
+            message: 'Author of the report (e.g. Jane Doe)'
+          },
+          {
+            type: argv?.title === undefined ? 'text' : null,
+            name: 'title',
+            message: 'Report title'
+          },
+          {
+            type: argv?.description === undefined ? 'text' : null,
+            name: 'description',
+            message: 'Report description'
+          },
+          {
+            type:
+              argv?.proxyURL !== undefined ||
+              configFile !== null ||
+              argv.skipAuth
+                ? null
+                : 'toggle',
+            name: 'behindProxy',
+            message: 'Are you behind a proxy?',
+            initial: false,
+            active: 'Yes',
+            inactive: 'No'
+          },
+          {
+            type: (prev: boolean) => prev && 'text',
+            name: 'proxyURL',
+            message: 'Proxy URL?',
+            initial: argv?.proxyURL
+          }
+        ],
+        {
+          onCancel: () => {
+            throw new Error(`${red('✖')} Operation cancelled`);
+          }
+        }
+      );
+    } catch (cancelled: unknown) {
+      console.log(
+        cancelled instanceof Error ? cancelled.message : String(cancelled)
+      );
+      process.exit(1);
+    }
+
+    ({
+      author = author,
+      title = title,
+      description = description,
+      proxyURL = proxyURL,
+      packageName = packageName,
+      overwrite = overwrite
+    } = result);
+
+    // Proxy — use saved config if no proxy was provided via prompt or flag
+    const savedProxyURL = configFile?.config.proxyURL;
+    if (configFile && !argv?.proxyURL && !result.proxyURL) {
+      if (savedProxyURL) {
+        console.log(`  Using proxy from ${configFile.path}: ${savedProxyURL}`);
+      } else {
+        console.log(`  No proxy configured in ${configFile.path}`);
+      }
+    }
+    proxyURL = proxyURL ?? savedProxyURL;
+    initProxy(proxyURL);
+
+    // Auth — run OAuth flow automatically, no prompts (skipped when --skipAuth)
+    if (!argv.skipAuth) {
+      if (!configFile && proxyURL) {
+        configFile = { config: { proxyURL }, path: getUserLxrJsonPath() };
+      }
+      const {
+        host: oauthHost,
+        workspaceName,
+        configPath
+      } = await runV2Auth(configFile);
+
+      if (oauthHost) {
+        host = oauthHost;
+        console.log(`✓ Host:      ${host}`);
+        console.log(`✓ Workspace: ${workspaceName}`);
+      }
+      console.log(`  Connection config: ${configPath}`);
+    }
+
+    // Scaffold project
+    if (targetDir === null) {
+      targetDir = packageName ?? defaultProjectName;
+    }
+    const root = join(cwd, targetDir ?? '');
+    console.log(`\nCreating project in ${root}...`);
+    console.log(`Using React + TypeScript template`);
+
+    if (overwrite === true) {
+      rmSync(root, { recursive: true, force: true });
+    }
+    if (!existsSync(root)) {
+      mkdirSync(root);
+    }
+
+    const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent) ?? null;
+    const pkgManager = pkgInfo != null ? pkgInfo.name : 'npm';
+
+    deployTemplate({
+      defaultProjectName,
+      targetDir: root,
+      template: TEMPLATE,
+      result: { author, title, description, overwrite },
+      mcpCustomReportsEnabled: true
+    });
+
+    await generateLeanIXFiles({
+      targetDir: root,
+      result: {
+        packageName: packageName ?? defaultProjectName,
+        author,
+        title,
+        description,
+        overwrite
+      },
+      isV2: true
+    });
+
+    generateMcpConfig({ targetDir: root });
+
+    // Done
+    console.log('\nDone ✅ Now run:\n');
+    if (root !== cwd) {
+      console.log(`  cd ${relative(cwd, root)}`);
+    }
+    switch (pkgManager) {
+      case 'yarn':
+        console.log('  yarn');
+        console.log('  yarn dev');
+        break;
+      default:
+        console.log(`  ${pkgManager} install`);
+        console.log(`  ${pkgManager} run dev`);
+        break;
+    }
+    console.log();
+    console.log('✓ MCP servers configured (.vscode/mcp.json, .mcp.json)');
+    console.log('  Supports: GitHub Copilot (VS Code) and Claude Code');
+    console.log('  - Playwright MCP (AI report verification)');
+    console.log('  - SAP LeanIX MCP Server (workspace data access)');
+    console.log();
+    console.log(' ℹ️ The SAP LeanIX MCP Server uses its own OAuth session.');
+    console.log('    When your AI tool first connects to it, a second browser');
+    console.log('    login will open to authorize MCP workspace access.');
+    console.log();
+    return;
+  }
+
+  // -------------------------------------------------------------------------
+  // V1 path (unchanged)
+  // -------------------------------------------------------------------------
+
   let result: PromptResult = {};
   try {
     result = await prompts(
       [
         {
-          type: isV2 || targetDir !== null ? null : 'text',
+          type: targetDir !== null ? null : 'text',
           name: 'projectName',
           message: 'Project name:',
           initial: defaultProjectName,
@@ -226,20 +480,15 @@ Options:
           name: 'packageName',
           type: () => {
             if (packageName !== undefined) return null;
-            if (!isV2 && isValidPackageName(targetDir ?? '')) return null;
+            if (isValidPackageName(targetDir ?? '')) return null;
             return 'text';
           },
-          message: isV2
-            ? 'Package name (the report identity, used together with version to uniquely identify a report in a workspace)'
-            : 'Package name:',
-          initial: isV2 ? undefined : () => toValidPackageName(targetDir ?? ''),
+          message: 'Package name:',
+          initial: () => toValidPackageName(targetDir ?? ''),
           validate: (dir) =>
-            isValidPackageName(dir) ||
-            (isV2
-              ? 'Invalid package name, may only contain lowercase letters (a-z), digits (0-9), dots (.), underscores (_), and minus (-)'
-              : 'Invalid package.json name')
+            isValidPackageName(dir) || 'Invalid package.json name'
         },
-        ...getLeanIXQuestions(argv, isV2)
+        ...getLeanIXQuestions(argv, false)
       ],
       {
         onCancel: () => {
@@ -268,25 +517,21 @@ Options:
     overwrite = overwrite
   } = result);
 
-  // In v2 the package name is also the project directory
-  if (isV2 && targetDir === null) {
-    targetDir = packageName ?? defaultProjectName;
-  }
   initProxy(proxyURL);
   const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent) ?? null;
   const pkgManager = pkgInfo != null ? pkgInfo.name : 'npm';
 
-  // Validate credentials by getting access token, retry if invalid
-  let tokenResponse = null;
+  let accessToken: string | null = null;
   let mcpCustomReportsEnabled = false;
 
   if (!argv.skipAuth) {
-    while (!tokenResponse) {
+    // Validate credentials by getting access token, retry if invalid
+    while (!accessToken) {
       try {
         if (!host || !apitoken) {
           throw new Error('Host and API token are required');
         }
-        tokenResponse = await getAccessToken({ host, apitoken, proxyURL });
+        accessToken = await exchangeApiToken(host, apitoken);
         console.log('✓ Successfully authenticated with SAP LeanIX');
       } catch (error) {
         console.log(
@@ -315,7 +560,7 @@ Options:
     try {
       mcpCustomReportsEnabled = await checkFeatureFlag({
         host,
-        tokenResponse,
+        accessToken,
         featureFlagId: 'mcpserver.custom-reports'
       });
     } catch (error) {
@@ -389,16 +634,12 @@ Options:
       proxyURL,
       overwrite
     },
-    isV2
+    isV2: false
   });
 
   // Generate MCP configuration files if feature flag enabled and user opted in
-  if (setupMcpServers === true && mcpCustomReportsEnabled && host && apitoken) {
-    generateMcpConfig({
-      targetDir: root,
-      host,
-      apitoken
-    });
+  if (setupMcpServers === true && mcpCustomReportsEnabled) {
+    generateMcpConfig({ targetDir: root });
   }
 
   console.log('\nDone ✅ Now run:\n');
