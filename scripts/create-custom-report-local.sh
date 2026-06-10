@@ -28,7 +28,7 @@ echo ""
 cd ..
 # Snapshot directories before and after to detect the newly created project folder
 BEFORE=$(ls -d */ 2>/dev/null)
-if ! node "$TOOL_DIR/packages/create-custom-report/dist/index.cjs" v2; then
+if ! node "$TOOL_DIR/packages/create-custom-report/dist/index.cjs" --v2 "$@"; then
     exit 1
 fi
 AFTER=$(ls -d */ 2>/dev/null)
