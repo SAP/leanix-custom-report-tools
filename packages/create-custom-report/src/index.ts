@@ -45,7 +45,7 @@ const getCredentialQuestions = (options?: {
       options?.skipIfProvided && options?.host !== undefined ? null : 'text',
     name: 'host',
     initial: options?.host ?? 'demo-eu.leanix.net',
-    message: 'Which host do you want to work with?'
+    message: 'Which workspace instance? (e.g. demo-eu-1.leanix.net)'
   },
   {
     type:
@@ -54,7 +54,7 @@ const getCredentialQuestions = (options?: {
         : 'text',
     name: 'apitoken',
     message:
-      'Technical User API-Token for Authentication (see: https://help.sap.com/docs/leanix/ea/technical-users)\n  ⚠️  Security advice: API token will be persisted in the report config file'
+      'Technical User Token (see: https://help.sap.com/docs/leanix/ea/technical-users)\n  ⚠️  Security notice: Technical User Token will be persisted in the report config file'
   },
   {
     type:
@@ -80,28 +80,33 @@ const getCredentialQuestions = (options?: {
 ];
 
 const getLeanIXQuestions = (
-  argv: minimist.ParsedArgs
+  argv: minimist.ParsedArgs,
+  isV2: boolean
 ): Array<prompts.PromptObject<keyof LeanIXOptions | 'behindProxy'>> => [
-  {
-    type: argv?.id === undefined ? 'text' : null,
-    name: 'id',
-    message:
-      'Unique id for this report in Java package notation (e.g. net.leanix.barcharts)'
-  },
+  ...(isV2
+    ? []
+    : [
+        {
+          type: (argv?.id === undefined ? 'text' : null) as 'text' | null,
+          name: 'id' as const,
+          message:
+            'Unique id for this report in Java package notation (e.g. net.leanix.barcharts)'
+        }
+      ]),
   {
     type: argv?.author === undefined ? 'text' : null,
     name: 'author',
-    message: 'Who is the author of this report (e.g. SAP LeanIX)'
+    message: 'Author of the report (e.g. Jane Doe)'
   },
   {
     type: argv?.title === undefined ? 'text' : null,
     name: 'title',
-    message: 'A title to be shown in SAP LeanIX when report is installed'
+    message: 'Report title'
   },
   {
     type: argv?.description === undefined ? 'text' : null,
     name: 'description',
-    message: 'Description of your project'
+    message: 'Report description'
   },
   ...(argv.skipAuth
     ? []
@@ -126,12 +131,15 @@ export async function init(): Promise<void> {
       'proxyURL',
       'packageName'
     ],
-    boolean: ['overwrite', 'skipAuth', 'help'],
+    boolean: ['overwrite', 'skipAuth', 'help', 'v2'],
     default: {
+      v2: false,
       overwrite: false,
       skipAuth: false
     }
   });
+
+  const isV2: boolean = argv.v2;
 
   if (argv.help) {
     console.log(`
@@ -151,6 +159,7 @@ Options:
   --proxyURL <string>     HTTP/S proxy URL to use for requests to SAP LeanIX
   --overwrite             Overwrite target directory if it exists (default: false)
   --skipAuth              Skip SAP LeanIX authentication entirely (default: false)
+  --v2                    Use new creation UX (package name as report identity, no report ID)
   --setupMcpServers       Generate MCP server config files (requires feature flag)
   --no-setupMcpServers    Skip MCP server config generation without prompting
   --help                  Show this help message and exit
@@ -158,7 +167,8 @@ Options:
     process.exit(0);
   }
 
-  let targetDir = argv?._?.[0] ?? null;
+  let targetDir = argv._[0] ?? null;
+
   const defaultProjectName = targetDir ?? 'leanix-custom-report';
 
   // leanix-specific answers
@@ -185,7 +195,7 @@ Options:
     result = await prompts(
       [
         {
-          type: targetDir !== null ? null : 'text',
+          type: isV2 || targetDir !== null ? null : 'text',
           name: 'projectName',
           message: 'Project name:',
           initial: defaultProjectName,
@@ -194,7 +204,8 @@ Options:
         },
         {
           name: 'overwrite',
-          type: () => (!existsSync(targetDir) || overwrite ? null : 'confirm'),
+          type: () =>
+            !existsSync(targetDir ?? '') || overwrite ? null : 'confirm',
           message: () => {
             const dirForPrompt =
               targetDir === '.'
@@ -214,16 +225,22 @@ Options:
         },
         {
           name: 'packageName',
-          type: () =>
-            isValidPackageName(targetDir) || packageName !== undefined
-              ? null
-              : 'text',
-          message: 'Package name:',
-          initial: () => toValidPackageName(targetDir),
+          type: () => {
+            if (packageName !== undefined) return null;
+            if (!isV2 && isValidPackageName(targetDir ?? '')) return null;
+            return 'text';
+          },
+          message: isV2
+            ? 'Package name (the report identity, used together with version to uniquely identify a report in a workspace)'
+            : 'Package name:',
+          initial: isV2 ? undefined : () => toValidPackageName(targetDir ?? ''),
           validate: (dir) =>
-            isValidPackageName(dir) ?? 'Invalid package.json name'
+            isValidPackageName(dir) ||
+            (isV2
+              ? 'Invalid package name, may only contain lowercase letters (a-z), digits (0-9), dots (.), underscores (_), and minus (-)'
+              : 'Invalid package.json name')
         },
-        ...getLeanIXQuestions(argv)
+        ...getLeanIXQuestions(argv, isV2)
       ],
       {
         onCancel: () => {
@@ -251,6 +268,11 @@ Options:
     setupMcpServers = setupMcpServers,
     overwrite = overwrite
   } = result);
+
+  // In v2 the package name is also the project directory
+  if (isV2 && targetDir === null) {
+    targetDir = packageName ?? defaultProjectName;
+  }
   initProxy(proxyURL);
   const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent) ?? null;
   const pkgManager = pkgInfo != null ? pkgInfo.name : 'npm';
@@ -312,7 +334,7 @@ Options:
           type: 'toggle',
           name: 'setupMcpServers',
           message:
-            'Set up local MCP servers for AI development?\n  - Playwright MCP (browser-based report verification)\n  - SAP LeanIX MCP Server (workspace data access)\n  ⚠️  Security advice: API token will be persisted in the MCP server config files\n  Config files are gitignored and take precedence over global settings.',
+            'Set up local MCP servers for AI development?\n  - Playwright MCP (browser-based report verification)\n  - SAP LeanIX MCP Server (workspace data access)\n  ⚠️  Security notice: Technical User Token will be persisted in the MCP server config files\n  Config files are gitignored and take precedence over global settings.',
           initial: true,
           active: 'Yes',
           inactive: 'No'
@@ -329,7 +351,7 @@ Options:
 
   const root = join(cwd, targetDir ?? '');
 
-  console.log(`🚀Scaffolding project in ${root}...`);
+  console.log(`\nCreating project in ${root}...`);
   console.log(`Using React + TypeScript template`);
 
   if (overwrite === true) {
@@ -367,7 +389,8 @@ Options:
       apitoken,
       proxyURL,
       overwrite
-    }
+    },
+    isV2
   });
 
   // Generate MCP configuration files if feature flag enabled and user opted in
@@ -377,7 +400,7 @@ Options:
     });
   }
 
-  console.log('\n🔥Done. Now run:\n');
+  console.log('\nDone ✅ Now run:\n');
   if (root !== cwd) {
     console.log(`  cd ${relative(cwd, root)}`);
   }

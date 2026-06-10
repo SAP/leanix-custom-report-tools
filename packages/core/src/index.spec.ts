@@ -35,7 +35,10 @@ const getDummyReportMetadata = (): CustomReportMetadata => ({
 describe('the lxr core package', () => {
   it('validate "lxreport.json" against document schema', async () => {
     const validMetadataDocument = getDummyReportMetadata();
-    const invalidMetadataDocument = { ...validMetadataDocument, id: undefined };
+    const invalidMetadataDocument = {
+      ...validMetadataDocument,
+      title: undefined
+    };
 
     expect(() =>
       validateDocument(validMetadataDocument, 'lxreport.json')

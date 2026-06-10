@@ -1,6 +1,6 @@
 # @sap/create-leanix-custom-report
 
-## Scaffolding Your First SAP LeanIX Custom Report
+## Creating Your First SAP LeanIX Custom Report
 
 > **Compatibility Note:**
 > Requires [Node.js](https://nodejs.org/en/) version >=24.0.0.
@@ -38,7 +38,7 @@ yarn create @sap/leanix-custom-report my-custom-report
 pnpm create @sap/leanix-custom-report my-custom-report
 ```
 
-All projects are scaffolded using **React with TypeScript**, providing a modern, type-safe development experience with excellent IDE support and maintainability.
+All projects are created using **React with TypeScript**, providing a modern, type-safe development experience with excellent IDE support and maintainability.
 
 ## Non-Interactive / CI Usage
 
@@ -59,7 +59,7 @@ npm create @sap/leanix-custom-report@latest my-report \
   --overwrite
 ```
 
-To skip SAP LeanIX authentication entirely (e.g. for offline scaffolding):
+To skip SAP LeanIX authentication entirely (e.g. for offline creation):
 
 ```bash
 npm create @sap/leanix-custom-report@latest my-report \

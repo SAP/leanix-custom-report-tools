@@ -1,7 +1,7 @@
 import zod from 'zod';
 
 export const customReportMetadataSchema = zod.object({
-  id: zod.string(),
+  id: zod.string().optional(),
   name: zod.string(),
   title: zod.string(),
   version: zod.string(),

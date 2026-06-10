@@ -12,6 +12,8 @@ export interface LeanIXOptions {
   host?: string;
   apitoken?: string;
   proxyURL?: string;
+  setupMcpServers?: boolean;
+  v2?: boolean;
 }
 
 export interface PromptResult extends ProjectOptions, LeanIXOptions {
