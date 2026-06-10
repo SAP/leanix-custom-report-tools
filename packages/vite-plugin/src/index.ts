@@ -53,8 +53,10 @@ export default function leanixPlugin(
     async config(config, env) {
       shouldUpload = env.mode === 'upload';
       loadWorkspaceCredentials = env.command === 'serve' || shouldUpload;
+      // Use relative base so dist assets resolve correctly when index.html
+      // is served from a sub-path (e.g. .../dist/index.html).
+      config.base = './';
       if (loadWorkspaceCredentials) {
-        config.base = '';
         config.server = { ...(config.server ?? {}), host: true, cors: true };
         try {
           credentials = await readLxrJson();
