@@ -1,6 +1,6 @@
 import zod from 'zod';
 
-export const credentialsSchema = zod.object({
+export const connectionConfigSchema = zod.object({
   _description: zod.string().optional(),
   host: zod.string().optional(),
   apitoken: zod.string().optional(),
@@ -18,4 +18,4 @@ export const credentialsSchema = zod.object({
     .optional()
 });
 
-export type Credentials = zod.infer<typeof credentialsSchema>;
+export type ConnectionConfig = zod.infer<typeof connectionConfigSchema>;

@@ -1,10 +1,10 @@
 import * as oauth from 'oauth4webapi';
-import type { Credentials } from './models/leanix-credentials';
+import type { ConnectionConfig } from './models/connection-config';
 import {
-  clearCredentials,
-  readCredentials,
-  saveCredentials
-} from './credentials';
+  clearConnectionConfig,
+  readConnectionConfig,
+  saveConnectionConfig
+} from './connection-config';
 import { refreshAccessToken, runOAuthFlow } from './oauth';
 
 export type ResolvedAuth = {
@@ -19,16 +19,16 @@ export const EXP_BUFFER_SECONDS = 300;
 
 export async function login(
   proxyURL?: string
-): Promise<{ credentials: Credentials; path: string }> {
-  const credentials = await runOAuthFlow(proxyURL);
-  const path = saveCredentials(credentials);
-  return { credentials, path };
+): Promise<{ config: ConnectionConfig; path: string }> {
+  const config = await runOAuthFlow(proxyURL);
+  const path = saveConnectionConfig(config);
+  return { config, path };
 }
 
 export async function logout(): Promise<{ path: string } | null> {
-  const entry = readCredentials();
+  const entry = readConnectionConfig();
   if (!entry) return null;
-  clearCredentials();
+  clearConnectionConfig();
   return { path: entry.path };
 }
 
@@ -51,55 +51,56 @@ export async function exchangeApiToken(
   return tokens.access_token;
 }
 
-async function ensureFreshCredentials(
-  creds: Credentials
-): Promise<Credentials | null> {
+async function refreshTokenIfExpired(
+  config: ConnectionConfig
+): Promise<ConnectionConfig | null> {
   // API token: stateless, always valid — no refresh needed
-  if (creds.apitoken) return creds;
+  if (config.apitoken) return config;
 
   // OAuth: check expiry and refresh if needed
-  const { oauth } = creds;
-  if (!oauth || !creds.host) return null;
+  const { oauth } = config;
+  if (!oauth || !config.host) return null;
 
   const isExpired = Date.now() >= oauth.expires_at - EXP_BUFFER_SECONDS * 1000;
-  if (!isExpired) return creds;
+  if (!isExpired) return config;
 
   console.log('Access token expired, refreshing...');
-  const refreshed = await refreshAccessToken(creds);
+  const refreshed = await refreshAccessToken(config);
   return refreshed?.oauth && refreshed.host ? refreshed : null;
 }
 
 async function resolveBearerToken(
-  creds: Credentials
+  config: ConnectionConfig
 ): Promise<{ bearerToken: string; expiresAt?: number }> {
   // API token: exchange the stored API key for a short-lived bearer token
-  if (creds.apitoken) {
-    if (!creds.host) throw new Error('API token is set but host is missing');
-    return { bearerToken: await exchangeApiToken(creds.host, creds.apitoken) };
+  if (config.apitoken) {
+    if (!config.host) throw new Error('API token is set but host is missing');
+    return {
+      bearerToken: await exchangeApiToken(config.host, config.apitoken)
+    };
   }
 
-  // OAuth: access token is already in credentials
+  // OAuth: access token is already in the workspace config
   return {
-    bearerToken: creds.oauth!.access_token,
-    expiresAt: creds.oauth!.expires_at
+    bearerToken: config.oauth!.access_token,
+    expiresAt: config.oauth!.expires_at
   };
 }
 
 export async function resolveAccessToken(): Promise<ResolvedAuth> {
-  const entry = readCredentials();
-  const proxyURL = entry?.credentials.proxyURL;
+  const entry = readConnectionConfig();
+  const proxyURL = entry?.config.proxyURL;
 
-  const isLoggedIn =
-    entry && (entry.credentials.apitoken || entry.credentials.oauth);
+  const isLoggedIn = entry && (entry.config.apitoken || entry.config.oauth);
 
   if (isLoggedIn) {
-    const { credentials } = entry;
-    const fresh = await ensureFreshCredentials(credentials);
+    const { config } = entry;
+    const freshConfig = await refreshTokenIfExpired(config);
 
-    if (fresh) {
-      saveCredentials(fresh);
-      const { bearerToken, expiresAt } = await resolveBearerToken(fresh);
-      return { bearerToken, host: fresh.host!, expiresAt, proxyURL };
+    if (freshConfig) {
+      saveConnectionConfig(freshConfig);
+      const { bearerToken, expiresAt } = await resolveBearerToken(freshConfig);
+      return { bearerToken, host: freshConfig.host!, expiresAt, proxyURL };
     }
 
     console.log('Session expired, re-authenticating.');
@@ -108,12 +109,12 @@ export async function resolveAccessToken(): Promise<ResolvedAuth> {
   }
 
   console.log('Opening browser to log in to LeanIX...');
-  const newCreds = await runOAuthFlow(proxyURL);
-  saveCredentials({ ...newCreds, proxyURL });
+  const newConfig = await runOAuthFlow(proxyURL);
+  saveConnectionConfig({ ...newConfig, proxyURL });
   return {
-    bearerToken: newCreds.oauth!.access_token,
-    host: newCreds.host!,
+    bearerToken: newConfig.oauth!.access_token,
+    host: newConfig.host!,
     proxyURL,
-    expiresAt: newCreds.oauth!.expires_at
+    expiresAt: newConfig.oauth!.expires_at
   };
 }

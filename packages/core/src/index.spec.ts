@@ -28,7 +28,7 @@ import {
 } from '@lxr/core/index';
 import { exchangeApiToken } from '@lxr/core/auth';
 import { initProxy } from '@lxr/core/proxy';
-import { readCredentials } from '@lxr/core/credentials';
+import { readConnectionConfig } from './connection-config';
 import { t as tarT } from 'tar';
 import ProxyServer from 'transparent-proxy';
 import { getGlobalDispatcher, setGlobalDispatcher } from 'undici';
@@ -59,7 +59,7 @@ describe('the lxr core package', () => {
     proxy.close();
   });
 
-  it('validate "lxr.json" and "lxreport.json" against document schemas', async () => {
+  it('validate "lxreport.json" against document schema', async () => {
     const validMetadataDocument = getDummyReportMetadata();
     const invalidMetadataDocument = { ...validMetadataDocument, id: undefined };
 
@@ -69,15 +69,6 @@ describe('the lxr core package', () => {
     await expect(
       async () =>
         await validateDocument(invalidMetadataDocument, 'lxreport.json')
-    ).rejects.toThrow();
-    expect(() =>
-      validateDocument(
-        { host: 'demo-us.leanix.net', apitoken: 'token' },
-        'lxr.json'
-      )
-    ).not.toThrow();
-    await expect(
-      async () => await validateDocument({ host: 123 }, 'lxr.json')
     ).rejects.toThrow();
   });
 
@@ -99,11 +90,8 @@ describe('the lxr core package', () => {
   });
 
   it('getAccessToken returns a token', async () => {
-    const credentials = readCredentials()!.credentials;
-    const bearerToken = await exchangeApiToken(
-      credentials.host!,
-      credentials.apitoken!
-    );
+    const config = readConnectionConfig()!.config;
+    const bearerToken = await exchangeApiToken(config.host!, config.apitoken!);
     expect(typeof bearerToken).toBe('string');
     expect(bearerToken).toBeTruthy();
   });
@@ -120,11 +108,8 @@ describe('the lxr core package', () => {
 
   it('getAccessToken with proxy returns a token', async () => {
     initProxy(`http://127.0.0.1:${proxyPort}`);
-    const credentials = readCredentials()!.credentials;
-    const bearerToken = await exchangeApiToken(
-      credentials.host!,
-      credentials.apitoken!
-    );
+    const config = readConnectionConfig()!.config;
+    const bearerToken = await exchangeApiToken(config.host!, config.apitoken!);
     expect(typeof bearerToken).toBe('string');
     expect(bearerToken).toBeTruthy();
   });
@@ -194,7 +179,7 @@ describe('the lxr core package', () => {
   });
 
   it('uploadBundle', async () => {
-    const credentials = readCredentials()!.credentials;
+    const config = readConnectionConfig()!.config;
     const outDir = mkdtempSync(join(tmpdir(), 'uploadBundle-'));
     const metadata = getDummyReportMetadata();
 
@@ -203,10 +188,7 @@ describe('the lxr core package', () => {
       '<html><body>Hi from demo project</body></html>'
     );
     writeFileSync(resolve(outDir, 'index.js'), 'console.log("hello world")');
-    const bearerToken = await exchangeApiToken(
-      credentials.host!,
-      credentials.apitoken!
-    );
+    const bearerToken = await exchangeApiToken(config.host!, config.apitoken!);
     const reports = await fetchWorkspaceReports(bearerToken);
     const hasTestReportInWorkspace = reports.find(
       ({ id, version }) => id === metadata.id && version === metadata.version

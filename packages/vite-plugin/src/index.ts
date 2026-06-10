@@ -29,7 +29,7 @@ export default function leanixPlugin(): Plugin[] {
   let resolvedAuth: ResolvedAuth | null = null;
   let claims: JwtClaims | null = null;
   let shouldUpload: boolean = false;
-  let loadWorkspaceCredentials: boolean = false;
+  let requiresServerConnection: boolean = false;
   let viteDevServerUrl: string;
   let launchUrl: string;
   let relayServer: ReturnType<typeof createHttpServer> | null = null;
@@ -43,8 +43,8 @@ export default function leanixPlugin(): Plugin[] {
 
     async config(config, env) {
       shouldUpload = env.mode === 'upload';
-      loadWorkspaceCredentials = env.command === 'serve' || shouldUpload;
-      if (loadWorkspaceCredentials) {
+      requiresServerConnection = env.command === 'serve' || shouldUpload;
+      if (requiresServerConnection) {
         config.base = '';
         config.server = { ...(config.server ?? {}), host: true, cors: true };
       }
@@ -80,7 +80,7 @@ export default function leanixPlugin(): Plugin[] {
         process.exit(1);
       }
 
-      if (loadWorkspaceCredentials) {
+      if (requiresServerConnection) {
         await checkPackageVersions(projectRoot, logger);
         try {
           resolvedAuth = await resolveAccessToken();

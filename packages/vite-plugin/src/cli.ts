@@ -2,11 +2,11 @@ import { login as coreLogin, logout as coreLogout } from '@lxr/core/auth';
 import { getWorkspaceNameFromAccessToken } from '@lxr/core/oauth';
 
 async function login(): Promise<void> {
-  const { credentials, path } = await coreLogin();
+  const { config, path } = await coreLogin();
   const workspaceName = getWorkspaceNameFromAccessToken(
-    credentials.oauth!.access_token
+    config.oauth!.access_token
   );
-  console.log(`Logged in to https://${credentials.host}/${workspaceName}`);
+  console.log(`Logged in to https://${config.host}/${workspaceName}`);
   console.log(`Credentials saved to ${path}`);
 }
 

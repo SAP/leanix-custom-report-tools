@@ -1,4 +1,4 @@
-import type { Credentials } from './models/leanix-credentials';
+import type { ConnectionConfig } from './models/connection-config';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import * as os from 'node:os';
 import { join } from 'node:path';
@@ -26,7 +26,10 @@ vi.mock('@lxr/core/oauth', async () => {
   };
 });
 
-import { readCredentials, saveCredentials } from './credentials';
+import {
+  readConnectionConfig,
+  saveConnectionConfig
+} from './connection-config';
 import { getHostFromAccessToken, refreshAccessToken } from './oauth';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -51,9 +54,9 @@ function makeFakeJwt(payload: Record<string, unknown> = {}): string {
   return `${header}.${body}.fakesig`;
 }
 
-const makeCredentials = (
-  overrideOauth: Partial<NonNullable<Credentials['oauth']>> = {}
-): Credentials => ({
+const makeConnectionConfig = (
+  overrideOauth: Partial<NonNullable<ConnectionConfig['oauth']>> = {}
+): ConnectionConfig => ({
   _description: 'test',
   host: 'test.leanix.net',
   oauth: {
@@ -97,9 +100,9 @@ describe('getHostFromAccessToken', () => {
   });
 });
 
-// ── credential storage ─────────────────────────────────────────────────────
+// ── workspace config storage ───────────────────────────────────────────────
 
-describe('credential storage', () => {
+describe('workspace config storage', () => {
   let tmpDir: string;
   const realTmpdir = os.tmpdir;
 
@@ -114,29 +117,29 @@ describe('credential storage', () => {
     vi.restoreAllMocks();
   });
 
-  describe('readCredentials (user file)', () => {
-    it('returns null when credentials file does not exist', () => {
-      expect(readCredentials()).toBeNull();
+  describe('readConnectionConfig (user file)', () => {
+    it('returns null when config file does not exist', () => {
+      expect(readConnectionConfig()).toBeNull();
     });
 
     it('throws on invalid JSON', () => {
       mkdirSync(join(tmpDir, '.leanix'), { recursive: true });
       writeFileSync(join(tmpDir, '.leanix', 'lxr.json'), 'not valid json');
-      expect(() => readCredentials()).toThrow();
+      expect(() => readConnectionConfig()).toThrow();
     });
 
-    it('returns parsed credentials for a valid file', () => {
-      const creds = makeCredentials();
-      saveCredentials(creds);
-      expect(readCredentials()?.credentials).toEqual(creds);
+    it('returns parsed config for a valid file', () => {
+      const config = makeConnectionConfig();
+      saveConnectionConfig(config);
+      expect(readConnectionConfig()?.config).toEqual(config);
     });
   });
 
-  describe('saveCredentials', () => {
-    it('creates directory and writes credentials as JSON', () => {
-      const creds = makeCredentials();
-      saveCredentials(creds);
-      expect(readCredentials()?.credentials).toEqual(creds);
+  describe('saveConnectionConfig', () => {
+    it('creates directory and writes config as JSON', () => {
+      const config = makeConnectionConfig();
+      saveConnectionConfig(config);
+      expect(readConnectionConfig()?.config).toEqual(config);
     });
   });
 });
@@ -156,7 +159,7 @@ describe('refreshAccessToken', () => {
     vi.unstubAllGlobals();
   });
 
-  it('returns updated credentials on a successful refresh', async () => {
+  it('returns updated config on a successful refresh', async () => {
     const newToken = makeFakeJwt({ instanceUrl: 'https://test.leanix.net' });
     fetchMock
       .mockResolvedValueOnce(makeDiscoveryResponse(ISSUER))
@@ -172,7 +175,7 @@ describe('refreshAccessToken', () => {
         )
       );
 
-    const result = await refreshAccessToken(makeCredentials());
+    const result = await refreshAccessToken(makeConnectionConfig());
     expect(result).not.toBeNull();
     expect(result!.oauth!.access_token).toBe(newToken);
     expect(result!.oauth!.refresh_token).toBe('new-refresh');
@@ -183,17 +186,17 @@ describe('refreshAccessToken', () => {
     fetchMock
       .mockResolvedValueOnce(makeDiscoveryResponse(ISSUER))
       .mockResolvedValueOnce(new Response(null, { status: 401 }));
-    expect(await refreshAccessToken(makeCredentials())).toBeNull();
+    expect(await refreshAccessToken(makeConnectionConfig())).toBeNull();
   });
 
   it('returns null on 400 from token endpoint', async () => {
     fetchMock
       .mockResolvedValueOnce(makeDiscoveryResponse(ISSUER))
       .mockResolvedValueOnce(new Response(null, { status: 400 }));
-    expect(await refreshAccessToken(makeCredentials())).toBeNull();
+    expect(await refreshAccessToken(makeConnectionConfig())).toBeNull();
   });
 
-  it('uses the issuer stored in credentials for discovery', async () => {
+  it('uses the issuer stored in config for discovery', async () => {
     const customIssuer = 'https://staging.leanix.net';
     const newToken = makeFakeJwt({ instanceUrl: 'https://staging.leanix.net' });
     fetchMock
@@ -210,8 +213,8 @@ describe('refreshAccessToken', () => {
         )
       );
 
-    const creds = makeCredentials({ issuer: customIssuer });
-    await refreshAccessToken(creds);
+    const config = makeConnectionConfig({ issuer: customIssuer });
+    await refreshAccessToken(config);
 
     const discoveryCall = fetchMock.mock.calls[0][0] as string;
     expect(discoveryCall).toContain('staging.leanix.net');
@@ -269,23 +272,27 @@ describe('resolveAccessToken', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('uses valid cached credentials without any network call', async () => {
-    const creds = makeCredentials({ expires_at: Date.now() + 3600 * 1000 });
-    saveCredentials(creds);
+  it('uses valid cached config without any network call', async () => {
+    const config = makeConnectionConfig({
+      expires_at: Date.now() + 3600 * 1000
+    });
+    saveConnectionConfig(config);
 
     const result = await resolveAccessToken();
-    expect(result.bearerToken).toBe(creds.oauth!.access_token);
-    expect(result.host).toBe(creds.host);
-    expect(result.expiresAt).toBe(creds.oauth!.expires_at);
+    expect(result.bearerToken).toBe(config.oauth!.access_token);
+    expect(result.host).toBe(config.host);
+    expect(result.expiresAt).toBe(config.oauth!.expires_at);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('refreshes expired token and returns new bearer token', async () => {
-    const expiredCreds = makeCredentials({ expires_at: Date.now() - 1000 });
-    saveCredentials(expiredCreds);
+    const expiredConfig = makeConnectionConfig({
+      expires_at: Date.now() - 1000
+    });
+    saveConnectionConfig(expiredConfig);
 
     const newToken = makeFakeJwt({ instanceUrl: 'https://test.leanix.net' });
-    const refreshed = makeCredentials({
+    const refreshed = makeConnectionConfig({
       expires_at: Date.now() + 3600 * 1000,
       access_token: newToken,
       refresh_token: 'new-refresh'
@@ -299,8 +306,10 @@ describe('resolveAccessToken', () => {
   });
 
   it('falls through to OAuth flow when refresh fails (no browser opened)', async () => {
-    const expiredCreds = makeCredentials({ expires_at: Date.now() - 1000 });
-    saveCredentials(expiredCreds);
+    const expiredConfig = makeConnectionConfig({
+      expires_at: Date.now() - 1000
+    });
+    saveConnectionConfig(expiredConfig);
 
     vi.mocked(refreshAccessToken).mockResolvedValueOnce(null);
 
@@ -316,10 +325,10 @@ describe('resolveAccessToken', () => {
 
 import { logout } from './auth';
 
-// makeCredentials without a host so clearCredentials deletes the file (no stub preserved)
-const makeCredentialsNoHost = (
-  overrideOauth: Partial<NonNullable<Credentials['oauth']>> = {}
-): Credentials => ({
+// makeConnectionConfigNoHost: no host so clearConnectionConfig deletes the file
+const makeConnectionConfigNoHost = (
+  overrideOauth: Partial<NonNullable<ConnectionConfig['oauth']>> = {}
+): ConnectionConfig => ({
   _description: 'test',
   oauth: {
     client_id: 'client-123',
@@ -347,25 +356,25 @@ describe('logout', () => {
     vi.restoreAllMocks();
   });
 
-  it('does nothing when no credentials exist', async () => {
+  it('does nothing when no config exists', async () => {
     await expect(logout()).resolves.toBeNull();
   });
 
-  it('clears credentials on logout', async () => {
-    const creds = makeCredentialsNoHost();
-    saveCredentials(creds);
-    expect(readCredentials()).not.toBeNull();
+  it('clears config on logout', async () => {
+    const config = makeConnectionConfigNoHost();
+    saveConnectionConfig(config);
+    expect(readConnectionConfig()).not.toBeNull();
 
     await logout();
 
-    expect(readCredentials()).toBeNull();
+    expect(readConnectionConfig()).toBeNull();
   });
 
-  it('clears credentials even when deregistration fails', async () => {
-    const creds = makeCredentialsNoHost({
+  it('clears config even when deregistration fails', async () => {
+    const config = makeConnectionConfigNoHost({
       registration_access_token: 'rat-abc'
     });
-    saveCredentials(creds);
+    saveConnectionConfig(config);
 
     vi.stubGlobal(
       'fetch',
@@ -374,12 +383,12 @@ describe('logout', () => {
     await logout();
     vi.unstubAllGlobals();
 
-    expect(readCredentials()).toBeNull();
+    expect(readConnectionConfig()).toBeNull();
   });
 
   it('skips deregistration when registration_access_token is absent', async () => {
-    const creds = makeCredentialsNoHost(); // no registration_access_token by default
-    saveCredentials(creds);
+    const config = makeConnectionConfigNoHost(); // no registration_access_token by default
+    saveConnectionConfig(config);
 
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
@@ -387,6 +396,6 @@ describe('logout', () => {
     vi.unstubAllGlobals();
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(readCredentials()).toBeNull();
+    expect(readConnectionConfig()).toBeNull();
   });
 });

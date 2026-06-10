@@ -1,5 +1,5 @@
 import * as oauth from 'oauth4webapi';
-import type { Credentials } from './models/leanix-credentials';
+import type { ConnectionConfig } from './models/connection-config';
 import open from 'open';
 import { createServer } from 'node:http';
 import { URL } from 'node:url';
@@ -80,10 +80,10 @@ async function discover(issuer: string): Promise<oauth.AuthorizationServer> {
 }
 
 export async function refreshAccessToken(
-  credentials: Credentials
-): Promise<Credentials | null> {
+  config: ConnectionConfig
+): Promise<ConnectionConfig | null> {
   const { client_id, client_secret, refresh_token, issuer } =
-    credentials.oauth ?? {};
+    config.oauth ?? {};
   if (!client_id || !client_secret || !refresh_token) return null;
 
   try {
@@ -100,9 +100,9 @@ export async function refreshAccessToken(
     const tokens = await oauth.processRefreshTokenResponse(as, client, res);
 
     return {
-      ...credentials,
+      ...config,
       oauth: {
-        ...credentials.oauth!,
+        ...config.oauth!,
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token ?? refresh_token,
         expires_at: Date.now() + (tokens.expires_in ?? 3600) * 1000
@@ -113,7 +113,9 @@ export async function refreshAccessToken(
   }
 }
 
-export async function runOAuthFlow(proxyURL?: string): Promise<Credentials> {
+export async function runOAuthFlow(
+  proxyURL?: string
+): Promise<ConnectionConfig> {
   // 1. Start local callback server
   const { port, waitForCode } = startCallbackServer();
   const redirectUri = `http://localhost:${port}/callback`;
@@ -205,7 +207,7 @@ export async function runOAuthFlow(proxyURL?: string): Promise<Credentials> {
     throw new Error('Authorization server did not return a refresh_token');
   }
 
-  // 5. Build and return credentials
+  // 5. Build and return workspace config
   const host = getHostFromAccessToken(tokens.access_token);
   return {
     host,

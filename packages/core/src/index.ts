@@ -6,7 +6,6 @@ import type {
 } from '@lxr/core/models/custom-report-row';
 import type { CustomReportMetadata } from '@lxr/core/models/custom-report-metadata';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
-import type { Credentials } from './models/leanix-credentials';
 import type { PackageJsonLXR } from '@lxr/core/models/package-json';
 import type {
   ReportUploadResponseData,
@@ -28,7 +27,6 @@ import { URL } from 'node:url';
 import { promisify } from 'node:util';
 import { customReportMetadataSchema } from '@lxr/core/models/custom-report-metadata';
 import { CUSTOM_REPORT_TERMINAL_FAILURE_STATES } from '@lxr/core/models/custom-report-row';
-import { credentialsSchema } from './models/leanix-credentials';
 import { packageJsonLxrSchema } from '@lxr/core/models/package-json';
 import { jwtDecode } from 'jwt-decode';
 import createClient from 'openapi-fetch';
@@ -38,18 +36,14 @@ const execFileAsync = promisify(execFile);
 
 export async function validateDocument(
   document: unknown,
-  name: 'lxr.json' | 'lxreport.json' | 'package.json'
-): Promise<PackageJsonLXR | Credentials | CustomReportMetadata> {
+  name: 'lxreport.json' | 'package.json'
+): Promise<PackageJsonLXR | CustomReportMetadata> {
   let schema: ZodObject<any>;
-  let output: PackageJsonLXR | Credentials | CustomReportMetadata;
+  let output: PackageJsonLXR | CustomReportMetadata;
   switch (name) {
     case 'package.json':
       schema = packageJsonLxrSchema;
       output = document as PackageJsonLXR;
-      break;
-    case 'lxr.json':
-      schema = credentialsSchema;
-      output = document as Credentials;
       break;
     case 'lxreport.json':
       schema = customReportMetadataSchema;
