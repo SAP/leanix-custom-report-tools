@@ -300,7 +300,9 @@ Options:
           },
           {
             type:
-              argv?.proxyURL !== undefined || configFile !== null
+              argv?.proxyURL !== undefined ||
+              configFile !== null ||
+              argv.skipAuth
                 ? null
                 : 'toggle',
             name: 'behindProxy',
@@ -350,22 +352,24 @@ Options:
     proxyURL = proxyURL ?? savedProxyURL;
     initProxy(proxyURL);
 
-    // Auth — run OAuth flow automatically, no prompts
-    if (!configFile && proxyURL) {
-      configFile = { config: { proxyURL }, path: getUserLxrJsonPath() };
-    }
-    const {
-      host: oauthHost,
-      workspaceName,
-      configPath
-    } = await runV2Auth(configFile);
+    // Auth — run OAuth flow automatically, no prompts (skipped when --skipAuth)
+    if (!argv.skipAuth) {
+      if (!configFile && proxyURL) {
+        configFile = { config: { proxyURL }, path: getUserLxrJsonPath() };
+      }
+      const {
+        host: oauthHost,
+        workspaceName,
+        configPath
+      } = await runV2Auth(configFile);
 
-    if (oauthHost) {
-      host = oauthHost;
-      console.log(`✓ Host:      ${host}`);
-      console.log(`✓ Workspace: ${workspaceName}`);
+      if (oauthHost) {
+        host = oauthHost;
+        console.log(`✓ Host:      ${host}`);
+        console.log(`✓ Workspace: ${workspaceName}`);
+      }
+      console.log(`  Connection config: ${configPath}`);
     }
-    console.log(`  Connection config: ${configPath}`);
 
     // Scaffold project
     if (targetDir === null) {
