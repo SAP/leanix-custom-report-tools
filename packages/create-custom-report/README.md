@@ -59,6 +59,19 @@ npm create @sap/leanix-custom-report@latest my-report \
   --overwrite
 ```
 
+Use `--v2` for the new creation flow, which uses the npm package name as the report identity
+and authenticates via OAuth (browser) instead of an API token. `--id` is not required in this mode:
+
+```bash
+npm create @sap/leanix-custom-report@latest my-report \
+  --v2 \
+  --author "SAP LeanIX" \
+  --title "My Report" \
+  --description "A custom report" \
+  --packageName my-report \
+  --overwrite
+```
+
 To skip SAP LeanIX authentication entirely (e.g. for offline creation):
 
 ```bash
@@ -75,19 +88,31 @@ npm create @sap/leanix-custom-report@latest my-report \
 | Flag                   | Type       | Description                                                             |
 | ---------------------- | ---------- | ----------------------------------------------------------------------- |
 | `project-name`         | positional | Directory name for the new project (default: `leanix-custom-report`)    |
-| `--id`                 | string     | Unique report id in Java package notation (e.g. `net.leanix.barcharts`) |
+| `--id`                 | string     | Unique report id in Java package notation (e.g. `net.leanix.barcharts`); not used in `--v2` mode |
 | `--author`             | string     | Report author (e.g. `SAP LeanIX`)                                       |
 | `--title`              | string     | Title shown in SAP LeanIX when the report is installed                  |
 | `--description`        | string     | Short description of the report                                         |
 | `--packageName`        | string     | npm package name (default: derived from project-name)                   |
-| `--host`               | string     | SAP LeanIX host (default: `demo-eu.leanix.net`)                         |
-| `--apitoken`           | string     | API token for authentication                                            |
+| `--host`               | string     | SAP LeanIX host (default: `demo-eu.leanix.net`); not used in `--v2` mode (resolved via OAuth) |
+| `--apitoken`           | string     | API token for authentication; not used in `--v2` mode                   |
 | `--proxyURL`           | string     | HTTP/S proxy URL — also suppresses the proxy toggle prompt              |
 | `--overwrite`          | boolean    | Overwrite target directory if it already exists                         |
 | `--skipAuth`           | boolean    | Skip SAP LeanIX authentication entirely                                 |
+| `--v2`                 | boolean    | Use the new creation flow: OAuth browser login, package name as report identity, no report ID |
 | `--setupMcpServers`    | boolean    | Generate MCP server config files (requires feature flag)                |
 | `--no-setupMcpServers` | boolean    | Skip MCP server config generation without prompting                     |
 | `--help`               | boolean    | Print this flag reference and exit                                      |
 
 Any flag that is omitted will fall back to its interactive prompt, so partial automation is
 fully supported.
+
+## Authentication and `lxr.json`
+
+Credentials are stored in `lxr.json`. The tools look for this file at two levels:
+
+1. **Project-level** (`./lxr.json` in the current working directory) — takes precedence. Useful for workspace-specific credentials.
+2. **User-level** (`~/.leanix/lxr.json` on macOS/Linux, `%APPDATA%\leanix\lxr.json` on Windows) — shared across all reports on the machine.
+
+The `login` command (v2 flow) always writes to the user-level file. If a project-level `lxr.json` is present, it is used instead for all operations in that directory.
+
+Always add `lxr.json` to your `.gitignore` — the file contains OAuth tokens, client secrets, and/or API tokens.

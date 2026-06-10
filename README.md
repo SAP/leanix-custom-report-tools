@@ -29,7 +29,6 @@ For detailed documentation on each package see:
 
 - Node.js 24+ and npm/yarn/pnpm
 - A SAP LeanIX workspace with API access
-- A valid SAP LeanIX API token
 
 You can either use published artifacts (on [npmjs.com](https://www.npmjs.com/)) or build and use the tools manually.
 
@@ -70,7 +69,7 @@ This project is open to feature requests/suggestions, bug reports etc. via [GitH
 
 ## Security / Disclosure
 
-Always ensure to add `lxr.json` to your `.gitignore` to avoid committing sensitive credentials like API tokens.
+Always ensure to add `lxr.json` to your `.gitignore`. This file stores sensitive credentials (OAuth tokens, client secrets, and/or API tokens) and must never be committed to version control. It can exist at two levels — project-level (`./lxr.json`, takes precedence) and user-level (`~/.leanix/lxr.json` on macOS/Linux, `%APPDATA%\leanix\lxr.json` on Windows).
 
 If you find any bug that may be a security problem, please follow our instructions at [in our security policy](https://github.com/SAP/leanix-custom-report-tools/security/policy) on how to report it. Please do not create GitHub issues for security-related doubts or problems.
 
