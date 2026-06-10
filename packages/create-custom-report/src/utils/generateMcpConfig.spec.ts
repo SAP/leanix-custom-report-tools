@@ -9,16 +9,18 @@ vi.mock('node:fs', () => ({
 vi.mock('node:child_process', () => ({ execFileSync: vi.fn() }));
 
 import { platform } from 'node:os';
-import { existsSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { detectBrowser } from './generateMcpConfig';
+import { detectBrowser, generateMcpConfig } from './generateMcpConfig';
 
 const mockedPlatform = platform as MockedFunction<typeof platform>;
 const mockedExistsSync = existsSync as MockedFunction<typeof existsSync>;
 const mockedExecFileSync = execFileSync as MockedFunction<typeof execFileSync>;
+const mockedWriteFileSync = writeFileSync as MockedFunction<typeof writeFileSync>;
 
 beforeEach(() => {
   vi.resetAllMocks();
+  mockedExistsSync.mockReturnValue(true);
 });
 
 describe('detectBrowser', () => {
@@ -90,5 +92,32 @@ describe('detectBrowser', () => {
 
     expect(detectBrowser()).toBe('chromium');
     expect(mockedExecFileSync).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('generateMcpConfig', () => {
+  it('uses npx @sap/vite-plugin-leanix-custom-report mcp for leanix-mcp-server', () => {
+    generateMcpConfig({ targetDir: '/tmp/test' });
+
+    const calls = mockedWriteFileSync.mock.calls;
+    const mcpJsonCall = calls.find((c) => String(c[0]).endsWith('.mcp.json'));
+    const config = JSON.parse(String(mcpJsonCall![1]));
+
+    expect(config.mcpServers['leanix-mcp-server'].command).toBe('npx');
+    expect(config.mcpServers['leanix-mcp-server'].args).toContain(
+      '@sap/vite-plugin-leanix-custom-report'
+    );
+    expect(config.mcpServers['leanix-mcp-server'].args).toContain('mcp');
+  });
+
+  it('uses node localCliPath when provided', () => {
+    generateMcpConfig({ targetDir: '/tmp/test', localCliPath: '/path/to/cli.cjs' });
+
+    const calls = mockedWriteFileSync.mock.calls;
+    const mcpJsonCall = calls.find((c) => String(c[0]).endsWith('.mcp.json'));
+    const config = JSON.parse(String(mcpJsonCall![1]));
+
+    expect(config.mcpServers['leanix-mcp-server'].command).toBe('node');
+    expect(config.mcpServers['leanix-mcp-server'].args).toContain('/path/to/cli.cjs');
   });
 });

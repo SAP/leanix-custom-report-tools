@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 
 interface GenerateMcpConfigParams {
   targetDir: string;
+  localCliPath?: string;
 }
 
 /**
@@ -63,13 +64,16 @@ export const detectBrowser = (): string => {
  *
  * @param params - Configuration parameters
  * @param params.targetDir - Project root directory where MCP configs will be created
- * @param params.host - LeanIX instance host (e.g., demo-eu.leanix.net)
- * @param params.apitoken - API token for LeanIX authentication
+ * @param params.localCliPath - Optional path to local CLI for LeanIX MCP
  */
 export const generateMcpConfig = (params: GenerateMcpConfigParams): void => {
-  const { targetDir } = params;
+  const { targetDir, localCliPath } = params;
 
   const browserArgs = ['--browser', detectBrowser()];
+
+  const leanixMcpServer = localCliPath
+    ? { command: 'node', args: [localCliPath, 'mcp'] }
+    : { command: 'npx', args: ['-y', '@sap/vite-plugin-leanix-custom-report', 'mcp'] };
 
   // Server configuration (shared between IDEs)
   const serverConfig = {
@@ -77,10 +81,7 @@ export const generateMcpConfig = (params: GenerateMcpConfigParams): void => {
       command: 'npx',
       args: ['-y', '@playwright/mcp@latest', '--headless', ...browserArgs]
     },
-    'leanix-mcp-server': {
-      type: 'http',
-      url: 'https://mcp.leanix.net/services/mcp-server/v1/mcp'
-    }
+    'leanix-mcp-server': leanixMcpServer
   };
 
   // GitHub Copilot (VS Code) - uses "servers" key
