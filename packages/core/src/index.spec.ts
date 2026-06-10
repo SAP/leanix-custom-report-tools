@@ -17,24 +17,21 @@ import {
   createBundle,
   deleteWorkspaceReportById,
   fetchWorkspaceReports,
-  getAccessToken,
   getLaunchUrl,
-  initProxy,
   npmPackBundle,
   pollReportState,
-  readLxrJson,
   ReportStateError,
   uploadBundle,
   uploadReportV2,
   validateDocument,
   writeReportMetadata
 } from '@lxr/core/index';
-import appRoot from 'app-root-path';
+import { exchangeApiToken } from '@lxr/core/auth';
+import { initProxy } from '@lxr/core/proxy';
+import { readCredentials } from '@lxr/core/credentials';
 import { t as tarT } from 'tar';
 import ProxyServer from 'transparent-proxy';
 import { getGlobalDispatcher, setGlobalDispatcher } from 'undici';
-
-const LXR_JSON_PATH = resolve(appRoot.path, 'lxr.json');
 
 const getDummyReportMetadata = (): CustomReportMetadata => ({
   id: 'net.testReport',
@@ -80,59 +77,35 @@ describe('the lxr core package', () => {
       )
     ).not.toThrow();
     await expect(
-      async () =>
-        await validateDocument({ host: 'demo-us.leanix.net' }, 'lxr.json')
+      async () => await validateDocument({ host: 123 }, 'lxr.json')
     ).rejects.toThrow();
-  });
-
-  it("readLxrJson throws error if json file doesn't have all required fields", async () => {
-    await readLxrJson(LXR_JSON_PATH);
   });
 
   it('readLxrJson sets global proxy dispatcher when proxyURL is present', async () => {
     const originalDispatcher = getGlobalDispatcher();
-    const tmpFile = join(tmpdir(), `lxr-proxy-test-${Date.now()}.json`);
-    writeFileSync(
-      tmpFile,
-      JSON.stringify({
-        host: 'eu.leanix.net',
-        apitoken: 'dummy',
-        proxyURL: 'http://proxy.example.com:8080'
-      })
-    );
-    await readLxrJson(tmpFile);
+    initProxy('http://proxy.example.com:8080');
     const dispatcher = getGlobalDispatcher();
     setGlobalDispatcher(originalDispatcher);
-    rmSync(tmpFile);
 
     expect(dispatcher.constructor.name).toBe('ProxyAgent');
   });
 
   it('readLxrJson does not change dispatcher when proxyURL is absent', async () => {
     const originalDispatcher = getGlobalDispatcher();
-    const tmpFile = join(tmpdir(), `lxr-no-proxy-test-${Date.now()}.json`);
-    writeFileSync(
-      tmpFile,
-      JSON.stringify({ host: 'eu.leanix.net', apitoken: 'dummy' })
-    );
-    await readLxrJson(tmpFile);
+    initProxy(undefined);
     const dispatcher = getGlobalDispatcher();
-    rmSync(tmpFile);
 
     expect(dispatcher).toBe(originalDispatcher);
   });
 
   it('getAccessToken returns a token', async () => {
-    const credentials = await readLxrJson(LXR_JSON_PATH);
-    const accessToken = await getAccessToken(credentials);
-    expect(typeof accessToken.accessToken).toBe('string'); // accessToken is a string
-    expect(accessToken.accessToken).toBeTruthy();
-    expect(typeof accessToken.expired).toBe('boolean');
-    expect(accessToken.expired).toBe(false);
-    expect(typeof accessToken.expiresIn).toBe('number');
-    expect(accessToken.expiresIn > 0).toBe(true);
-    expect(typeof accessToken.scope).toBe('string');
-    expect(accessToken.tokenType).toBe('bearer');
+    const credentials = readCredentials()!.credentials;
+    const bearerToken = await exchangeApiToken(
+      credentials.host!,
+      credentials.apitoken!
+    );
+    expect(typeof bearerToken).toBe('string');
+    expect(bearerToken).toBeTruthy();
   });
 
   it('initProxy calls setGlobalDispatcher with a ProxyAgent', () => {
@@ -147,16 +120,13 @@ describe('the lxr core package', () => {
 
   it('getAccessToken with proxy returns a token', async () => {
     initProxy(`http://127.0.0.1:${proxyPort}`);
-    const credentials = await readLxrJson(LXR_JSON_PATH);
-    const accessToken = await getAccessToken(credentials);
-    expect(typeof accessToken.accessToken).toBe('string');
-    expect(accessToken.accessToken).toBeTruthy();
-    expect(typeof accessToken.expired).toBe('boolean');
-    expect(accessToken.expired).toBe(false);
-    expect(typeof accessToken.expiresIn).toBe('number');
-    expect(accessToken.expiresIn > 0).toBe(true);
-    expect(typeof accessToken.scope).toBe('string');
-    expect(accessToken.tokenType).toBe('bearer');
+    const credentials = readCredentials()!.credentials;
+    const bearerToken = await exchangeApiToken(
+      credentials.host!,
+      credentials.apitoken!
+    );
+    expect(typeof bearerToken).toBe('string');
+    expect(bearerToken).toBeTruthy();
   });
   it('getLaunchUrl returns a url', async () => {
     const devServerUrl = 'https://localhost:8080';
@@ -224,7 +194,7 @@ describe('the lxr core package', () => {
   });
 
   it('uploadBundle', async () => {
-    const credentials = await readLxrJson(LXR_JSON_PATH);
+    const credentials = readCredentials()!.credentials;
     const outDir = mkdtempSync(join(tmpdir(), 'uploadBundle-'));
     const metadata = getDummyReportMetadata();
 
@@ -233,7 +203,10 @@ describe('the lxr core package', () => {
       '<html><body>Hi from demo project</body></html>'
     );
     writeFileSync(resolve(outDir, 'index.js'), 'console.log("hello world")');
-    const { accessToken: bearerToken } = await getAccessToken(credentials);
+    const bearerToken = await exchangeApiToken(
+      credentials.host!,
+      credentials.apitoken!
+    );
     const reports = await fetchWorkspaceReports(bearerToken);
     const hasTestReportInWorkspace = reports.find(
       ({ id, version }) => id === metadata.id && version === metadata.version

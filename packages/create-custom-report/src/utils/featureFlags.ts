@@ -1,18 +1,16 @@
-import type { AccessToken } from '@lxr/core/models/access-token';
 import type { FeatureBundleResponse } from '../models/feature-flag';
-import { getAccessTokenClaims } from '@lxr/core/index';
+import { decodeBearerToken } from '@lxr/core/index';
 import { fetch as undiciFetch } from 'undici';
 
 export async function checkFeatureFlag(options: {
   host: string;
-  tokenResponse: AccessToken;
+  accessToken: string;
   featureFlagId: string;
 }): Promise<boolean> {
-  const { host, tokenResponse, featureFlagId } = options;
-  const accessToken = tokenResponse.accessToken;
+  const { host, accessToken, featureFlagId } = options;
 
   // Extract workspace ID from token claims
-  const claims = getAccessTokenClaims(tokenResponse);
+  const claims = decodeBearerToken(accessToken);
   const workspaceId = claims.principal?.permission?.workspaceId;
 
   if (!workspaceId) {

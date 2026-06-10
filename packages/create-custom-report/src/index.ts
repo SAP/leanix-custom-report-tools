@@ -10,7 +10,7 @@ import {
   pkgFromUserAgent,
   toValidPackageName
 } from './helpers';
-import { getAccessToken, initProxy } from '@lxr/core/index';
+import { exchangeApiToken } from '@lxr/core/auth';
 import banner from './utils/banner';
 import { deployTemplate } from './utils/deployTemplate';
 import { generateLeanIXFiles } from './utils/leanix';
@@ -22,6 +22,7 @@ import type {
   PromptResult
 } from './models/project-options';
 import { parseTriStateBoolean } from './utils/parseTriStateBoolean';
+import { initProxy } from '@lxr/core/proxy';
 
 export type { LeanIXOptions, ProjectOptions, PromptResult };
 export { parseTriStateBoolean };
@@ -255,16 +256,16 @@ Options:
   const pkgManager = pkgInfo != null ? pkgInfo.name : 'npm';
 
   // Validate credentials by getting access token, retry if invalid
-  let tokenResponse = null;
+  let accessToken: string | null = null;
   let mcpCustomReportsEnabled = false;
 
   if (!argv.skipAuth) {
-    while (!tokenResponse) {
+    while (!accessToken) {
       try {
         if (!host || !apitoken) {
           throw new Error('Host and API token are required');
         }
-        tokenResponse = await getAccessToken({ host, apitoken, proxyURL });
+        accessToken = await exchangeApiToken(host, apitoken);
         console.log('✓ Successfully authenticated with SAP LeanIX');
       } catch (error) {
         console.log(
@@ -293,7 +294,7 @@ Options:
     try {
       mcpCustomReportsEnabled = await checkFeatureFlag({
         host,
-        tokenResponse,
+        accessToken,
         featureFlagId: 'mcpserver.custom-reports'
       });
     } catch (error) {

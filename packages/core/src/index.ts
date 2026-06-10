@@ -1,4 +1,3 @@
-import type { AccessToken } from '@lxr/core/models/access-token';
 import type {
   CustomReportRow,
   CustomReportState,
@@ -15,7 +14,6 @@ import type {
 } from '@lxr/core/models/report-response-data';
 import type { paths } from './generated/reports-service';
 import type { ZodObject } from 'zod';
-import { ProxyAgent, setGlobalDispatcher } from 'undici';
 import { execFile } from 'node:child_process';
 import {
   existsSync,
@@ -37,9 +35,6 @@ import createClient from 'openapi-fetch';
 import { c } from 'tar';
 
 const execFileAsync = promisify(execFile);
-
-const snakeToCamel = (s: string): string =>
-  s.replace(/([-_]\w)/g, (g) => g[1].toUpperCase());
 
 export async function validateDocument(
   document: unknown,
@@ -68,32 +63,6 @@ export async function validateDocument(
   return output;
 }
 
-export async function readLxrJson(path?: string): Promise<Credentials> {
-  if ((path ?? '').length === 0) {
-    path = join(process.cwd(), 'lxr.json');
-  }
-  const {
-    host,
-    apitoken,
-    proxyURL = null
-  } = JSON.parse(path !== undefined ? readFileSync(path).toString() : '{}');
-  const credentials: Credentials = { host, apitoken };
-  if (proxyURL !== null) {
-    credentials.proxyURL = proxyURL;
-  }
-  await validateDocument(credentials, 'lxr.json');
-  initProxy(credentials.proxyURL);
-  return credentials;
-}
-
-export function initProxy(proxyURL?: string): void {
-  if (typeof proxyURL === 'string' && proxyURL.length > 0) {
-    // Applies to all outgoing requests, including Node's native fetch.
-    // https://github.com/nodejs/undici#undicisetglobaldispatcherdispatcher
-    setGlobalDispatcher(new ProxyAgent(proxyURL));
-  }
-}
-
 export function readMetadataJson(path: string): CustomReportMetadata {
   const pkg: PackageJsonLXR = packageJsonLxrSchema.parse(
     JSON.parse(readFileSync(path, 'utf8'))
@@ -106,43 +75,6 @@ export function readMetadataJson(path: string): CustomReportMetadata {
     description,
     ...leanixReport
   });
-}
-
-export async function getAccessToken(
-  credentials: Credentials
-): Promise<AccessToken> {
-  const uri = `https://${credentials.host}/services/mtm/v1/oauth2/token?grant_type=client_credentials`;
-  const res = await fetch(uri, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `Basic ${Buffer.from(`apitoken:${credentials.apitoken}`).toString('base64')}`
-    }
-  });
-  const content =
-    res.headers.get('content-type') === 'application/json'
-      ? await res.json()
-      : await res.text();
-  if (!res.ok) {
-    return await Promise.reject(res.status);
-  }
-  return Object.entries(content as AccessToken).reduce(
-    (accumulator, [key, value]) => ({
-      ...accumulator,
-      [snakeToCamel(key)]: value
-    }),
-    {
-      accessToken: '',
-      expired: false,
-      expiresIn: 0,
-      scope: '',
-      tokenType: ''
-    }
-  ) as AccessToken;
-}
-
-export function getAccessTokenClaims(accessToken: AccessToken): JwtClaims {
-  return jwtDecode(accessToken.accessToken);
 }
 
 export function decodeBearerToken(bearerToken: string): JwtClaims {

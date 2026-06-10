@@ -17,18 +17,18 @@ export function getWorkspaceNameFromAccessToken(accessToken: string): string {
   return claims.principal.permission.workspaceName;
 }
 
+type AuthCode = { code: string; state: string };
+
 export function startCallbackServer(): {
   port: number;
-  waitForCode: () => Promise<{ code: string; state: string }>;
+  waitForCode: () => Promise<AuthCode>;
 } {
-  let resolveCode!: (v: { code: string; state: string }) => void;
+  let resolveCode!: (v: AuthCode) => void;
   let rejectCode!: (e: Error) => void;
-  const codePromise = new Promise<{ code: string; state: string }>(
-    (res, rej) => {
-      resolveCode = res;
-      rejectCode = rej;
-    }
-  );
+  const codePromise = new Promise<AuthCode>((res, rej) => {
+    resolveCode = res;
+    rejectCode = rej;
+  });
 
   const server = createServer((req, res) => {
     const url = new URL(req.url!, 'http://localhost');
@@ -51,15 +51,6 @@ export function startCallbackServer(): {
   server.listen(0);
   const port = (server.address() as { port: number }).port;
   return { port, waitForCode: () => codePromise };
-}
-
-export async function openBrowser(url: string): Promise<boolean> {
-  try {
-    await open(url);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 export async function deregisterOAuthClient(
@@ -122,63 +113,47 @@ export async function refreshAccessToken(
   }
 }
 
-export type ExistingOAuthClient = {
-  client_id: string;
-  client_secret: string;
-  registration_access_token?: string;
-};
-
-export async function runOAuthFlow(
-  oauthBaseUrl = OAUTH_BASE_URL,
-  proxyURL?: string,
-  existingClient?: ExistingOAuthClient
-): Promise<Credentials> {
-  let client_id = existingClient?.client_id;
-  let client_secret = existingClient?.client_secret;
-  let registration_access_token = existingClient?.registration_access_token;
-
+export async function runOAuthFlow(proxyURL?: string): Promise<Credentials> {
+  // 1. Start local callback server
   const { port, waitForCode } = startCallbackServer();
   const redirectUri = `http://localhost:${port}/callback`;
 
-  const as = await discover(oauthBaseUrl);
+  const as = await discover(OAUTH_BASE_URL);
 
-  if (!client_id || !client_secret) {
-    const regReq = await oauth.dynamicClientRegistrationRequest(as, {
-      client_name: 'LeanIX Custom Report Tools',
-      redirect_uris: [redirectUri]
-    });
-    // Server omits client_secret_expires_at (required by RFC 7591 §3.2.1).
-    // Inject 0 (never expires) so oauth4webapi validation passes.
-    const regJson = (await regReq.json()) as Record<string, unknown>;
-    if (
-      regJson.client_secret &&
-      regJson.client_secret_expires_at === undefined
-    ) {
-      regJson.client_secret_expires_at = 0;
-    }
-    const patchedRes = new Response(JSON.stringify(regJson), {
-      status: 201,
-      headers: { 'content-type': 'application/json' }
-    });
-    const reg =
-      await oauth.processDynamicClientRegistrationResponse(patchedRes);
-    client_id = reg.client_id;
-    if (typeof reg.client_secret !== 'string' || !reg.client_secret) {
-      throw new Error(
-        'Dynamic client registration did not return a client_secret'
-      );
-    }
-    client_secret = reg.client_secret;
-    registration_access_token = reg.registration_access_token as
-      | string
-      | undefined;
+  // 2. Register OAuth client
+  // TODO: replace with fixed pre-registered client ID once
+  // https://github.com/leanix/mcp-server/pull/975 lands.
+  const regReq = await oauth.dynamicClientRegistrationRequest(as, {
+    client_name: 'LeanIX Custom Report Tools',
+    redirect_uris: [redirectUri]
+  });
+  // Server omits client_secret_expires_at (required by RFC 7591 §3.2.1).
+  // Inject 0 (never expires) so oauth4webapi validation passes.
+  const regJson = (await regReq.json()) as Record<string, unknown>;
+  if (regJson.client_secret && regJson.client_secret_expires_at === undefined) {
+    regJson.client_secret_expires_at = 0;
   }
+  const patchedRes = new Response(JSON.stringify(regJson), {
+    status: 201,
+    headers: { 'content-type': 'application/json' }
+  });
+  const reg = await oauth.processDynamicClientRegistrationResponse(patchedRes);
+  const client_id = reg.client_id;
+  if (typeof reg.client_secret !== 'string' || !reg.client_secret) {
+    throw new Error(
+      'Dynamic client registration did not return a client_secret'
+    );
+  }
+  const client_secret = reg.client_secret;
+  const registration_access_token = reg.registration_access_token as
+    | string
+    | undefined;
 
+  // 3. Open browser for user login
   const codeVerifier = oauth.generateRandomCodeVerifier();
   const codeChallenge = await oauth.calculatePKCECodeChallenge(codeVerifier);
   const state = oauth.generateRandomState();
 
-  // Build authorization URL manually — oauth4webapi does not export buildAuthorizationUrl
   if (!as.authorization_endpoint) {
     throw new Error(
       'Authorization server metadata is missing authorization_endpoint'
@@ -191,14 +166,11 @@ export async function runOAuthFlow(
   authorizeUrl.searchParams.set('code_challenge', codeChallenge);
   authorizeUrl.searchParams.set('code_challenge_method', 'S256');
   authorizeUrl.searchParams.set('state', state);
+  await open(authorizeUrl.toString()).catch(() =>
+    console.log(`\nOpen this URL in your browser to log in:\n${authorizeUrl}\n`)
+  );
 
-  const opened = await openBrowser(authorizeUrl.toString());
-  if (!opened) {
-    console.log(
-      `\nOpen this URL in your browser to log in:\n${authorizeUrl.toString()}\n`
-    );
-  }
-
+  // 4. Exchange authorization code for tokens
   const { code, state: returnedState } = await waitForCode();
 
   const client: oauth.Client = { client_id };
@@ -233,13 +205,12 @@ export async function runOAuthFlow(
     throw new Error('Authorization server did not return a refresh_token');
   }
 
+  // 5. Build and return credentials
   const host = getHostFromAccessToken(tokens.access_token);
   return {
-    _description:
-      'This file is managed by LeanIX Custom Report Tools. It contains your login credentials and is shared across all custom reports on this machine. To log out, run: npm run logout',
     host,
     oauth: {
-      issuer: oauthBaseUrl,
+      issuer: OAUTH_BASE_URL,
       client_id,
       client_secret,
       registration_access_token,
