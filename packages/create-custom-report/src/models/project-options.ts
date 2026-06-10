@@ -18,4 +18,5 @@ export interface LeanIXOptions {
 
 export interface PromptResult extends ProjectOptions, LeanIXOptions {
   projectName?: string;
+  setupMcpServers?: boolean;
 }

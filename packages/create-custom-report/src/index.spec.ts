@@ -5,7 +5,6 @@ import { join, resolve } from 'node:path';
 import { mkdirpSync, readdirSync, statSync, writeFileSync } from 'fs-extra';
 import { generate as uuid } from 'short-uuid';
 import pkg from '../package.json' with { type: 'json' };
-import { parseTriStateBoolean } from './utils/parseTriStateBoolean';
 
 const CLI_PATH = resolve(
   __dirname,
@@ -162,40 +161,6 @@ it('successfully creates a project based on react-ts template', async () => {
   expect(pkg?.leanixReport?.id).toEqual(reportId);
   expect(pkg?.leanixReport?.title).toEqual(title);
   expect(typeof pkg?.leanixReport.defaultConfig).toEqual('object');
-});
-
-// ---------------------------------------------------------------------------
-// parseTriStateBoolean unit tests
-// ---------------------------------------------------------------------------
-
-describe('parseTriStateBoolean', () => {
-  it('returns true when --flag is present', () => {
-    expect(parseTriStateBoolean(['--setupMcpServers'], 'setupMcpServers')).toBe(
-      true
-    );
-  });
-
-  it('returns false when --no-flag is present', () => {
-    expect(
-      parseTriStateBoolean(['--no-setupMcpServers'], 'setupMcpServers')
-    ).toBe(false);
-  });
-
-  it('returns undefined when neither flag is present', () => {
-    expect(
-      parseTriStateBoolean(['--skipAuth', '--id', 'foo'], 'setupMcpServers')
-    ).toBeUndefined();
-  });
-
-  it('prefers --flag over --no-flag when both present (first wins)', () => {
-    // --flag appears first in the array
-    expect(
-      parseTriStateBoolean(
-        ['--setupMcpServers', '--no-setupMcpServers'],
-        'setupMcpServers'
-      )
-    ).toBe(true);
-  });
 });
 
 // ---------------------------------------------------------------------------
