@@ -5,12 +5,10 @@ import { execFileSync } from 'node:child_process';
 
 interface GenerateMcpConfigParams {
   targetDir: string;
-  host: string;
-  apitoken: string;
 }
 
 /**
- * Picks the Playwright MCP `--browser` value at scaffold time so verification
+ * Picks the Playwright MCP `--browser` value at creation time so verification
  * works without forcing the user to install a browser.
  *
  * - Windows → 'msedge'   (Edge ships with Windows; zero download)
@@ -24,7 +22,9 @@ export const detectBrowser = (): string => {
   if (platform() === 'win32') return 'msedge';
 
   if (platform() === 'darwin') {
-    return existsSync('/Applications/Google Chrome.app') ? 'chrome' : 'chromium';
+    return existsSync('/Applications/Google Chrome.app')
+      ? 'chrome'
+      : 'chromium';
   }
 
   // Linux and other Unix-likes — match what Playwright's chrome channel looks for
@@ -59,7 +59,7 @@ export const detectBrowser = (): string => {
  * - -y flag to auto-confirm
  * - @latest for always getting latest version
  * - --headless flag for Playwright MCP (no UI disruption)
- * - --browser detected at scaffold time by `detectBrowser()` above
+ * - --browser detected at creation time by `detectBrowser()` above
  *
  * @param params - Configuration parameters
  * @param params.targetDir - Project root directory where MCP configs will be created
@@ -67,7 +67,7 @@ export const detectBrowser = (): string => {
  * @param params.apitoken - API token for LeanIX authentication
  */
 export const generateMcpConfig = (params: GenerateMcpConfigParams): void => {
-  const { targetDir, host, apitoken } = params;
+  const { targetDir } = params;
 
   const browserArgs = ['--browser', detectBrowser()];
 
@@ -78,14 +78,8 @@ export const generateMcpConfig = (params: GenerateMcpConfigParams): void => {
       args: ['-y', '@playwright/mcp@latest', '--headless', ...browserArgs]
     },
     'leanix-mcp-server': {
-      command: 'npx',
-      args: [
-        '-y',
-        'mcp-remote',
-        `https://${host}/services/mcp-server/v1/mcp?toolsets=inventory,custom_reports`,
-        '--header',
-        `Authorization: Token ${apitoken}`
-      ]
+      type: 'http',
+      url: 'https://mcp.leanix.net/services/mcp-server/v1/mcp'
     }
   };
 

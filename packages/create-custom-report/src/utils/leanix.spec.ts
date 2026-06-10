@@ -13,31 +13,19 @@ beforeAll(async () => {
   await writeFile(join(targetDir, 'package.json'), JSON.stringify({ testId }));
 });
 
-it('it updates package.json and generates lxr.json files', async () => {
+it('it updates package.json with leanix metadata', async () => {
   const result: PromptResult = {
     targetDir,
     packageName: uuid(),
     author: uuid(),
     description: uuid(),
     id: uuid(),
-    title: uuid(),
-    host: uuid(),
-    apitoken: uuid(),
-    proxyURL: uuid()
+    title: uuid()
   };
   await generateLeanIXFiles({ targetDir, result });
-  const lxrJson = await readFile(join(targetDir, 'lxr.json')).then((buffer) =>
-    JSON.parse(buffer.toString())
-  );
   const packageJson = await readFile(join(targetDir, 'package.json')).then(
     (buffer) => JSON.parse(buffer.toString())
   );
-
-  expect(lxrJson).toEqual({
-    host: result.host,
-    apitoken: result.apitoken,
-    proxyURL: result.proxyURL
-  });
 
   expect(packageJson).toMatchObject({
     name: result.packageName,
@@ -45,4 +33,25 @@ it('it updates package.json and generates lxr.json files', async () => {
     author: result.author,
     description: result.description
   });
+});
+
+it('v2: omits id from leanixReport in package.json', async () => {
+  const result: PromptResult = {
+    targetDir,
+    packageName: uuid(),
+    author: uuid(),
+    description: uuid(),
+    title: uuid(),
+    host: uuid(),
+    apitoken: uuid(),
+    proxyURL: uuid()
+  };
+  await generateLeanIXFiles({ targetDir, result, isV2: true });
+  const packageJson = await readFile(join(targetDir, 'package.json')).then(
+    (buffer) => JSON.parse(buffer.toString())
+  );
+
+  expect(packageJson?.leanixReport?.id).toBeUndefined();
+  expect(packageJson?.leanixReport?.title).toEqual(result.title);
+  expect(packageJson?.leanixReport?.uploadVersion).toEqual(2);
 });

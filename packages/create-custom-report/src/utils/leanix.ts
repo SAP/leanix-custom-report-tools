@@ -7,16 +7,16 @@ import { validateDocument } from '@lxr/core/index';
 export async function generateLeanIXFiles(
   params: AddLeanIXMetadataToPackageJson
 ): Promise<void> {
-  const { targetDir, result } = params;
+  const { targetDir, result, isV2 = false } = params;
   const {
     author,
     description,
     id,
     title,
+    packageName,
     host,
     apitoken,
-    proxyURL,
-    packageName
+    proxyURL
   } = result;
   let pkg = JSON.parse(
     await readFile(join(targetDir, 'package.json'), 'utf-8')
@@ -29,19 +29,27 @@ export async function generateLeanIXFiles(
       .at(-1);
   const version = pkg.version ?? '0.0.0';
   const pkgMetadataFields = { name, author, description, version };
-  const leanixReport = { id, title, aiAssisted: false, defaultConfig: {} };
+  const leanixReport = isV2
+    ? { title, aiAssisted: false, defaultConfig: {}, uploadVersion: 2 as const }
+    : { id, title, aiAssisted: false, defaultConfig: {} };
   pkg = { ...pkg, ...pkgMetadataFields, name, leanixReport };
   const lxreportJson = { ...leanixReport, ...pkgMetadataFields };
-  validateDocument(lxreportJson, 'lxreport.json');
-  const lxrJson = { host, apitoken, proxyURL };
-
-  validateDocument(lxrJson, 'lxr.json');
-  await writeFile(
-    join(targetDir, 'lxr.json'),
-    JSON.stringify(lxrJson, null, 2) + '\n'
-  );
+  if (!isV2) {
+    validateDocument(lxreportJson, 'lxreport.json');
+  }
   await writeFile(
     join(targetDir, 'package.json'),
     JSON.stringify(pkg, null, 2) + '\n'
   );
+
+  if (!isV2) {
+    const lxrJson: Record<string, string> = {};
+    if (host) lxrJson.host = host;
+    if (apitoken) lxrJson.apitoken = apitoken;
+    if (proxyURL) lxrJson.proxyURL = proxyURL;
+    await writeFile(
+      join(targetDir, 'lxr.json'),
+      JSON.stringify(lxrJson, null, 2) + '\n'
+    );
+  }
 }
