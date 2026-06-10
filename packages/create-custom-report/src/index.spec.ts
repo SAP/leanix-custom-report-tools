@@ -382,7 +382,6 @@ it('--v2 skips the id prompt and does not write id to leanixReport', () => {
   const author = uuid();
   const title = uuid();
   const description = uuid();
-  const packageName = 'my-v2-report';
 
   const args = [
     '--v2',
@@ -393,13 +392,7 @@ it('--v2 skips the id prompt and does not write id to leanixReport', () => {
     '--title',
     title,
     '--description',
-    description,
-    '--packageName',
-    packageName,
-    '--host',
-    uuid(),
-    '--apitoken',
-    uuid()
+    description
   ];
 
   const { exitCode, stdout } = run([projectName, ...args], { cwd: tempDir });
@@ -408,7 +401,7 @@ it('--v2 skips the id prompt and does not write id to leanixReport', () => {
   expect((stdout as string)?.includes('Unique id for this report')).toBe(false);
 
   const pkg = getPackageJson(join(tempDir, projectName));
-  expect(pkg.name).toEqual(packageName);
+  expect(pkg.name).toEqual(projectName);
   expect(pkg?.leanixReport?.id).toBeUndefined();
   expect(pkg?.leanixReport?.title).toEqual(title);
 });

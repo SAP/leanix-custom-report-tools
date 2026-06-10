@@ -238,32 +238,45 @@ Options:
   // V2 path
   // -------------------------------------------------------------------------
   if (isV2) {
+    // TODO: when v1 is dropped, remove these flags from argv parsing: --packageName, --id, --host, --apitoken
+    // All are v1-only and intentionally ignored in v2.
+
+    let projectName: string | null = argv._[0] ?? null;
+
+    if (projectName !== null && !isValidPackageName(projectName)) {
+      throw new Error(
+        `Invalid project name "${projectName}": may only contain lowercase letters (a-z), digits (0-9), dots (.), underscores (_), and minus (-)`
+      );
+    }
+
     // Read user-level config before prompting — proxy may already be configured
     let configFile = readConnectionConfig(true);
 
     let result: PromptResult = {};
     try {
-      console.log('  The project name is your report\'s permanent identity in the workspace — choose it carefully.');
+      console.log(
+        '  The project name is your report\'s permanent identity in the workspace — choose it carefully.'
+      );
       result = await prompts(
         [
           {
-            name: 'packageName',
-            type: () => (packageName !== undefined ? null : 'text'),
+            name: 'projectName',
+            type: () => (projectName !== null ? null : 'text'),
             message: 'Project name:',
-            initial: toValidPackageName(targetDir ?? defaultProjectName),
-            validate: (dir) =>
-              isValidPackageName(dir) ||
+            initial: 'leanix-custom-report',
+            validate: (v) =>
+              isValidPackageName(v) ||
               'Invalid package name, may only contain lowercase letters (a-z), digits (0-9), dots (.), underscores (_), and minus (-)'
           },
           {
             name: 'overwrite',
-            type: (_, { packageName: pkg }: { packageName?: string }) => {
-              const dir = packageName ?? pkg ?? '';
-              return !existsSync(dir) || overwrite ? null : 'confirm';
+            type: (_, prev: { projectName?: string }) => {
+              const name = projectName ?? prev.projectName ?? '';
+              return !existsSync(name) || overwrite ? null : 'confirm';
             },
-            message: (_, { packageName: pkg }: { packageName?: string }) => {
-              const dir = packageName ?? pkg ?? '';
-              return `Target directory "${dir}" is not empty. Remove existing files and continue?`;
+            message: (_, prev: { projectName?: string }) => {
+              const name = projectName ?? prev.projectName ?? '';
+              return `Target directory "${name}" is not empty. Remove existing files and continue?`;
             }
           },
           {
@@ -328,14 +341,13 @@ Options:
       title = title,
       description = description,
       proxyURL = proxyURL,
-      packageName = packageName,
       overwrite = overwrite
     } = result);
 
+    projectName = result.projectName ?? projectName;
+
     console.log();
 
-    // In v2, project directory = package name
-    targetDir = packageName ?? defaultProjectName;
     const savedProxyURL = configFile?.config.proxyURL;
     proxyURL = proxyURL ?? savedProxyURL;
     initProxy(proxyURL);
@@ -361,7 +373,7 @@ Options:
     }
 
     // Scaffold project
-    const root = join(cwd, targetDir);
+    const root = join(cwd, projectName);
     console.log(`\nCreating project in ${root}\n`);
 
     if (overwrite === true) {
@@ -372,7 +384,6 @@ Options:
     }
 
     deployTemplate({
-      defaultProjectName,
       targetDir: root,
       template: TEMPLATE,
       result: { author, title, description, overwrite },
@@ -382,7 +393,7 @@ Options:
     await generateLeanIXFiles({
       targetDir: root,
       result: {
-        packageName: packageName ?? defaultProjectName,
+        packageName: projectName,
         author,
         title,
         description,
@@ -578,7 +589,6 @@ Options:
   }
 
   deployTemplate({
-    defaultProjectName,
     targetDir: root,
     template: TEMPLATE,
     result: {
