@@ -5,11 +5,7 @@ import { join, relative } from 'node:path';
 import { red } from 'kolorist';
 import minimist from 'minimist';
 import prompts from 'prompts';
-import {
-  isValidPackageName,
-  pkgFromUserAgent,
-  toValidPackageName
-} from './helpers';
+import { isValidPackageName, toValidPackageName } from './helpers';
 import { exchangeApiToken, authenticate } from '@lxr/core/auth';
 import { getWorkspaceNameFromAccessToken } from '@lxr/core/oauth';
 import {
