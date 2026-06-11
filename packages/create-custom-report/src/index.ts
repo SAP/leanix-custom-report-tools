@@ -395,13 +395,6 @@ Options:
     });
   }
 
-  console.log('\nDone ✅ Now run:\n');
-  if (root !== cwd) {
-    console.log(`  cd ${relative(cwd, root)}`);
-  }
-  console.log('  npm install\n  npm run dev');
-  console.log();
-
   // MCP setup status
   if (setupMcpServers === false) {
     console.log(
@@ -418,6 +411,13 @@ Options:
     console.log('  - SAP LeanIX MCP Server (workspace data access)');
     console.log();
   }
+
+  console.log('\nDone ✅ Now run:\n');
+  if (root !== cwd) {
+    console.log(`  cd ${relative(cwd, root)}`);
+  }
+  console.log('  npm install\n  npm run dev');
+  console.log();
 }
 
 init().catch((e) => {
