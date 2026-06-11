@@ -5,11 +5,7 @@ import { join, relative } from 'node:path';
 import { red } from 'kolorist';
 import minimist from 'minimist';
 import prompts from 'prompts';
-import {
-  isValidPackageName,
-  pkgFromUserAgent,
-  toValidPackageName
-} from './helpers';
+import { isValidPackageName, toValidPackageName } from './helpers';
 import { getAccessToken, initProxy } from '@lxr/core/index';
 import banner from './utils/banner';
 import { deployTemplate } from './utils/deployTemplate';
@@ -273,8 +269,6 @@ Options:
     targetDir = packageName ?? defaultProjectName;
   }
   initProxy(proxyURL);
-  const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent) ?? null;
-  const pkgManager = pkgInfo != null ? pkgInfo.name : 'npm';
 
   // Validate credentials by getting access token, retry if invalid
   let tokenResponse = null;
@@ -405,16 +399,7 @@ Options:
   if (root !== cwd) {
     console.log(`  cd ${relative(cwd, root)}`);
   }
-  switch (pkgManager) {
-    case 'yarn':
-      console.log('  yarn');
-      console.log('  yarn dev');
-      break;
-    default:
-      console.log(`  ${pkgManager} install`);
-      console.log(`  ${pkgManager} run dev`);
-      break;
-  }
+  console.log('  npm install\n  npm run dev');
   console.log();
 
   // MCP setup status

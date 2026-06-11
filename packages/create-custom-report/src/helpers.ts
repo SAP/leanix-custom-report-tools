@@ -1,17 +1,6 @@
 import { copyFileSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-export function pkgFromUserAgent(
-  userAgent?: string
-): { name: string; version: string } | undefined {
-  if (userAgent === undefined) {
-    return undefined;
-  }
-  const pkgSpec = userAgent.split(' ')[0];
-  const pkgSpecArr = pkgSpec.split('/');
-  return { name: pkgSpecArr[0], version: pkgSpecArr[1] };
-}
-
 export function copyDir(srcDir: string, destDir: string): void {
   mkdirSync(destDir, { recursive: true });
   for (const file of readdirSync(srcDir)) {
