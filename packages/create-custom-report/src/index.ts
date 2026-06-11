@@ -5,7 +5,7 @@ import { join, relative } from 'node:path';
 import { red } from 'kolorist';
 import minimist from 'minimist';
 import prompts from 'prompts';
-import { isValidPackageName, toValidPackageName } from './helpers';
+import { isValidPackageName, toValidPackageName, INVALID_PROJECT_NAME_CHARS } from './helpers';
 import { exchangeApiToken, authenticate } from '@lxr/core/auth';
 import { getWorkspaceNameFromAccessToken } from '@lxr/core/oauth';
 import {
@@ -241,7 +241,7 @@ Options:
 
     if (projectName !== null && !isValidPackageName(projectName)) {
       throw new Error(
-        `Invalid project name "${projectName}": may only contain lowercase letters (a-z), digits (0-9), dots (.), dashes (-), and underscores (_)`
+        `Invalid project name "${projectName}": ${INVALID_PROJECT_NAME_CHARS}`
       );
     }
 
@@ -260,8 +260,7 @@ Options:
             type: () => (projectName !== null ? null : 'text'),
             message: 'Project name:',
             validate: (v) =>
-              isValidPackageName(v) ||
-              'Invalid package name — may only contain lowercase letters (a-z), digits (0-9), dots (.), dashes (-), and underscores (_)'
+              isValidPackageName(v) || INVALID_PROJECT_NAME_CHARS
           },
           {
             name: 'overwrite',
@@ -409,13 +408,21 @@ Options:
     console.log();
 
     // Done
+    console.log();
+    console.log('Done ✅');
+    console.log();
     console.log(
-      '\nDone ✅ Open the project in your IDE, install dependencies, and run it locally:\n'
+      '  Now open the project in your IDE, install dependencies, and run it locally:'
     );
+    console.log();
+    console.log(`  cd ${relative(cwd, root)} && code .`);
+    console.log('  (or open the folder in your IDE via File > Open Folder');
     console.log(
-      `  cd ${relative(cwd, root)} && code .    (or open the folder in your IDE via File > Open Folder and then open the integrated terminal via Terminal > New Terminal)\n`
+      '  and open the integrated terminal via Terminal > New Terminal)'
     );
-    console.log('  npm install\n  npm run dev\n');
+    console.log();
+    console.log('  npm install');
+    console.log('  npm run dev\n');
     return;
   }
 
@@ -636,13 +643,21 @@ Options:
     console.log();
   }
 
+  console.log();
+  console.log('Done ✅');
+  console.log();
   console.log(
-    '\nDone ✅ Open the project in your IDE, install dependencies, and run it locally:\n'
+    '  Now open the project in your IDE, install dependencies, and run it locally:'
   );
+  console.log();
+  console.log(`  cd ${relative(cwd, root)} && code .`);
+  console.log('  (or open the folder in your IDE via File > Open Folder');
   console.log(
-    `  cd ${relative(cwd, root)} && code .    (or open the folder in your IDE via File > Open Folder and then open the integrated terminal via Terminal > New Terminal)\n`
+    '  and open the integrated terminal via Terminal > New Terminal)'
   );
-  console.log('  npm install\n  npm run dev\n');
+  console.log();
+  console.log('  npm install');
+  console.log('  npm run dev\n');
 }
 
 init().catch((e) => {
