@@ -20,7 +20,7 @@ function copy(src: string, dest: string): void {
 }
 
 export function isValidPackageName(projectName: string): boolean {
-  return /^(?:@[a-z0-9-*~][a-z0-9-*._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/.test(
+  return /^(?:@[a-z0-9-][a-z0-9-._]*\/)?[a-z0-9][a-z0-9._-]*$/.test(
     projectName
   );
 }

@@ -241,7 +241,7 @@ Options:
 
     if (projectName !== null && !isValidPackageName(projectName)) {
       throw new Error(
-        `Invalid project name "${projectName}": may only contain lowercase letters (a-z), digits (0-9), dots (.), dashes (-), underscores (_), or tildes (~)`
+        `Invalid project name "${projectName}": may only contain lowercase letters (a-z), digits (0-9), dots (.), dashes (-), and underscores (_)`
       );
     }
 
@@ -262,7 +262,7 @@ Options:
             initial: 'leanix-custom-report',
             validate: (v) =>
               isValidPackageName(v) ||
-              'Invalid package name, may only contain lowercase letters (a-z), digits (0-9), dots (.), underscores (_), and minus (-)'
+              'Invalid package name — may only contain lowercase letters (a-z), digits (0-9), dots (.), dashes (-), and underscores (_)'
           },
           {
             name: 'overwrite',
