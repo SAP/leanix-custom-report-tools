@@ -107,27 +107,11 @@ export async function runOAuthFlow(
     const as = await discover(OAUTH_BASE_URL);
 
     // 2. Register OAuth client
-    // TODO: replace with fixed pre-registered client ID once
-    // https://github.com/leanix/mcp-server/pull/975 lands.
     const regReq = await oauth.dynamicClientRegistrationRequest(as, {
       client_name: 'LeanIX Custom Report Tools',
       redirect_uris: [redirectUri]
     });
-    // Server omits client_secret_expires_at (required by RFC 7591 §3.2.1).
-    // Inject 0 (never expires) so oauth4webapi validation passes.
-    const regJson = (await regReq.json()) as Record<string, unknown>;
-    if (
-      regJson.client_secret &&
-      regJson.client_secret_expires_at === undefined
-    ) {
-      regJson.client_secret_expires_at = 0;
-    }
-    const patchedRes = new Response(JSON.stringify(regJson), {
-      status: 201,
-      headers: { 'content-type': 'application/json' }
-    });
-    const reg =
-      await oauth.processDynamicClientRegistrationResponse(patchedRes);
+    const reg = await oauth.processDynamicClientRegistrationResponse(regReq);
     const client_id = reg.client_id;
     if (typeof reg.client_secret !== 'string' || !reg.client_secret) {
       throw new Error(
