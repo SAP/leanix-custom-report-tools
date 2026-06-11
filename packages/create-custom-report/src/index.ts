@@ -245,7 +245,7 @@ Options:
 
     if (projectName !== null && !isValidPackageName(projectName)) {
       throw new Error(
-        `Invalid project name "${projectName}": may only contain lowercase letters (a-z), digits (0-9), dots (.), underscores (_), and minus (-)`
+        `Invalid project name "${projectName}": may only contain lowercase letters (a-z), digits (0-9), dots (.), dashes (-), underscores (_), or tildes (~)`
       );
     }
 
@@ -414,13 +414,13 @@ Options:
     console.log();
 
     // Done
-    console.log('\nDone ✅ Now run:\n');
-    if (root !== cwd) {
-      console.log(`  cd ${relative(cwd, root)}`);
-    }
-    console.log('  npm install');
-    console.log('  npm run dev');
-    console.log();
+    console.log(
+      '\nDone ✅ Open the project in your IDE, install dependencies, and run it locally:\n'
+    );
+    console.log(
+      `  cd ${relative(cwd, root)} && code .    (or open the folder in your IDE via File > Open Folder and then open the integrated terminal via Terminal > New Terminal)\n`
+    );
+    console.log('  npm install\n  npm run dev\n');
     return;
   }
 
@@ -503,8 +503,6 @@ Options:
   } = result);
 
   initProxy(proxyURL);
-  const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent) ?? null;
-  const pkgManager = pkgInfo != null ? pkgInfo.name : 'npm';
 
   let accessToken: string | null = null;
   let mcpCustomReportsEnabled = false;
@@ -626,22 +624,6 @@ Options:
     generateMcpConfig({ targetDir: root });
   }
 
-  console.log('\nDone ✅ Now run:\n');
-  if (root !== cwd) {
-    console.log(`  cd ${relative(cwd, root)}`);
-  }
-  switch (pkgManager) {
-    case 'yarn':
-      console.log('  yarn');
-      console.log('  yarn dev');
-      break;
-    default:
-      console.log(`  ${pkgManager} install`);
-      console.log(`  ${pkgManager} run dev`);
-      break;
-  }
-  console.log();
-
   // MCP setup status
   if (setupMcpServers === false) {
     console.log(
@@ -658,6 +640,14 @@ Options:
     console.log('  - SAP LeanIX MCP Server (workspace data access)');
     console.log();
   }
+
+  console.log(
+    '\nDone ✅ Open the project in your IDE, install dependencies, and run it locally:\n'
+  );
+  console.log(
+    `  cd ${relative(cwd, root)} && code .    (or open the folder in your IDE via File > Open Folder and then open the integrated terminal via Terminal > New Terminal)\n`
+  );
+  console.log('  npm install\n  npm run dev\n');
 }
 
 init().catch((e) => {
