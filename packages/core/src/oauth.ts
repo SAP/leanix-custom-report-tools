@@ -17,7 +17,11 @@ export function getWorkspaceNameFromAccessToken(accessToken: string): string {
   return claims.principal.permission.workspaceName;
 }
 
-type AuthCode = { code: string; state: string };
+type AuthCode = {
+  code: string;
+  state: string;
+  sendResponse: (html: string) => void;
+};
 
 export async function startCallbackServer(): Promise<{
   port: number;
@@ -36,11 +40,15 @@ export async function startCallbackServer(): Promise<{
     const code = url.searchParams.get('code');
     const state = url.searchParams.get('state');
     if (code && state) {
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(
-        '<html><body><h2>Login successful! You can close this tab.</h2></body></html>'
-      );
-      resolveCode({ code, state });
+      // Hold the response open so the caller can send it after token exchange (with the workspace redirect URL)
+      resolveCode({
+        code,
+        state,
+        sendResponse: (html: string) => {
+          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.end(html);
+        }
+      });
     } else {
       res.writeHead(400, { 'Content-Type': 'text/plain' });
       res.end('Missing code or state');
@@ -147,7 +155,7 @@ export async function runOAuthFlow(
     );
 
     // 4. Exchange authorization code for tokens
-    const { code, state: returnedState } = await waitForCode();
+    const { code, state: returnedState, sendResponse } = await waitForCode();
 
     const client: oauth.Client = { client_id };
     const clientAuth = oauth.ClientSecretPost(client_secret);
@@ -183,6 +191,12 @@ export async function runOAuthFlow(
 
     // 5. Build and return workspace config
     const host = getHostFromAccessToken(tokens.access_token);
+    const workspaceName = getWorkspaceNameFromAccessToken(tokens.access_token);
+    const workspaceUrl = `https://${host}/${workspaceName}/`;
+    sendResponse(
+      `<html><head><meta http-equiv="refresh" content="60;url=${workspaceUrl}"></head>` +
+        `<body><h2>Login successful!</h2><p>You can close this window, or we will redirect you to your LeanIX workspace in 1 minute.</p></body></html>`
+    );
     return {
       host,
       oauth: {
