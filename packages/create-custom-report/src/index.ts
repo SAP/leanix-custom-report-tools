@@ -259,7 +259,6 @@ Options:
             name: 'projectName',
             type: () => (projectName !== null ? null : 'text'),
             message: 'Project name:',
-            initial: 'leanix-custom-report',
             validate: (v) =>
               isValidPackageName(v) ||
               'Invalid package name — may only contain lowercase letters (a-z), digits (0-9), dots (.), dashes (-), and underscores (_)'
