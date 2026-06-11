@@ -125,9 +125,13 @@ describe('startCallbackServer', () => {
     const { port, waitForCode } = await startCallbackServer();
     const code = 'auth-code-abc';
     const state = 'state-xyz';
-    await fetch(`http://localhost:${port}/?code=${code}&state=${state}`);
+    const fetchPromise = fetch(
+      `http://localhost:${port}/?code=${code}&state=${state}`
+    );
     const result = await waitForCode();
-    expect(result).toEqual({ code, state });
+    result.sendResponse('<html><body>ok</body></html>');
+    await fetchPromise;
+    expect(result).toEqual(expect.objectContaining({ code, state }));
   });
 
   it('rejects when callback URL is missing code or state', async () => {
