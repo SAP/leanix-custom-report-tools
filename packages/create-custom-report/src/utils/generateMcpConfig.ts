@@ -10,7 +10,7 @@ interface GenerateMcpConfigParams {
 }
 
 /**
- * Picks the Playwright MCP `--browser` value at scaffold time so verification
+ * Picks the Playwright MCP `--browser` value at creation time so verification
  * works without forcing the user to install a browser.
  *
  * - Windows → 'msedge'   (Edge ships with Windows; zero download)
@@ -24,7 +24,9 @@ export const detectBrowser = (): string => {
   if (platform() === 'win32') return 'msedge';
 
   if (platform() === 'darwin') {
-    return existsSync('/Applications/Google Chrome.app') ? 'chrome' : 'chromium';
+    return existsSync('/Applications/Google Chrome.app')
+      ? 'chrome'
+      : 'chromium';
   }
 
   // Linux and other Unix-likes — match what Playwright's chrome channel looks for
@@ -59,7 +61,7 @@ export const detectBrowser = (): string => {
  * - -y flag to auto-confirm
  * - @latest for always getting latest version
  * - --headless flag for Playwright MCP (no UI disruption)
- * - --browser detected at scaffold time by `detectBrowser()` above
+ * - --browser detected at creation time by `detectBrowser()` above
  *
  * @param params - Configuration parameters
  * @param params.targetDir - Project root directory where MCP configs will be created

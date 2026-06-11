@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to run the scaffolding tool and vite plugin locally
+# Script to run the creation tool and vite plugin locally
 # This script builds both packages, runs create-custom-report, and links the local vite plugin
 
 set -e
@@ -21,24 +21,24 @@ if ! LINK_OUTPUT=$(npm link 2>&1); then
 fi
 cd ../..
 
-echo "📦 Running scaffolding tool..."
+echo "📦 Running creation tool..."
 echo ""
 
-# Get project name from user
-read -p "Enter project name (default: custom-report-test): " PROJECT_NAME
-PROJECT_NAME="${PROJECT_NAME:-custom-report-test}"
-
-# Run scaffolding in parent directory
+# Run creation tool in parent directory (v2 flow)
 cd ..
-if ! node "$TOOL_DIR/packages/create-custom-report/dist/index.cjs" "$PROJECT_NAME"; then
+# Snapshot directories before and after to detect the newly created project folder
+BEFORE=$(ls -d */ 2>/dev/null)
+if ! node "$TOOL_DIR/packages/create-custom-report/dist/index.cjs" v2; then
     exit 1
 fi
+AFTER=$(ls -d */ 2>/dev/null)
+PROJECT_NAME=$(comm -13 <(echo "$BEFORE" | sort) <(echo "$AFTER" | sort) | tr -d '/')
 
 # Link the local vite plugin to the new project
 if [ ! -d "$PROJECT_NAME" ]; then
     echo ""
     echo "⚠️  Project directory '$PROJECT_NAME' not found."
-    echo "   Please check if the scaffolding completed successfully."
+    echo "   Please check if the creation completed successfully."
     exit 1
 fi
 

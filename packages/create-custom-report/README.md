@@ -1,6 +1,6 @@
 # @sap/create-leanix-custom-report
 
-## Scaffolding Your First SAP LeanIX Custom Report
+## Creating Your First SAP LeanIX Custom Report
 
 > **Compatibility Note:**
 > Requires [Node.js](https://nodejs.org/en/) version >=24.0.0.
@@ -38,7 +38,7 @@ yarn create @sap/leanix-custom-report my-custom-report
 pnpm create @sap/leanix-custom-report my-custom-report
 ```
 
-All projects are scaffolded using **React with TypeScript**, providing a modern, type-safe development experience with excellent IDE support and maintainability.
+All projects are created using **React with TypeScript**, providing a modern, type-safe development experience with excellent IDE support and maintainability.
 
 ## Non-Interactive / CI Usage
 
@@ -59,7 +59,7 @@ npm create @sap/leanix-custom-report@latest my-report \
   --overwrite
 ```
 
-To skip SAP LeanIX authentication entirely (e.g. for offline scaffolding):
+To skip SAP LeanIX authentication entirely (e.g. for offline creation):
 
 ```bash
 npm create @sap/leanix-custom-report@latest my-report \
@@ -72,22 +72,22 @@ npm create @sap/leanix-custom-report@latest my-report \
 
 ### All available flags
 
-| Flag | Type | Description |
-|---|---|---|
-| `project-name` | positional | Directory name for the new project (default: `leanix-custom-report`) |
-| `--id` | string | Unique report id in Java package notation (e.g. `net.leanix.barcharts`) |
-| `--author` | string | Report author (e.g. `SAP LeanIX`) |
-| `--title` | string | Title shown in SAP LeanIX when the report is installed |
-| `--description` | string | Short description of the report |
-| `--packageName` | string | npm package name (default: derived from project-name) |
-| `--host` | string | SAP LeanIX host (default: `demo-eu.leanix.net`) |
-| `--apitoken` | string | API token for authentication |
-| `--proxyURL` | string | HTTP/S proxy URL — also suppresses the proxy toggle prompt |
-| `--overwrite` | boolean | Overwrite target directory if it already exists |
-| `--skipAuth` | boolean | Skip SAP LeanIX authentication entirely |
-| `--setupMcpServers` | boolean | Generate MCP server config files (requires feature flag) |
-| `--no-setupMcpServers` | boolean | Skip MCP server config generation without prompting |
-| `--help` | boolean | Print this flag reference and exit |
+| Flag                   | Type       | Description                                                             |
+| ---------------------- | ---------- | ----------------------------------------------------------------------- |
+| `project-name`         | positional | Directory name for the new project (default: `leanix-custom-report`)    |
+| `--id`                 | string     | Unique report id in Java package notation (e.g. `net.leanix.barcharts`) |
+| `--author`             | string     | Report author (e.g. `SAP LeanIX`)                                       |
+| `--title`              | string     | Title shown in SAP LeanIX when the report is installed                  |
+| `--description`        | string     | Short description of the report                                         |
+| `--packageName`        | string     | npm package name (default: derived from project-name)                   |
+| `--host`               | string     | SAP LeanIX host (default: `demo-eu.leanix.net`)                         |
+| `--apitoken`           | string     | API token for authentication                                            |
+| `--proxyURL`           | string     | HTTP/S proxy URL — also suppresses the proxy toggle prompt              |
+| `--overwrite`          | boolean    | Overwrite target directory if it already exists                         |
+| `--skipAuth`           | boolean    | Skip SAP LeanIX authentication entirely                                 |
+| `--setupMcpServers`    | boolean    | Generate MCP server config files (requires feature flag)                |
+| `--no-setupMcpServers` | boolean    | Skip MCP server config generation without prompting                     |
+| `--help`               | boolean    | Print this flag reference and exit                                      |
 
 Any flag that is omitted will fall back to its interactive prompt, so partial automation is
 fully supported.
