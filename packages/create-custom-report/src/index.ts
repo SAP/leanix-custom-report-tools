@@ -412,12 +412,13 @@ Options:
     console.log();
   }
 
-  console.log('\nDone ✅ Now run:\n');
-  if (root !== cwd) {
-    console.log(`  cd ${relative(cwd, root)}`);
-  }
-  console.log('  npm install\n  npm run dev');
-  console.log();
+  console.log(
+    '\nDone ✅ Open the project in your IDE, install dependencies, and run it locally:\n'
+  );
+  console.log(
+    `  cd ${relative(cwd, root)} && code .    (or open the folder in your IDE via File > Open Folder and then open the integrated terminal via Terminal > New Terminal)\n`
+  );
+  console.log('  npm install\n  npm run dev\n');
 }
 
 init().catch((e) => {
