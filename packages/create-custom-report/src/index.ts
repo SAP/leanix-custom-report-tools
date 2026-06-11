@@ -232,7 +232,7 @@ Options:
           validate: (dir) =>
             isValidPackageName(dir) ||
             (isV2
-              ? 'Invalid package name, may only contain lowercase letters (a-z), digits (0-9), dots (.), underscores (_), and minus (-)'
+              ? 'Invalid package name — may only contain lowercase letters (a-z), digits (0-9), dots (.), dashes (-), underscores (_), or tildes (~)'
               : 'Invalid package.json name')
         },
         ...getLeanIXQuestions(argv, isV2)
