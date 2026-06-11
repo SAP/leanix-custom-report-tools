@@ -140,7 +140,7 @@ async function runV2Auth(file: ConnectionConfigFile | null): Promise<{
   const configPath = file?.path ?? getUserLxrJsonPath();
   try {
     const { bearerToken, host } = await authenticate(file);
-    
+
     const workspaceName = getWorkspaceNameFromAccessToken(bearerToken);
     return { host, workspaceName, configPath };
   } catch (error) {
@@ -255,7 +255,7 @@ Options:
     let result: PromptResult = {};
     try {
       console.log(
-        '  The project name is your report\'s permanent identity in the workspace — choose it carefully.'
+        "  The project name is your report's permanent identity in the workspace — choose it carefully."
       );
       result = await prompts(
         [
@@ -403,7 +403,9 @@ Options:
     });
 
     generateMcpConfig({ targetDir: root });
-    console.log('✓ MCP servers configured for GitHub Copilot (VS Code) and Claude Code:');
+    console.log(
+      '✓ MCP servers configured for GitHub Copilot (VS Code) and Claude Code:'
+    );
     console.log('  - Playwright MCP (AI report verification)');
     console.log('  - SAP LeanIX MCP Server (workspace data access)');
     console.log('    The SAP LeanIX MCP Server uses its own OAuth session.');

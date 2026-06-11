@@ -85,23 +85,23 @@ npm create @sap/leanix-custom-report@latest my-report \
 
 ### All available flags
 
-| Flag                   | Type       | Description                                                             |
-| ---------------------- | ---------- | ----------------------------------------------------------------------- |
-| `project-name`         | positional | Directory name for the new project (default: `leanix-custom-report`)    |
+| Flag                   | Type       | Description                                                                                      |
+| ---------------------- | ---------- | ------------------------------------------------------------------------------------------------ |
+| `project-name`         | positional | Directory name for the new project (default: `leanix-custom-report`)                             |
 | `--id`                 | string     | Unique report id in Java package notation (e.g. `net.leanix.barcharts`); not used in `--v2` mode |
-| `--author`             | string     | Report author (e.g. `SAP LeanIX`)                                       |
-| `--title`              | string     | Title shown in SAP LeanIX when the report is installed                  |
-| `--description`        | string     | Short description of the report                                         |
-| `--packageName`        | string     | npm package name (default: derived from project-name)                   |
-| `--host`               | string     | SAP LeanIX host (default: `demo-eu.leanix.net`); not used in `--v2` mode (resolved via OAuth) |
-| `--apitoken`           | string     | API token for authentication; not used in `--v2` mode                   |
-| `--proxyURL`           | string     | HTTP/S proxy URL — also suppresses the proxy toggle prompt              |
-| `--overwrite`          | boolean    | Overwrite target directory if it already exists                         |
-| `--skipAuth`           | boolean    | Skip SAP LeanIX authentication entirely                                 |
-| `--v2`                 | boolean    | Use the new creation flow: OAuth browser login, package name as report identity, no report ID |
-| `--setupMcpServers`    | boolean    | Generate MCP server config files (requires feature flag)                |
-| `--no-setupMcpServers` | boolean    | Skip MCP server config generation without prompting                     |
-| `--help`               | boolean    | Print this flag reference and exit                                      |
+| `--author`             | string     | Report author (e.g. `SAP LeanIX`)                                                                |
+| `--title`              | string     | Title shown in SAP LeanIX when the report is installed                                           |
+| `--description`        | string     | Short description of the report                                                                  |
+| `--packageName`        | string     | npm package name (default: derived from project-name)                                            |
+| `--host`               | string     | SAP LeanIX host (default: `demo-eu.leanix.net`); not used in `--v2` mode (resolved via OAuth)    |
+| `--apitoken`           | string     | API token for authentication; not used in `--v2` mode                                            |
+| `--proxyURL`           | string     | HTTP/S proxy URL — also suppresses the proxy toggle prompt                                       |
+| `--overwrite`          | boolean    | Overwrite target directory if it already exists                                                  |
+| `--skipAuth`           | boolean    | Skip SAP LeanIX authentication entirely                                                          |
+| `--v2`                 | boolean    | Use the new creation flow: OAuth browser login, package name as report identity, no report ID    |
+| `--setupMcpServers`    | boolean    | Generate MCP server config files (requires feature flag)                                         |
+| `--no-setupMcpServers` | boolean    | Skip MCP server config generation without prompting                                              |
+| `--help`               | boolean    | Print this flag reference and exit                                                               |
 
 Any flag that is omitted will fall back to its interactive prompt, so partial automation is
 fully supported.
