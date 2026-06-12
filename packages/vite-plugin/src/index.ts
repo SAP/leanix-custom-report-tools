@@ -261,25 +261,29 @@ export default function leanixPlugin(): Plugin[] {
           logger?.error('💥 Error during upload to Reports Service...');
           if (err instanceof ReportStateError) {
             if (err.status === 'VULNERABLE' && err.securityScan !== null) {
-              logger?.error('🛡  Scan result:');
+              logger?.error('Scan result:');
+              logger?.error(
+                '--------------------------------------------------------------------------'
+              );
               logger?.error(JSON.stringify(err.securityScan, null, 2));
+              logger?.error(
+                '--------------------------------------------------------------------------'
+              );
             } else if (err.buildLog) {
               const lines = err.buildLog.split('\n');
-              const MAX_LINES = 50;
-              const tail =
-                lines.length > MAX_LINES ? lines.slice(-MAX_LINES) : lines;
-              logger?.error('📜 Build log:');
-              if (lines.length > MAX_LINES) {
-                logger?.error(
-                  `  … (showing last ${MAX_LINES} of ${lines.length} lines)`
-                );
-              }
-              for (const line of tail) {
+              logger?.error('Build log:');
+              logger?.error(
+                '--------------------------------------------------------------------------'
+              );
+              for (const line of lines) {
                 logger?.error(`  ${line}`);
               }
+              logger?.error(
+                '--------------------------------------------------------------------------'
+              );
             }
           }
-          logger?.error(`💣 ${err}`);
+          logger?.error(`${err}`);
           process.exit(1);
         }
         return;
