@@ -24,6 +24,7 @@ For detailed documentation on each package see:
 
 - [@sap/vite-plugin-leanix-custom-report](./packages/vite-plugin/README.md) - Vite plugin documentation
 - [@sap/create-leanix-custom-report](./packages/create-custom-report/README.md) - Project creation documentation
+- [SAP LeanIX Custom Reports](https://help.sap.com/docs/leanix/ea/custom-reports)
 
 ## Requirements and Setup
 

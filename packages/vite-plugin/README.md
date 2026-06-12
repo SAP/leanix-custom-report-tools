@@ -124,3 +124,7 @@ npm run dev
 - **Build fails**: Ensure all required package.json fields are present
 - **Upload fails**: Verify your credentials in `lxr.json` (run `npx lxr login` to re-authenticate)
 - **Report not loading**: Check browser console for JavaScript errors
+
+## Learn More
+
+- [SAP LeanIX Custom Reports](https://help.sap.com/docs/leanix/ea/custom-reports)
