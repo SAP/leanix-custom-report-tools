@@ -187,23 +187,6 @@ export async function fetchWorkspaceReports(
   return reports;
 }
 
-export async function deleteWorkspaceReportById(
-  reportId: string,
-  bearerToken: string
-): Promise<204 | number> {
-  const decodedToken: JwtClaims = jwtDecode(bearerToken);
-  const url = new URL(
-    `${decodedToken.instanceUrl}/services/pathfinder/v1/reports/${reportId}`
-  );
-  const { status } = await fetch(url.toString(), {
-    method: 'DELETE',
-    headers: { Authorization: `Bearer ${bearerToken}` }
-  });
-  return status === 204
-    ? await Promise.resolve(status)
-    : await Promise.reject(status);
-}
-
 // --- v2 upload (Reports Service) ---
 
 export async function npmPackBundle(cwd: string): Promise<string> {
