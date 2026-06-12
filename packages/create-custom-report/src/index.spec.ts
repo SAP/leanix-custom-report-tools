@@ -406,7 +406,7 @@ it('--v2 skips the id prompt and does not write id to leanixReport', () => {
   expect(pkg?.leanixReport?.title).toEqual(title);
 });
 
-it('--v2 uses "Author of the report" prompt wording', () => {
+it('--v2 does not show "Author of the report" prompt', () => {
   const { stdout } = run(
     [
       projectName,
@@ -421,7 +421,7 @@ it('--v2 uses "Author of the report" prompt wording', () => {
     ],
     { cwd: tempDir }
   );
-  expect((stdout as string)?.includes('Author of the report')).toBe(true);
+  expect((stdout as string)?.includes('Author of the report')).toBe(false);
 });
 
 it('--v2 uses "Report title" prompt wording', () => {

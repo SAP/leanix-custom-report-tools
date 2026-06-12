@@ -5,7 +5,11 @@ import { join, relative } from 'node:path';
 import { red } from 'kolorist';
 import minimist from 'minimist';
 import prompts from 'prompts';
-import { isValidPackageName, toValidPackageName, INVALID_PROJECT_NAME_CHARS } from './helpers';
+import {
+  isValidPackageName,
+  toValidPackageName,
+  INVALID_PROJECT_NAME_CHARS
+} from './helpers';
 import { exchangeApiToken, authenticate } from '@lxr/core/auth';
 import { getWorkspaceNameFromAccessToken } from '@lxr/core/oauth';
 import {
@@ -259,8 +263,7 @@ Options:
             name: 'projectName',
             type: () => (projectName !== null ? null : 'text'),
             message: 'Project name:',
-            validate: (v) =>
-              isValidPackageName(v) || INVALID_PROJECT_NAME_CHARS
+            validate: (v) => isValidPackageName(v) || INVALID_PROJECT_NAME_CHARS
           },
           {
             name: 'overwrite',
@@ -281,11 +284,6 @@ Options:
               }
               return null;
             }
-          },
-          {
-            type: argv?.author === undefined ? 'text' : null,
-            name: 'author',
-            message: 'Author of the report (e.g. Jane Doe)'
           },
           {
             type: argv?.title === undefined ? 'text' : null,
@@ -331,7 +329,6 @@ Options:
     }
 
     ({
-      author = author,
       title = title,
       description = description,
       proxyURL = proxyURL,
@@ -380,7 +377,7 @@ Options:
     deployTemplate({
       targetDir: root,
       template: TEMPLATE,
-      result: { author, title, description, overwrite },
+      result: { title, description, overwrite },
       mcpCustomReportsEnabled: true
     });
 
@@ -388,7 +385,6 @@ Options:
       targetDir: root,
       result: {
         packageName: projectName,
-        author,
         title,
         description,
         overwrite

@@ -28,7 +28,9 @@ export async function generateLeanIXFiles(
       .pathname.split('/')
       .at(-1);
   const version = pkg.version ?? '0.0.0';
-  const pkgMetadataFields = { name, author, description, version };
+  const pkgMetadataFields = isV2
+    ? { name, description, version }
+    : { name, author, description, version };
   const leanixReport = isV2
     ? { title, aiAssisted: false, defaultConfig: {}, uploadVersion: 2 as const }
     : { id, title, aiAssisted: false, defaultConfig: {} };
