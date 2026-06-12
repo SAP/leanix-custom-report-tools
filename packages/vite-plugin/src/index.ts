@@ -213,9 +213,77 @@ export default function leanixPlugin(): Plugin[] {
       }
     },
 
+    // v2 upload runs in buildStart (before Vite compiles anything) because
+    // npmPackBundle packs from source — the compiled dist output is not needed.
+    // Exiting here prevents Vite from running the build at all, so the user
+    // doesn't see spurious bundle size warnings and timing output after the
+    // upload completes.
+    async buildStart() {
+      if (!shouldUpload || metadata.uploadVersion !== 2) return;
+
+      logger?.warn('⚠️  Using EXPERIMENTAL v2 upload (Reports Service).');
+      if (claims === null) {
+        throw new Error('Cannot upload: missing access token claims.');
+      }
+
+      const bearerToken = resolvedAuth!.bearerToken;
+      const { name, version } = metadata;
+      const { workspaceName } = claims.principal.permission;
+
+      try {
+        const tarball = await npmPackBundle(projectRoot);
+        const bundle = await openAsBlob(tarball);
+        logger?.info(
+          `Uploading "${name}" v${version} to workspace "${workspaceName}" via Reports Service...`
+        );
+        const { customReportVersionId } = await uploadReportV2({
+          host: resolvedAuth!.host,
+          bearerToken,
+          bundle
+        });
+        logger?.info(`  customReportVersionId: ${customReportVersionId}`);
+        await pollReportState({
+          host: resolvedAuth!.host,
+          customReportVersionId,
+          bearerToken,
+          onUpdate: (state) => logger?.info(`  state: ${state}`)
+        });
+        logger?.info('🚀 Upload complete.');
+      } catch (err: any) {
+        logger?.error('💥 Error during upload to Reports Service...');
+        if (err instanceof ReportStateError) {
+          if (err.status === 'VULNERABLE' && err.securityScan !== null) {
+            logger?.error('Scan result:');
+            logger?.error(
+              '--------------------------------------------------------------------------'
+            );
+            logger?.error(JSON.stringify(err.securityScan, null, 2));
+            logger?.error(
+              '--------------------------------------------------------------------------'
+            );
+          } else if (err.buildLog) {
+            const lines = err.buildLog.split('\n');
+            logger?.error('Build log:');
+            logger?.error(
+              '--------------------------------------------------------------------------'
+            );
+            for (const line of lines) {
+              logger?.error(`  ${line}`);
+            }
+            logger?.error(
+              '--------------------------------------------------------------------------'
+            );
+          }
+        }
+        logger?.error(`${err}`);
+        process.exit(1);
+      }
+      process.exit(0);
+    },
+
     // Rollup hook: called after all files have been written to disk.
     // On a normal build we only write lxreport.json metadata alongside the output.
-    // On upload mode we also package and ship the bundle to the workspace.
+    // On upload mode (v1 only) we also package the dist and ship it to the workspace.
     async writeBundle(options, _outputBundle) {
       // Guard: output.file mode is not supported (custom reports always use output.dir)
       if (options.dir === undefined) {
@@ -229,65 +297,7 @@ export default function leanixPlugin(): Plugin[] {
       }
 
       const bearerToken = resolvedAuth!.bearerToken;
-      const { name, version } = metadata;
-
-      // v2 upload (Reports Service): opt-in via leanixReport.uploadVersion = 2 in package.json
-      if (metadata.uploadVersion === 2) {
-        logger?.warn('⚠️  Using EXPERIMENTAL v2 upload (Reports Service).');
-        if (claims === null) {
-          throw new Error('Cannot upload: missing access token claims.');
-        }
-        const { workspaceName } = claims.principal.permission;
-        try {
-          const tarball = await npmPackBundle(projectRoot);
-          const bundle = await openAsBlob(tarball);
-          logger?.info(
-            `Uploading "${name}" v${version} to workspace "${workspaceName}" via Reports Service...`
-          );
-          const { customReportVersionId } = await uploadReportV2({
-            host: resolvedAuth!.host,
-            bearerToken,
-            bundle
-          });
-          logger?.info(`  customReportVersionId: ${customReportVersionId}`);
-          await pollReportState({
-            host: resolvedAuth!.host,
-            customReportVersionId,
-            bearerToken,
-            onUpdate: (state) => logger?.info(`  state: ${state}`)
-          });
-          logger?.info('🚀 Upload complete.');
-        } catch (err: any) {
-          logger?.error('💥 Error during upload to Reports Service...');
-          if (err instanceof ReportStateError) {
-            if (err.status === 'VULNERABLE' && err.securityScan !== null) {
-              logger?.error('Scan result:');
-              logger?.error(
-                '--------------------------------------------------------------------------'
-              );
-              logger?.error(JSON.stringify(err.securityScan, null, 2));
-              logger?.error(
-                '--------------------------------------------------------------------------'
-              );
-            } else if (err.buildLog) {
-              const lines = err.buildLog.split('\n');
-              logger?.error('Build log:');
-              logger?.error(
-                '--------------------------------------------------------------------------'
-              );
-              for (const line of lines) {
-                logger?.error(`  ${line}`);
-              }
-              logger?.error(
-                '--------------------------------------------------------------------------'
-              );
-            }
-          }
-          logger?.error(`${err}`);
-          process.exit(1);
-        }
-        return;
-      }
+      const { version } = metadata;
 
       // Write lxreport.json to dist/ (legacy v1 upload only)
       writeReportMetadata(metadata, options.dir);
