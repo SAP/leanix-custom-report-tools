@@ -5,7 +5,6 @@ import { join, resolve } from 'node:path';
 import { mkdirpSync, readdirSync, statSync, writeFileSync } from 'fs-extra';
 import { generate as uuid } from 'short-uuid';
 import pkg from '../package.json' with { type: 'json' };
-import { parseTriStateBoolean } from './utils/parseTriStateBoolean';
 
 const CLI_PATH = resolve(
   __dirname,
@@ -162,40 +161,6 @@ it('successfully creates a project based on react-ts template', async () => {
   expect(pkg?.leanixReport?.id).toEqual(reportId);
   expect(pkg?.leanixReport?.title).toEqual(title);
   expect(typeof pkg?.leanixReport.defaultConfig).toEqual('object');
-});
-
-// ---------------------------------------------------------------------------
-// parseTriStateBoolean unit tests
-// ---------------------------------------------------------------------------
-
-describe('parseTriStateBoolean', () => {
-  it('returns true when --flag is present', () => {
-    expect(parseTriStateBoolean(['--setupMcpServers'], 'setupMcpServers')).toBe(
-      true
-    );
-  });
-
-  it('returns false when --no-flag is present', () => {
-    expect(
-      parseTriStateBoolean(['--no-setupMcpServers'], 'setupMcpServers')
-    ).toBe(false);
-  });
-
-  it('returns undefined when neither flag is present', () => {
-    expect(
-      parseTriStateBoolean(['--skipAuth', '--id', 'foo'], 'setupMcpServers')
-    ).toBeUndefined();
-  });
-
-  it('prefers --flag over --no-flag when both present (first wins)', () => {
-    // --flag appears first in the array
-    expect(
-      parseTriStateBoolean(
-        ['--setupMcpServers', '--no-setupMcpServers'],
-        'setupMcpServers'
-      )
-    ).toBe(true);
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -417,7 +382,6 @@ it('--v2 skips the id prompt and does not write id to leanixReport', () => {
   const author = uuid();
   const title = uuid();
   const description = uuid();
-  const packageName = 'my-v2-report';
 
   const args = [
     '--v2',
@@ -428,13 +392,7 @@ it('--v2 skips the id prompt and does not write id to leanixReport', () => {
     '--title',
     title,
     '--description',
-    description,
-    '--packageName',
-    packageName,
-    '--host',
-    uuid(),
-    '--apitoken',
-    uuid()
+    description
   ];
 
   const { exitCode, stdout } = run([projectName, ...args], { cwd: tempDir });
@@ -443,12 +401,12 @@ it('--v2 skips the id prompt and does not write id to leanixReport', () => {
   expect((stdout as string)?.includes('Unique id for this report')).toBe(false);
 
   const pkg = getPackageJson(join(tempDir, projectName));
-  expect(pkg.name).toEqual(packageName);
+  expect(pkg.name).toEqual(projectName);
   expect(pkg?.leanixReport?.id).toBeUndefined();
   expect(pkg?.leanixReport?.title).toEqual(title);
 });
 
-it('--v2 uses "Author of the report" prompt wording', () => {
+it('--v2 does not show "Author of the report" prompt', () => {
   const { stdout } = run(
     [
       projectName,
@@ -463,7 +421,7 @@ it('--v2 uses "Author of the report" prompt wording', () => {
     ],
     { cwd: tempDir }
   );
-  expect((stdout as string)?.includes('Author of the report')).toBe(true);
+  expect((stdout as string)?.includes('Author of the report')).toBe(false);
 });
 
 it('--v2 uses "Report title" prompt wording', () => {

@@ -3,7 +3,7 @@ import zod from 'zod';
 export const packageJsonLxrSchema = zod.object({
   name: zod.string(),
   version: zod.string(),
-  author: zod.string(),
+  author: zod.string().optional(),
   description: zod.string(),
   leanixReport: zod.object({
     id: zod.string().optional(),

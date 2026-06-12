@@ -1,7 +1,6 @@
-import type { AccessToken } from '@lxr/core/models/access-token';
 import type { CustomReportMetadata } from '@lxr/core/models/custom-report-metadata';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
-import type { LeanIXCredentials } from '@lxr/core/models/leanix-credentials';
+import type { ResolvedAuth } from '@lxr/core/auth';
 import type { AddressInfo } from 'node:net';
 import type { Logger, Plugin, ResolvedConfig } from 'vite';
 import { openAsBlob } from 'node:fs';
@@ -9,40 +8,32 @@ import { createServer as createHttpServer } from 'node:http';
 import { join } from 'node:path';
 import {
   createBundle,
-  getAccessToken,
-  getAccessTokenClaims,
+  decodeBearerToken,
   getLaunchUrl,
   npmPackBundle,
   pollReportState,
-  readLxrJson,
   readMetadataJson,
   ReportStateError,
   uploadBundle,
   uploadReportV2,
   writeReportMetadata
 } from '@lxr/core/index';
+import { authenticate } from '@lxr/core/auth';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { ZodError } from 'zod';
 import { checkPackageVersions } from './helpers/check-packages';
 import { resolveHostname } from './helpers/resolve-hostname';
 
-export interface LeanIXPluginOptions {
-  packageJsonPath?: string;
-}
-
-export default function leanixPlugin(
-  pluginOptions?: LeanIXPluginOptions
-): Plugin[] {
+export default function leanixPlugin(): Plugin[] {
   let logger: Logger;
-  let accessToken: AccessToken | null = null;
+  let resolvedAuth: ResolvedAuth | null = null;
   let claims: JwtClaims | null = null;
   let shouldUpload: boolean = false;
-  let loadWorkspaceCredentials: boolean = false;
-  let credentials: LeanIXCredentials = { host: '', apitoken: '' };
+  let requiresServerConnection: boolean = false;
   let viteDevServerUrl: string;
   let launchUrl: string;
   let relayServer: ReturnType<typeof createHttpServer> | null = null;
-  let devMetadata: CustomReportMetadata | null = null;
+  let metadata!: CustomReportMetadata;
   let projectRoot: string = '';
 
   const lxrPlugin: Plugin = {
@@ -51,48 +42,56 @@ export default function leanixPlugin(
     apply: undefined,
 
     async config(config, env) {
-      shouldUpload = env.mode === 'upload';
-      loadWorkspaceCredentials = env.command === 'serve' || shouldUpload;
       // Use relative base so dist assets resolve correctly when index.html
       // is served from a sub-path (e.g. .../dist/index.html).
       config.base = './';
-      if (loadWorkspaceCredentials) {
-        config.server = { ...(config.server ?? {}), host: true, cors: true };
-        try {
-          credentials = await readLxrJson();
-        } catch (error) {
-          logger = logger ?? console;
-          const code = (error as { code: string })?.code ?? null;
-          if (code === 'ENOENT') {
-            logger.error(
-              '💥 Error: "lxr.json" file not found in your project root'
-            );
-          } else {
-            logger?.error(error as string);
-          }
 
-          process.exit(1);
-        }
+      shouldUpload = env.mode === 'upload';
+      requiresServerConnection = env.command === 'serve' || shouldUpload;
+
+      if (requiresServerConnection) {
+        config.server = { ...(config.server ?? {}), host: true, cors: true };
       }
     },
 
     async configResolved(resolvedConfig: ResolvedConfig) {
       logger = resolvedConfig.logger;
       projectRoot = resolvedConfig.root;
-      devMetadata = await readMetadataJson(
-        join(resolvedConfig.root, 'package.json')
-      ).catch(() => null);
-      if (loadWorkspaceCredentials) {
+
+      try {
+        metadata = readMetadataJson(join(resolvedConfig.root, 'package.json'));
+      } catch (err: any) {
+        if (err?.code === 'ENOENT') {
+          logger.error(`💥 Could not find metadata file at "${err.path}"`);
+        } else if (err instanceof ZodError) {
+          logger.error(
+            `💥 Found ${err.issues.length} errors while validating metadata`
+          );
+          for (const issue of err.issues) {
+            if (issue.code === 'invalid_type') {
+              const { code, expected, path, message } = issue;
+              logger.error(
+                ` ${message} ${path} - ${code}, expected ${expected}`
+              );
+            } else {
+              const { code, path, message } = issue;
+              logger.error(` ${message} ${path} - ${code}`);
+            }
+          }
+        } else {
+          logger.error(`💥 Unknown error`, err);
+        }
+        process.exit(1);
+      }
+
+      if (requiresServerConnection) {
         await checkPackageVersions(projectRoot, logger);
         try {
-          if (
-            typeof credentials.proxyURL === 'string' &&
-            credentials.proxyURL.length > 0
-          ) {
-            logger?.info(`  Using proxy: ${credentials.proxyURL}`);
+          resolvedAuth = await authenticate();
+          if (resolvedAuth.proxyURL) {
+            logger?.info(`  Using proxy: ${resolvedAuth.proxyURL}`);
           }
-          accessToken = await getAccessToken(credentials);
-          claims = getAccessTokenClaims(accessToken);
+          claims = decodeBearerToken(resolvedAuth.bearerToken);
           if (claims !== null) {
             logger?.info(
               `  Using workspace: ${claims.principal.permission.workspaceName}`
@@ -114,7 +113,7 @@ export default function leanixPlugin(
         return;
       }
 
-      const targetHost = credentials.host;
+      const targetHost = resolvedAuth?.host ?? '';
       const targetOrigin = `https://${targetHost}`;
       const workspaceName = claims?.principal.permission.workspaceName ?? '';
 
@@ -179,10 +178,6 @@ export default function leanixPlugin(
       // pathfinder-web can call them directly (absolute URLs bypass the relay proxy).
       relayServer.listen(4200, () => {
         httpServer.once('listening', () => {
-          if (accessToken === null) {
-            throw new Error('Missing AccessToken');
-          }
-
           const { name: hostname } = resolveHostname(config.server.host);
           const port = (httpServer.address() as AddressInfo).port;
           viteDevServerUrl = `http://${hostname}:${port}`;
@@ -192,9 +187,9 @@ export default function leanixPlugin(
 
           launchUrl = getLaunchUrl(
             viteDevServerUrl,
-            accessToken.accessToken,
+            resolvedAuth!.bearerToken,
             relayUrl,
-            devMetadata?.title
+            metadata?.title
           );
 
           // Override Vite's resolved URLs BEFORE they are printed
@@ -218,43 +213,78 @@ export default function leanixPlugin(
       }
     },
 
-    // Rollup hook: called after all files have been written to disk.
-    // On a normal build we only write lxreport.json metadata alongside the output.
-    // On upload mode we also package and ship the bundle to the workspace.
-    async writeBundle(options, _outputBundle) {
-      // Read and validate metadata from package.json
-      let metadata: CustomReportMetadata | undefined;
-      try {
-        metadata = await readMetadataJson(pluginOptions?.packageJsonPath);
-      } catch (err: any) {
-        if (err?.code === 'ENOENT') {
-          const path: string = err.path;
-          logger?.error(`💥 Could not find metadata file at "${path}"`);
-          logger?.warn('🙋 Have you initialized this project?"');
-        } else if (err instanceof ZodError) {
-          const issues = err.issues;
-          logger.error(
-            `\n💥 Found ${issues.length} errors while validating metadata`
-          );
-          let i = 0;
-          for (const issue of issues) {
-            i++;
-            if (issue.code === 'invalid_type') {
-              const { code, expected, path, message } = issue;
-              logger?.error(
-                `💥 #${i} ${message} ${path} - ${code}, expected ${expected}`
-              );
-            } else {
-              const { code, path, message } = issue;
-              logger?.error(`💥 #${i} ${message} ${path} - ${code}`);
-            }
-          }
-        } else {
-          logger.error(`💥 Unknown error`, err);
-        }
-        process.exit(1);
+    // v2 upload runs in buildStart (before Vite compiles anything) because
+    // npmPackBundle packs from source — the compiled dist output is not needed.
+    // Exiting here prevents Vite from running the build at all, so the user
+    // doesn't see spurious bundle size warnings and timing output after the
+    // upload completes.
+    async buildStart() {
+      if (!shouldUpload || metadata.uploadVersion !== 2) return;
+
+      logger?.warn('⚠️  Using EXPERIMENTAL v2 upload (Reports Service).');
+      if (claims === null) {
+        throw new Error('Cannot upload: missing access token claims.');
       }
 
+      const bearerToken = resolvedAuth!.bearerToken;
+      const { name, version } = metadata;
+      const { workspaceName } = claims.principal.permission;
+
+      try {
+        const tarball = await npmPackBundle(projectRoot);
+        const bundle = await openAsBlob(tarball);
+        logger?.info(
+          `Uploading "${name}" v${version} to workspace "${workspaceName}" via Reports Service...`
+        );
+        const { customReportVersionId } = await uploadReportV2({
+          host: resolvedAuth!.host,
+          bearerToken,
+          bundle
+        });
+        logger?.info(`  customReportVersionId: ${customReportVersionId}`);
+        await pollReportState({
+          host: resolvedAuth!.host,
+          customReportVersionId,
+          bearerToken,
+          onUpdate: (state) => logger?.info(`  state: ${state}`)
+        });
+        logger?.info('🚀 Upload complete.');
+      } catch (err: any) {
+        logger?.error('💥 Error during upload to Reports Service...');
+        if (err instanceof ReportStateError) {
+          if (err.status === 'VULNERABLE' && err.securityScan !== null) {
+            logger?.error('Scan result:');
+            logger?.error(
+              '--------------------------------------------------------------------------'
+            );
+            logger?.error(JSON.stringify(err.securityScan, null, 2));
+            logger?.error(
+              '--------------------------------------------------------------------------'
+            );
+          } else if (err.buildLog) {
+            const lines = err.buildLog.split('\n');
+            logger?.error('Build log:');
+            logger?.error(
+              '--------------------------------------------------------------------------'
+            );
+            for (const line of lines) {
+              logger?.error(`  ${line}`);
+            }
+            logger?.error(
+              '--------------------------------------------------------------------------'
+            );
+          }
+        }
+        logger?.error(`${err}`);
+        process.exit(1);
+      }
+      process.exit(0);
+    },
+
+    // Rollup hook: called after all files have been written to disk.
+    // On a normal build we only write lxreport.json metadata alongside the output.
+    // On upload mode (v1 only) we also package the dist and ship it to the workspace.
+    async writeBundle(options, _outputBundle) {
       // Guard: output.file mode is not supported (custom reports always use output.dir)
       if (options.dir === undefined) {
         logger?.error('💥 No output directory configured.');
@@ -266,63 +296,8 @@ export default function leanixPlugin(
         return;
       }
 
-      const { accessToken: bearerToken } = accessToken!;
-      const { store } = credentials;
-      const { name, version } = metadata;
-
-      // v2 upload (Reports Service): opt-in via leanixReport.uploadVersion = 2 in package.json
-      if (metadata.uploadVersion === 2) {
-        logger?.warn('⚠️  Using EXPERIMENTAL v2 upload (Reports Service).');
-        if (claims === null) {
-          throw new Error('Cannot upload: missing access token claims.');
-        }
-        const { workspaceName } = claims.principal.permission;
-        try {
-          const tarball = await npmPackBundle(projectRoot);
-          const bundle = await openAsBlob(tarball);
-          logger?.info(
-            `Uploading "${name}" v${version} to workspace "${workspaceName}" via Reports Service...`
-          );
-          const { customReportVersionId } = await uploadReportV2({
-            host: credentials.host,
-            bearerToken,
-            bundle
-          });
-          logger?.info(`  customReportVersionId: ${customReportVersionId}`);
-          await pollReportState({
-            host: credentials.host,
-            customReportVersionId,
-            bearerToken,
-            onUpdate: (state) => logger?.info(`  state: ${state}`)
-          });
-          logger?.info('🚀 Upload complete.');
-        } catch (err: any) {
-          logger?.error('💥 Error during upload to Reports Service...');
-          if (err instanceof ReportStateError) {
-            if (err.status === 'VULNERABLE' && err.securityScan !== null) {
-              logger?.error('🛡  Scan result:');
-              logger?.error(JSON.stringify(err.securityScan, null, 2));
-            } else if (err.buildLog) {
-              const lines = err.buildLog.split('\n');
-              const MAX_LINES = 50;
-              const tail =
-                lines.length > MAX_LINES ? lines.slice(-MAX_LINES) : lines;
-              logger?.error('📜 Build log:');
-              if (lines.length > MAX_LINES) {
-                logger?.error(
-                  `  … (showing last ${MAX_LINES} of ${lines.length} lines)`
-                );
-              }
-              for (const line of tail) {
-                logger?.error(`  ${line}`);
-              }
-            }
-          }
-          logger?.error(`💣 ${err}`);
-          process.exit(1);
-        }
-        return;
-      }
+      const bearerToken = resolvedAuth!.bearerToken;
+      const { version } = metadata;
 
       // Write lxreport.json to dist/ (legacy v1 upload only)
       writeReportMetadata(metadata, options.dir);
@@ -333,20 +308,13 @@ export default function leanixPlugin(
       const bundle = await openAsBlob(bundlePath);
       try {
         if (claims !== null) {
-          if (typeof store?.assetId === 'string') {
-            logger.info(
-              `😅 Deploying asset id ${store.assetId} to ${store.host ?? 'store.leanix.net'}...`
-            );
-          } else {
-            logger.info(
-              `😅 Uploading report ${id} with version "${version}" to workspace "${claims.principal.permission.workspaceName}"...`
-            );
-          }
+          logger.info(
+            `😅 Uploading report ${id} with version "${version}" to workspace "${claims.principal.permission.workspaceName}"...`
+          );
         }
         const result = await uploadBundle({
           bundle,
-          bearerToken,
-          store
+          bearerToken
         });
         if (result.status === 'ERROR') {
           logger?.error(
@@ -355,11 +323,7 @@ export default function leanixPlugin(
           logger?.error(JSON.stringify(result, null, 2));
           process.exit(1);
         }
-        if (typeof store?.assetId === 'string') {
-          logger.info(
-            `😅 Asset id ${store.assetId} has been deployed to ${store.host ?? 'store.leanix.net'}...`
-          );
-        } else if (claims !== null) {
+        if (claims !== null) {
           logger?.info(
             `🥳 Report "${id}" with version "${version}" was uploaded to workspace "${claims.principal.permission.workspaceName}"!`
           );

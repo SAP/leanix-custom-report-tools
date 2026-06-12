@@ -18,7 +18,15 @@ Install dependencies:
 npm install
 ```
 
-**Important:** Create a `lxr.json` file in the project root with your SAP LeanIX workspace credentials:
+**Important:** Authenticate with your SAP LeanIX workspace before starting development. The recommended way is OAuth via the CLI:
+
+```bash
+npx lxr login
+```
+
+This opens a browser window, completes the OAuth flow, and saves credentials to `~/.leanix/lxr.json`.
+
+Alternatively, create a `lxr.json` file in the project root with an API token:
 
 ```json
 {
@@ -26,6 +34,8 @@ npm install
   "apitoken": "your-api-token"
 }
 ```
+
+A project-level `lxr.json` takes precedence over the user-level one. Either way, add `lxr.json` to your `.gitignore` — it contains sensitive credentials.
 
 Start development server:
 

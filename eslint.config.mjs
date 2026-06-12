@@ -4,7 +4,14 @@ import tseslint from 'typescript-eslint';
 export default [
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
-  { ignores: ['**/test-app/**', '**/dist/**', '**/node_modules/**', '**/templates/**'] },
+  {
+    ignores: [
+      '**/test-app/**',
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/templates/**'
+    ]
+  },
   {
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',

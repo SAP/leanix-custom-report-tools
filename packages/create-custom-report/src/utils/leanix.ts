@@ -28,7 +28,9 @@ export async function generateLeanIXFiles(
       .pathname.split('/')
       .at(-1);
   const version = pkg.version ?? '0.0.0';
-  const pkgMetadataFields = { name, author, description, version };
+  const pkgMetadataFields = isV2
+    ? { name, description, version }
+    : { name, author, description, version };
   const leanixReport = isV2
     ? { title, aiAssisted: false, defaultConfig: {}, uploadVersion: 2 as const }
     : { id, title, aiAssisted: false, defaultConfig: {} };
@@ -37,13 +39,13 @@ export async function generateLeanIXFiles(
   if (!isV2) {
     validateDocument(lxreportJson, 'lxreport.json');
   }
-  const lxrJson = { host, apitoken, proxyURL };
-
-  validateDocument(lxrJson, 'lxr.json');
-  await writeFile(
-    join(targetDir, 'lxr.json'),
-    JSON.stringify(lxrJson, null, 2) + '\n'
-  );
+  if (!isV2 && (host || apitoken || proxyURL)) {
+    const lxrJson = { host, apitoken, proxyURL };
+    await writeFile(
+      join(targetDir, 'lxr.json'),
+      JSON.stringify(lxrJson, null, 2) + '\n'
+    );
+  }
   await writeFile(
     join(targetDir, 'package.json'),
     JSON.stringify(pkg, null, 2) + '\n'
