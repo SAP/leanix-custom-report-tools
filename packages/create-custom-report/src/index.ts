@@ -255,7 +255,7 @@ Options:
     let result: PromptResult = {};
     try {
       console.log(
-        "  The project name is your report's permanent identity in the workspace — choose it carefully."
+        "  The project name is your report's permanent identity in the workspace — choose it carefully.\n  Use lowercase letters, digits, dots, hyphens, or underscores (e.g. my-custom-report)."
       );
       result = await prompts(
         [
