@@ -7,10 +7,7 @@ import type {
 import type { CustomReportMetadata } from '@lxr/core/models/custom-report-metadata';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
 import type { PackageJsonLXR } from '@lxr/core/models/package-json';
-import type {
-  ReportUploadResponseData,
-  ReportsResponseData
-} from '@lxr/core/models/report-response-data';
+import type { ReportUploadResponseData } from '@lxr/core/models/report-response-data';
 import type { paths } from './generated/reports-service';
 import type { ZodObject } from 'zod';
 import { execFile } from 'node:child_process';
@@ -23,7 +20,6 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { URL } from 'node:url';
 import { promisify } from 'node:util';
 import { customReportMetadataSchema } from '@lxr/core/models/custom-report-metadata';
 import { CUSTOM_REPORT_TERMINAL_FAILURE_STATES } from '@lxr/core/models/custom-report-row';
@@ -148,43 +144,6 @@ export async function uploadBundle(params: {
     throw new Error(JSON.stringify({ status: res.status, message: content }));
   }
   return content as ReportUploadResponseData;
-}
-
-export async function fetchWorkspaceReports(
-  bearerToken: string
-): Promise<CustomReportMetadata[]> {
-  const decodedToken: JwtClaims = jwtDecode(bearerToken);
-  const headers = { Authorization: `Bearer ${bearerToken}` };
-  const fetchReportsPage = async (
-    cursor: string | null = null
-  ): Promise<ReportsResponseData> => {
-    const url = new URL(
-      `${decodedToken.instanceUrl}/services/pathfinder/v1/reports?sorting=updatedAt&sortDirection=DESC&pageSize=100`
-    );
-    if (cursor !== null) {
-      url.searchParams.append('cursor', cursor);
-    }
-    const res = await fetch(url.toString(), {
-      method: 'GET',
-      headers
-    });
-    return (await res.json()) as ReportsResponseData;
-  };
-  const reports: CustomReportMetadata[] = [];
-  let cursor = null;
-  do {
-    const reportResponseData: ReportsResponseData =
-      await fetchReportsPage(cursor);
-    if (reportResponseData.status !== 'OK') {
-      return await Promise.reject(reportResponseData);
-    }
-    reports.push(...reportResponseData.data);
-    cursor =
-      reports.length < reportResponseData.total
-        ? reportResponseData.endCursor
-        : null;
-  } while (cursor !== null);
-  return reports;
 }
 
 // --- v2 upload (Reports Service) ---
