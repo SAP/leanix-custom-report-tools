@@ -309,7 +309,7 @@ Options:
             inactive: 'No'
           },
           {
-            type: (prev: boolean) => prev && 'text',
+            type: (prev: boolean | null) => (prev === true ? 'text' : null),
             name: 'proxyURL',
             message: 'Proxy URL?',
             initial: argv?.proxyURL
