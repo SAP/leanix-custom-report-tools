@@ -62,11 +62,32 @@ export async function startCallbackServer(): Promise<{
   return { port, server, waitForCode: () => codePromise };
 }
 
+/**
+ * Wraps a single OAuth step so any failure is reported as
+ *   `Authentication failed on <step>: <reason>`
+ *
+ * The <reason> is the underlying error's `message` — typically
+ * `<status> <statusText>` for HTTP failures, or a short library message
+ * from oauth4webapi for parsing/validation issues.
+ */
+async function authStep<T>(step: string, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    throw new Error(`Authentication failed on ${step}: ${reason}`, {
+      cause: err
+    });
+  }
+}
+
 async function discover(issuer: string): Promise<oauth.AuthorizationServer> {
   const issuerUrl = new URL(issuer);
-  const res = await fetch(
-    `${issuer}/.well-known/oauth-authorization-server/services/mcp-server/v1`
-  );
+  const url = `${issuer}/.well-known/oauth-authorization-server/services/mcp-server/v1`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`${res.status} ${res.statusText}`);
+  }
   return oauth.processDiscoveryResponse(issuerUrl, res);
 }
 
@@ -78,17 +99,21 @@ export async function refreshAccessToken(
   if (!client_id || !client_secret || !refresh_token) return null;
 
   try {
-    const as = await discover(issuer ?? OAUTH_BASE_URL);
+    const as = await authStep('discovery', () =>
+      discover(issuer ?? OAUTH_BASE_URL)
+    );
     const client: oauth.Client = { client_id };
     const clientAuth = oauth.ClientSecretPost(client_secret);
 
-    const res = await oauth.refreshTokenGrantRequest(
-      as,
-      client,
-      clientAuth,
-      refresh_token
-    );
-    const tokens = await oauth.processRefreshTokenResponse(as, client, res);
+    const tokens = await authStep('token refresh', async () => {
+      const res = await oauth.refreshTokenGrantRequest(
+        as,
+        client,
+        clientAuth,
+        refresh_token
+      );
+      return oauth.processRefreshTokenResponse(as, client, res);
+    });
 
     return {
       ...config,
@@ -112,14 +137,16 @@ export async function runOAuthFlow(
   const redirectUri = `http://localhost:${port}/callback`;
 
   try {
-    const as = await discover(OAUTH_BASE_URL);
+    const as = await authStep('discovery', () => discover(OAUTH_BASE_URL));
 
     // 2. Register OAuth client
-    const regReq = await oauth.dynamicClientRegistrationRequest(as, {
-      client_name: 'LeanIX Custom Report Tools',
-      redirect_uris: [redirectUri]
+    const reg = await authStep('client registration', async () => {
+      const regReq = await oauth.dynamicClientRegistrationRequest(as, {
+        client_name: 'LeanIX Custom Report Tools',
+        redirect_uris: [redirectUri]
+      });
+      return oauth.processDynamicClientRegistrationResponse(regReq);
     });
-    const reg = await oauth.processDynamicClientRegistrationResponse(regReq);
     const client_id = reg.client_id;
     if (typeof reg.client_secret !== 'string' || !reg.client_secret) {
       throw new Error(
@@ -165,26 +192,23 @@ export async function runOAuthFlow(
     callbackSearchParams.set('code', code);
     callbackSearchParams.set('state', returnedState);
 
-    const validatedParams = oauth.validateAuthResponse(
-      as,
-      client,
-      callbackSearchParams,
-      state
-    );
-
-    const tokenRes = await oauth.authorizationCodeGrantRequest(
-      as,
-      client,
-      clientAuth,
-      validatedParams,
-      redirectUri,
-      codeVerifier
-    );
-    const tokens = await oauth.processAuthorizationCodeResponse(
-      as,
-      client,
-      tokenRes
-    );
+    const tokens = await authStep('authorization code exchange', async () => {
+      const validatedParams = oauth.validateAuthResponse(
+        as,
+        client,
+        callbackSearchParams,
+        state
+      );
+      const tokenRes = await oauth.authorizationCodeGrantRequest(
+        as,
+        client,
+        clientAuth,
+        validatedParams,
+        redirectUri,
+        codeVerifier
+      );
+      return oauth.processAuthorizationCodeResponse(as, client, tokenRes);
+    });
     if (!tokens.refresh_token) {
       throw new Error('Authorization server did not return a refresh_token');
     }
