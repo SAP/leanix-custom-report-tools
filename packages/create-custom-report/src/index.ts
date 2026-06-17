@@ -149,7 +149,7 @@ async function runV2Auth(file: ConnectionConfigFile | null): Promise<{
       clearConnectionConfig(file?.config, configPath);
     }
     console.log(
-      `${red('✖')} Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `${red('✖')} ${error instanceof Error ? error.message : 'Authentication failed: unknown error'}`
     );
     console.log(
       '  Connection config written without credentials. Set up auth manually later.'
@@ -309,7 +309,7 @@ Options:
             inactive: 'No'
           },
           {
-            type: (prev: boolean) => prev && 'text',
+            type: (prev: boolean | null) => (prev === true ? 'text' : null),
             name: 'proxyURL',
             message: 'Proxy URL?',
             initial: argv?.proxyURL
@@ -516,7 +516,7 @@ Options:
         console.log('✓ Successfully authenticated with SAP LeanIX');
       } catch (error) {
         console.log(
-          `${red('✖')} Failed to authenticate: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `${red('✖')} ${error instanceof Error ? error.message : 'Authentication failed: unknown error'}`
         );
         console.log(
           'Please check your host, API token, and proxy settings and try again.\n'

@@ -45,8 +45,9 @@ export async function exchangeApiToken(
     }
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => String(res.status));
-    throw new Error(`Token exchange failed (${res.status}): ${text}`);
+    throw new Error(
+      `Authentication failed on token exchange: ${res.status} ${res.statusText}`
+    );
   }
   const { access_token } = (await res.json()) as { access_token: string };
   return access_token;
