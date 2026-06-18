@@ -61,10 +61,12 @@ const getAllFiles = (
 const getPackageJson = (dirPath: string): any =>
   JSON.parse(readFileSync(join(dirPath, 'package.json')).toString());
 
-// React TypeScript template plus 1 generated file: 'lxr.json'
+// React TypeScript template plus generated files: 'lxr.json', '.mcp.json', '.vscode/mcp.json'
 const templateFiles = [
   ...getAllFiles(resolve(CLI_PATH, '..', 'templates', 'react-ts')),
-  'lxr.json'
+  'lxr.json',
+  '.mcp.json',
+  'mcp.json'
 ]
   .map((file) => (file === '_gitignore' ? '.gitignore' : file))
   .sort();
