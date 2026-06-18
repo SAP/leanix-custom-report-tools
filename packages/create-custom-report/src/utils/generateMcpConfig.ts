@@ -79,7 +79,7 @@ export const generateMcpConfig = (params: GenerateMcpConfigParams): void => {
     },
     'leanix-mcp-server': {
       type: 'http',
-      url: 'https://mcp.leanix.net/services/mcp-server/v1/mcp'
+      url: 'https://mcp.leanix.net/services/mcp-server/v1/mcp?toolsets=custom_reports'
     }
   };
 
