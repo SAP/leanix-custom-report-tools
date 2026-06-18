@@ -150,11 +150,11 @@ export async function uploadBundle(params: {
 
 export async function npmPackBundle(cwd: string): Promise<string> {
   const packDir = mkdtempSync(join(tmpdir(), 'lxr-npm-pack-'));
-  await execFileAsync('npm', ['shrinkwrap'], { cwd });
+  await execFileAsync('npm', ['shrinkwrap'], { cwd, shell: true });
   const { stdout } = await execFileAsync(
     'npm',
     ['pack', '--pack-destination', packDir, '--json'],
-    { cwd }
+    { cwd, shell: true }
   );
   const parsed = JSON.parse(stdout) as Array<{ filename: string }>;
   if (!Array.isArray(parsed) || parsed.length === 0 || !parsed[0]?.filename) {
