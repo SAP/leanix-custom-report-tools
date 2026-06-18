@@ -203,7 +203,7 @@ Options:
   --overwrite             Overwrite target directory if it exists (default: false)
   --skipAuth              Skip SAP LeanIX authentication entirely (default: false)
   --v2                    Use new creation UX (package name as report identity, no report ID)
-  --setupMcpServers       Generate MCP server config files (requires feature flag)
+  --setupMcpServers       Generate MCP server config files
   --no-setupMcpServers    Skip MCP server config generation without prompting
   --help                  Show this help message and exit
 `);
@@ -376,8 +376,7 @@ Options:
     deployTemplate({
       targetDir: root,
       template: TEMPLATE,
-      result: { title, description, overwrite },
-      mcpCustomReportsEnabled: true
+      result: { title, description, overwrite }
     });
 
     await generateLeanIXFiles({
