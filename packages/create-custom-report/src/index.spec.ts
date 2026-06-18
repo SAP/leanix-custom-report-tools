@@ -61,13 +61,13 @@ const getAllFiles = (
 const getPackageJson = (dirPath: string): any =>
   JSON.parse(readFileSync(join(dirPath, 'package.json')).toString());
 
-// React TypeScript template plus 1 generated file: 'lxr.json'
-// When --skipAuth is used, AGENTS.md and CLAUDE.md are excluded (they require mcpCustomReportsEnabled)
+// React TypeScript template plus generated files: 'lxr.json', '.mcp.json', '.vscode/mcp.json'
 const templateFiles = [
   ...getAllFiles(resolve(CLI_PATH, '..', 'templates', 'react-ts')),
-  'lxr.json'
+  'lxr.json',
+  '.mcp.json',
+  'mcp.json'
 ]
-  .filter((file) => file !== 'AGENTS.md' && file !== 'CLAUDE.md')
   .map((file) => (file === '_gitignore' ? '.gitignore' : file))
   .sort();
 
@@ -198,38 +198,7 @@ it('--packageName skips the package-name prompt and is used in package.json', ()
 });
 
 // ---------------------------------------------------------------------------
-// C. --no-setupMcpServers produces no MCP config files
-// ---------------------------------------------------------------------------
-
-it('--no-setupMcpServers does not generate MCP config files', () => {
-  const args = [
-    '--skipAuth',
-    '--overwrite',
-    '--no-setupMcpServers',
-    '--id',
-    uuid(),
-    '--author',
-    uuid(),
-    '--title',
-    uuid(),
-    '--description',
-    uuid(),
-    '--host',
-    uuid(),
-    '--apitoken',
-    uuid()
-  ];
-
-  const { exitCode } = run([projectName, ...args], { cwd: tempDir });
-  expect(exitCode).toBe(0);
-
-  const projectDir = join(tempDir, projectName);
-  expect(existsSync(join(projectDir, '.vscode', 'mcp.json'))).toBe(false);
-  expect(existsSync(join(projectDir, '.mcp.json'))).toBe(false);
-});
-
-// ---------------------------------------------------------------------------
-// D. Fully non-interactive invocation with all flags
+// C. --v2: no report ID prompt or field, new wording, identity warning
 // ---------------------------------------------------------------------------
 
 it('fully non-interactive invocation succeeds with all flags supplied', () => {
@@ -365,7 +334,6 @@ it('--help prints usage and exits with code 0', () => {
     '--proxyURL',
     '--overwrite',
     '--skipAuth',
-    '--setupMcpServers',
     '--v2',
     '--help'
   ];
