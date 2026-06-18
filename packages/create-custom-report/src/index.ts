@@ -21,7 +21,6 @@ import banner from './utils/banner';
 import { deployTemplate } from './utils/deployTemplate';
 import { generateLeanIXFiles } from './utils/leanix';
 import { generateMcpConfig } from './utils/generateMcpConfig';
-import { checkFeatureFlag } from './utils/featureFlags';
 import type {
   LeanIXOptions,
   ProjectOptions,
@@ -503,7 +502,6 @@ Options:
   initProxy(proxyURL);
 
   let accessToken: string | null = null;
-  let mcpCustomReportsEnabled = false;
 
   if (!argv.skipAuth) {
     // Validate credentials by getting access token, retry if invalid
@@ -537,23 +535,7 @@ Options:
       }
     }
 
-    // Check feature flag from LeanIX workspace
-    try {
-      mcpCustomReportsEnabled = await checkFeatureFlag({
-        host,
-        accessToken,
-        featureFlagId: 'mcpserver.custom-reports'
-      });
-    } catch (error) {
-      console.log(
-        `${red('✖')} Could not check feature flags: ${error instanceof Error ? error?.message : 'Unknown error'}`
-      );
-      console.log('AGENTS.md will not be included in the generated project.\n');
-      mcpCustomReportsEnabled = false;
-    }
-
-    // Ask about MCP setup only if feature flag is enabled
-    if (mcpCustomReportsEnabled && setupMcpServers === undefined) {
+    if (setupMcpServers === undefined) {
       const mcpPromptResult = await prompts(
         {
           type: 'toggle',
@@ -598,8 +580,7 @@ Options:
       apitoken,
       proxyURL,
       overwrite
-    },
-    mcpCustomReportsEnabled: mcpCustomReportsEnabled
+    }
   });
   await generateLeanIXFiles({
     targetDir: root,
@@ -617,8 +598,8 @@ Options:
     isV2: false
   });
 
-  // Generate MCP configuration files if feature flag enabled and user opted in
-  if (setupMcpServers === true && mcpCustomReportsEnabled) {
+  // Generate MCP configuration files if user opted in
+  if (setupMcpServers === true) {
     generateMcpConfig({ targetDir: root });
   }
 
