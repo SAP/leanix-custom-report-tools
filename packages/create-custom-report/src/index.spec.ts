@@ -196,38 +196,7 @@ it('--packageName skips the package-name prompt and is used in package.json', ()
 });
 
 // ---------------------------------------------------------------------------
-// C. --no-setupMcpServers produces no MCP config files
-// ---------------------------------------------------------------------------
-
-it('--no-setupMcpServers does not generate MCP config files', () => {
-  const args = [
-    '--skipAuth',
-    '--overwrite',
-    '--no-setupMcpServers',
-    '--id',
-    uuid(),
-    '--author',
-    uuid(),
-    '--title',
-    uuid(),
-    '--description',
-    uuid(),
-    '--host',
-    uuid(),
-    '--apitoken',
-    uuid()
-  ];
-
-  const { exitCode } = run([projectName, ...args], { cwd: tempDir });
-  expect(exitCode).toBe(0);
-
-  const projectDir = join(tempDir, projectName);
-  expect(existsSync(join(projectDir, '.vscode', 'mcp.json'))).toBe(false);
-  expect(existsSync(join(projectDir, '.mcp.json'))).toBe(false);
-});
-
-// ---------------------------------------------------------------------------
-// D. Fully non-interactive invocation with all flags
+// C. --v2: no report ID prompt or field, new wording, identity warning
 // ---------------------------------------------------------------------------
 
 it('fully non-interactive invocation succeeds with all flags supplied', () => {
@@ -363,7 +332,6 @@ it('--help prints usage and exits with code 0', () => {
     '--proxyURL',
     '--overwrite',
     '--skipAuth',
-    '--setupMcpServers',
     '--v2',
     '--help'
   ];

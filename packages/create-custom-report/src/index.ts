@@ -26,11 +26,9 @@ import type {
   ProjectOptions,
   PromptResult
 } from './models/project-options';
-import { parseTriStateBoolean } from './utils/parseTriStateBoolean';
 import { initProxy } from '@lxr/core/proxy';
 import { getUserLxrJsonPath } from '@lxr/core/constants';
 export type { LeanIXOptions, ProjectOptions, PromptResult };
-export { parseTriStateBoolean };
 
 const cwd = process.cwd();
 
@@ -203,8 +201,6 @@ Options:
   --overwrite             Overwrite target directory if it exists (default: false)
   --skipAuth              Skip SAP LeanIX authentication entirely (default: false)
   --v2                    Use new creation UX (package name as report identity, no report ID)
-  --setupMcpServers       Generate MCP server config files
-  --no-setupMcpServers    Skip MCP server config generation without prompting
   --help                  Show this help message and exit
 `);
     process.exit(0);
@@ -226,12 +222,6 @@ Options:
     packageName,
     overwrite = false
   } = argv;
-
-  // tri-state: undefined = not supplied (will prompt), true/false = skip prompt
-  let setupMcpServers = parseTriStateBoolean(
-    process.argv.slice(2),
-    'setupMcpServers'
-  );
 
   // -------------------------------------------------------------------------
   // V2 path
@@ -494,7 +484,6 @@ Options:
     apitoken = apitoken,
     proxyURL = proxyURL,
     packageName = packageName,
-    setupMcpServers = setupMcpServers,
     overwrite = overwrite
   } = result);
 
@@ -532,26 +521,6 @@ Options:
         apitoken = retryResult.apitoken;
         proxyURL = retryResult.proxyURL;
       }
-    }
-
-    if (setupMcpServers === undefined) {
-      const mcpPromptResult = await prompts(
-        {
-          type: 'toggle',
-          name: 'setupMcpServers',
-          message:
-            'Set up local MCP servers for AI development?\n  - Playwright MCP (browser-based report verification)\n  - SAP LeanIX MCP Server (workspace data access)\n  ⚠️  Security notice: Technical User Token will be persisted in the MCP server config files\n  Config files are gitignored and take precedence over global settings.',
-          initial: true,
-          active: 'Yes',
-          inactive: 'No'
-        },
-        {
-          onCancel: () => {
-            throw new Error(`${red('✖')} Operation cancelled`);
-          }
-        }
-      );
-      setupMcpServers = mcpPromptResult.setupMcpServers;
     }
   }
 
@@ -597,27 +566,13 @@ Options:
     isV2: false
   });
 
-  // Generate MCP configuration files if user opted in
-  if (setupMcpServers === true) {
-    generateMcpConfig({ targetDir: root });
-  }
-
-  // MCP setup status
-  if (setupMcpServers === false) {
-    console.log(
-      'ℹ️  MCP servers not configured - you can set up manually later.'
-    );
-    console.log(
-      '   See https://help.sap.com/docs/leanix/ea/mcp-server for setup instructions.'
-    );
-    console.log();
-  } else if (setupMcpServers === true) {
-    console.log('✓ MCP servers configured (.vscode/mcp.json, .mcp.json)');
-    console.log('  Supports: GitHub Copilot (VS Code) and Claude Code');
-    console.log('  - Playwright MCP (AI report verification)');
-    console.log('  - SAP LeanIX MCP Server (workspace data access)');
-    console.log();
-  }
+  // Generate MCP configuration files
+  generateMcpConfig({ targetDir: root });
+  console.log('✓ MCP servers configured (.vscode/mcp.json, .mcp.json)');
+  console.log('  Supports: GitHub Copilot (VS Code) and Claude Code');
+  console.log('  - Playwright MCP (AI report verification)');
+  console.log('  - SAP LeanIX MCP Server (workspace data access)');
+  console.log();
 
   console.log();
   console.log('Done ✅');
