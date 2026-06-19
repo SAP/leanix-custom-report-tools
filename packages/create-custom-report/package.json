@@ -25,7 +25,7 @@
   ],
   "scripts": {
     "clean": "rimraf dist",
-    "build": "tsup && shx cp -r ./templates/ ./dist && chmod -R 755 ./dist/"
+    "build": "tsup && shx cp -rL ./templates/ ./dist && chmod -R 755 ./dist/"
   },
   "dependencies": {
     "kolorist": "1.8.0",
