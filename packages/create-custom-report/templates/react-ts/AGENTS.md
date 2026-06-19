@@ -4,11 +4,11 @@
 
 This project uses the **SAP LeanIX MCP Server** for AI-assisted development.
 
-## ⚠️ Security: API Token Handling
+## Security: API Token Handling
 
 **CRITICAL: NEVER hardcode the SAP LeanIX API token in source code files.**
 
-The token exists in `lxr.json` (always present) and optionally in `.mcp.json`/`.vscode/mcp.json` (if MCP was configured). These files are gitignored.
+The token exists in `lxr.json` and optionally in `.mcp.json`/`.vscode/mcp.json`. These files are gitignored.
 
 **NEVER:**
 
@@ -27,7 +27,15 @@ The token exists in `lxr.json` (always present) and optionally in `.mcp.json`/`.
 
 ### Step 1: Load the Custom Report Development Guide
 
-**Before starting any work, call the MCP tool: `get_custom_report_guide()`**
+**MANDATORY BLOCKING STEP: You MUST call the MCP tool `get_custom_report_guide()` BEFORE writing any code, reading any source files, or calling any other MCP tools.**
+
+**If the call fails for ANY reason — including "tool not available", auth errors, or network errors — you MUST:**
+
+1. Diagnose the cause (see below)
+2. Report the diagnosis to the user
+3. **STOP. Do not write or modify any code. Wait for the user to fix the issue and tell you to retry.**
+
+There is no fallback. Proceeding with coding when `get_custom_report_guide()` has not succeeded is explicitly forbidden.
 
 This retrieves comprehensive documentation for developing SAP LeanIX custom reports, including:
 
@@ -40,17 +48,41 @@ This retrieves comprehensive documentation for developing SAP LeanIX custom repo
 
 ### Step 2: Discover Available MCP Tools
 
-The SAP LeanIX MCP Server provides additional tools tagged with `custom_reports`. List available MCP tools and filter by this tag to discover workspace introspection capabilities mentioned in the guide, such as:
-
-- GraphQL schema introspection (SDL format)
+The SAP LeanIX MCP Server provides additional tools tagged with `custom_reports`. List available MCP tools and filter by this tag to discover workspace introspection capabilities mentioned in the guide, including GraphQL schema and type introspection for the workspace data model.
 
 The `get_custom_report_guide()` tool returns the complete AI Agent Development Guide and TypeScript type definitions from the @leanix/reporting package (lxr module), and explains what the MCP tools provide and when to use them.
 
-### If the SAP LeanIX MCP Server is Not Available
+### If `get_custom_report_guide()` Fails — Diagnose, Report, and STOP
 
-**The SAP LeanIX MCP Server is required for custom report development.**
+**After diagnosing, always stop and wait for the user. Never proceed to code.**
 
-**Setup**: Follow instructions at https://help.sap.com/docs/leanix/ea/mcp-server
+**Important distinction:** There are two separate authentication concerns in this project:
+
+- **MCP server auth** — needed for the AI agent to call `get_custom_report_guide()` and other MCP tools. This is OAuth handled inside the AI tool (Claude Code, VS Code Copilot, Cursor, etc.).
+- **LeanIX CLI auth** (`lxr login` / `lxr.json`) — needed to run `npm run dev` and `npm run upload`. This is unrelated to MCP connectivity.
+
+Do NOT suggest `npm run login` or `lxr.json` when diagnosing MCP connectivity issues.
+
+**Step A — Is `leanix-mcp-server` in the available MCP tool list?**
+
+- **No tools from `leanix-mcp-server` are listed at all** → The AI tool has not authenticated to the MCP server via OAuth. The server is configured in `.mcp.json`/`.vscode/mcp.json` as an HTTP MCP server and requires an OAuth login.
+
+  Tell the user the appropriate action for their tool:
+  - **Claude Code**: Run `/mcp` to manage MCP server connections and complete the OAuth flow for `leanix-mcp-server`.
+  - **VS Code Copilot**: Open the MCP Servers panel via the gear icon (⚙) in the Copilot Chat view, find `leanix-mcp-server`, and sign in.
+  - **Cursor / other**: Check the MCP settings panel and authenticate to `leanix-mcp-server`.
+
+  Once authenticated, reload the window/session and retry. Setup guide: https://help.sap.com/docs/leanix/ea/mcp-server
+
+- **Tools from `leanix-mcp-server` are listed but the call fails with an auth/401/403 error** → The OAuth token has expired or been revoked.
+
+  Tell the user the appropriate action for their tool:
+  - **Claude Code**: Re-authenticate via `/mcp` to refresh the connection.
+  - **VS Code Copilot**: Open the MCP Servers panel (gear icon ⚙ in Copilot Chat), find `leanix-mcp-server`, and sign in again.
+  - **Cursor / other**: Re-authenticate in the MCP settings panel.
+
+**Only if none of the above apply** → tell the user the MCP server is unavailable and link to:
+https://help.sap.com/docs/leanix/ea/mcp-server
 
 ## Additional Resources
 
