@@ -15,7 +15,7 @@ fi
 
 # Create global link for vite-plugin and create-custom-report
 cd packages/vite-plugin
-if ! LINK_OUTPUT=$(npm link 2>&1); then
+if ! LINK_OUTPUT=$(npm link --force 2>&1); then
     echo "$LINK_OUTPUT"
     exit 1
 fi
