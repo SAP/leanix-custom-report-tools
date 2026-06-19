@@ -7,15 +7,13 @@ import { openAsBlob } from 'node:fs';
 import { createServer as createHttpServer } from 'node:http';
 import { join } from 'node:path';
 import {
-  createBundle,
   decodeBearerToken,
   getLaunchUrl,
   npmPackBundle,
   pollReportState,
   readMetadataJson,
   ReportStateError,
-  uploadBundle,
-  uploadReportV2,
+  uploadToWorkspace,
   writeReportMetadata
 } from '@lxr/core/index';
 import { authenticate } from '@lxr/core/auth';
@@ -213,15 +211,14 @@ export default function leanixPlugin(): Plugin[] {
       }
     },
 
-    // v2 upload runs in buildStart (before Vite compiles anything) because
-    // npmPackBundle packs from source — the compiled dist output is not needed.
+    // upload to reports service runs in buildStart (before Vite compiles anything)
+    // because npmPackBundle packs from source — the compiled dist output is not needed.
     // Exiting here prevents Vite from running the build at all, so the user
     // doesn't see spurious bundle size warnings and timing output after the
     // upload completes.
     async buildStart() {
-      if (!shouldUpload || metadata.uploadVersion !== 2) return;
+      if (!shouldUpload) return;
 
-      logger?.warn('⚠️  Using EXPERIMENTAL v2 upload (Reports Service).');
       if (claims === null) {
         throw new Error('Cannot upload: missing access token claims.');
       }
@@ -229,28 +226,34 @@ export default function leanixPlugin(): Plugin[] {
       const bearerToken = resolvedAuth!.bearerToken;
       const { name, version } = metadata;
       const { workspaceName } = claims.principal.permission;
+      const host = resolvedAuth!.host;
 
       try {
         const tarball = await npmPackBundle(projectRoot);
         const bundle = await openAsBlob(tarball);
         logger?.info(
-          `Uploading "${name}" v${version} to workspace "${workspaceName}" via Reports Service...`
+          `Uploading "${name}" v${version} to workspace "${workspaceName}"...`
         );
-        const { customReportVersionId } = await uploadReportV2({
-          host: resolvedAuth!.host,
+        logger?.info('Please wait...');
+        const { customReportVersionId } = await uploadToWorkspace({
+          host,
           bearerToken,
           bundle
         });
-        logger?.info(`  customReportVersionId: ${customReportVersionId}`);
         await pollReportState({
-          host: resolvedAuth!.host,
+          host,
           customReportVersionId,
           bearerToken,
           onUpdate: (state) => logger?.info(`  state: ${state}`)
         });
-        logger?.info('🚀 Upload complete.');
+        logger?.info('');
+        logger?.info('Upload complete 🚀');
+        logger?.info(
+          'Preview and enable the Custom Report in Administration > Advanced Settings > Reports:'
+        );
+        logger?.info(`https://${host}/${workspaceName}/admin/reports`);
       } catch (err: any) {
-        logger?.error('💥 Error during upload to Reports Service...');
+        logger?.error('💥 Upload failed.');
         if (err instanceof ReportStateError) {
           if (err.status === 'VULNERABLE' && err.securityScan !== null) {
             logger?.error('Scan result:');
@@ -282,57 +285,14 @@ export default function leanixPlugin(): Plugin[] {
     },
 
     // Rollup hook: called after all files have been written to disk.
-    // On a normal build we only write lxreport.json metadata alongside the output.
-    // On upload mode (v1 only) we also package the dist and ship it to the workspace.
+    // Writes lxreport.json alongside the dist output — required by Extension Hub
     async writeBundle(options, _outputBundle) {
       // Guard: output.file mode is not supported (custom reports always use output.dir)
       if (options.dir === undefined) {
         logger?.error('💥 No output directory configured.');
         process.exit(1);
       }
-
-      if (!shouldUpload) {
-        writeReportMetadata(metadata, options.dir);
-        return;
-      }
-
-      const bearerToken = resolvedAuth!.bearerToken;
-      const { version } = metadata;
-
-      // Write lxreport.json to dist/ (legacy v1 upload only)
       writeReportMetadata(metadata, options.dir);
-
-      const { id } = metadata;
-      // Upload mode: package the dist and upload to the workspace
-      const bundlePath = await createBundle(options.dir);
-      const bundle = await openAsBlob(bundlePath);
-      try {
-        if (claims !== null) {
-          logger.info(
-            `😅 Uploading report ${id} with version "${version}" to workspace "${claims.principal.permission.workspaceName}"...`
-          );
-        }
-        const result = await uploadBundle({
-          bundle,
-          bearerToken
-        });
-        if (result.status === 'ERROR') {
-          logger?.error(
-            '💥 Error while uploading project to workpace, check your "package.json" file...'
-          );
-          logger?.error(JSON.stringify(result, null, 2));
-          process.exit(1);
-        }
-        if (claims !== null) {
-          logger?.info(
-            `🥳 Report "${id}" with version "${version}" was uploaded to workspace "${claims.principal.permission.workspaceName}"!`
-          );
-        }
-      } catch (err: any) {
-        logger?.error('💥 Error while uploading project to workpace...');
-        logger?.error(`💣 ${err}`);
-        process.exit(1);
-      }
     }
   };
   return [lxrPlugin];

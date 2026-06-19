@@ -45,28 +45,23 @@ const createNonEmptyDir = (): void => {
   writeFileSync(pkgJson, '{ "foo": "bar" }');
 };
 
-// Get all file names in a directory, recursively
-const getAllFiles = (
-  dirPath: string,
-  arrayOfFiles: string[] = []
-): string[] => {
-  readdirSync(dirPath).forEach((file) => {
-    statSync(`${dirPath}/${file}`).isDirectory()
-      ? (arrayOfFiles = getAllFiles(`${dirPath}/${file}`, arrayOfFiles))
-      : arrayOfFiles.push(file);
+// Returns file paths relative to dir, recursively
+const getAllFiles = (dir: string): string[] =>
+  readdirSync(dir).flatMap((file) => {
+    const abs = `${dir}/${file}`;
+    return statSync(abs).isDirectory()
+      ? getAllFiles(abs).map((f) => `${file}/${f}`)
+      : [file];
   });
-  return arrayOfFiles;
-};
 
 const getPackageJson = (dirPath: string): any =>
   JSON.parse(readFileSync(join(dirPath, 'package.json')).toString());
 
-// React TypeScript template plus generated files: 'lxr.json', '.mcp.json', '.vscode/mcp.json'
-const templateFiles = [
+// React TypeScript template plus generated files: '.mcp.json', '.vscode/mcp.json'
+const expectedFiles = [
   ...getAllFiles(resolve(CLI_PATH, '..', 'templates', 'react-ts')),
-  'lxr.json',
   '.mcp.json',
-  'mcp.json'
+  '.vscode/mcp.json'
 ]
   .map((file) => (file === '_gitignore' ? '.gitignore' : file))
   .sort();
@@ -97,220 +92,43 @@ it('asks to overwrite non-empty target directory', () => {
   ).toBe(true);
 });
 
-it('asks to overwrite non-empty current directory', () => {
-  createNonEmptyDir();
-  const projectDir = join(tempDir, projectName);
-  const { stdout } = run(['.'], {
-    cwd: projectDir,
-    input: 'test-app\n',
-    reject: false
-  });
-  expect((stdout as string)?.includes('Current directory is not empty.')).toBe(
-    true
-  );
-});
-
 it('successfully creates a project based on react-ts template', async () => {
-  const reportId = uuid();
-  const author = uuid();
   const title = uuid();
   const description = uuid();
-  const host = uuid();
-  const apitoken = uuid();
-  const proxyURL = 'http://proxy.example.com:8080';
 
   const args = [
     '--overwrite',
     '--skipAuth',
-    '--id',
-    reportId,
-    '--author',
-    author,
     '--title',
     title,
     '--description',
-    description,
-    '--host',
-    host,
-    '--apitoken',
-    apitoken,
-    '--proxyURL',
-    proxyURL
+    description
   ];
 
-  const { stdout, stderr, exitCode } = run([projectName, ...args], {
-    cwd: tempDir
-  });
+  const { exitCode } = run([projectName, ...args], { cwd: tempDir });
   expect(exitCode).toBe(0);
-  expect(typeof stderr).toEqual('string');
 
   const projectDir = join(tempDir, projectName);
   const generatedFiles = getAllFiles(projectDir).sort();
-
-  // Assertions
-  expect(
-    (stdout as string)?.includes('Using React + TypeScript template')
-  ).toBe(true);
-  expect(generatedFiles).toEqual(templateFiles);
+  expect(generatedFiles).toEqual(expectedFiles);
 
   const pkg = getPackageJson(projectDir);
   expect(pkg.name).toEqual(projectName);
-  expect(pkg.author).toEqual(author);
+  expect(pkg.author).toBeUndefined();
   expect(pkg.description).toEqual(description);
   expect(pkg.version).toEqual('0.0.0');
-  expect(pkg?.leanixReport?.id).toEqual(reportId);
+  expect(pkg?.leanixReport?.id).toBeUndefined();
   expect(pkg?.leanixReport?.title).toEqual(title);
   expect(typeof pkg?.leanixReport.defaultConfig).toEqual('object');
+
+  expect(existsSync(join(projectDir, '.vscode', 'mcp.json'))).toBe(true);
+  expect(existsSync(join(projectDir, '.mcp.json'))).toBe(true);
 });
-
-// ---------------------------------------------------------------------------
-// A. --packageName suppresses the package-name prompt
-// ---------------------------------------------------------------------------
-
-it('--packageName skips the package-name prompt and is used in package.json', () => {
-  const customPkgName = 'my-custom-pkg';
-  const args = [
-    '--skipAuth',
-    '--overwrite',
-    '--id',
-    uuid(),
-    '--author',
-    uuid(),
-    '--title',
-    uuid(),
-    '--description',
-    uuid(),
-    '--host',
-    uuid(),
-    '--apitoken',
-    uuid(),
-    '--packageName',
-    customPkgName
-  ];
-
-  const { stdout, exitCode } = run([projectName, ...args], { cwd: tempDir });
-  expect(exitCode).toBe(0);
-
-  expect((stdout as string)?.includes('Package name:')).toBe(false);
-
-  const pkg = getPackageJson(join(tempDir, projectName));
-  expect(pkg.name).toEqual(customPkgName);
-});
-
-// ---------------------------------------------------------------------------
-// C. --v2: no report ID prompt or field, new wording, identity warning
-// ---------------------------------------------------------------------------
-
-it('fully non-interactive invocation succeeds with all flags supplied', () => {
-  const reportId = uuid();
-  const author = uuid();
-  const title = uuid();
-  const description = uuid();
-  const customPkgName = 'full-non-interactive';
-  const host = uuid();
-  const apitoken = uuid();
-  const proxyURL = 'http://proxy.example.com:8080';
-
-  const args = [
-    '--skipAuth',
-    '--overwrite',
-    '--id',
-    reportId,
-    '--author',
-    author,
-    '--title',
-    title,
-    '--description',
-    description,
-    '--packageName',
-    customPkgName,
-    '--host',
-    host,
-    '--apitoken',
-    apitoken,
-    '--proxyURL',
-    proxyURL
-  ];
-
-  const { exitCode, stdout } = run([projectName, ...args], { cwd: tempDir });
-
-  expect(exitCode).toBe(0);
-
-  // None of the prompt question strings should appear
-  expect((stdout as string)?.includes('Project name:')).toBe(false);
-  expect((stdout as string)?.includes('Package name:')).toBe(false);
-  expect((stdout as string)?.includes('Unique id for this report')).toBe(false);
-  expect((stdout as string)?.includes('Author of the report')).toBe(false);
-  expect((stdout as string)?.includes('Report title')).toBe(false);
-  expect((stdout as string)?.includes('Report description')).toBe(false);
-  expect((stdout as string)?.includes('Which workspace instance')).toBe(false);
-  expect((stdout as string)?.includes('Technical User Token')).toBe(false);
-  expect((stdout as string)?.includes('Are you behind a proxy?')).toBe(false);
-
-  const projectDir = join(tempDir, projectName);
-  const pkg = getPackageJson(projectDir);
-  expect(pkg.name).toEqual(customPkgName);
-  expect(pkg.author).toEqual(author);
-  expect(pkg?.leanixReport?.id).toEqual(reportId);
-
-  const lxrJson = JSON.parse(
-    readFileSync(join(projectDir, 'lxr.json')).toString()
-  );
-  expect(lxrJson.host).toEqual(host);
-  expect(lxrJson.apitoken).toEqual(apitoken);
-  expect(lxrJson.proxyURL).toEqual(proxyURL);
-});
-
-// ---------------------------------------------------------------------------
-// E. --proxyURL suppresses the "Are you behind a proxy?" toggle
-// ---------------------------------------------------------------------------
-
-it('--proxyURL suppresses the behind-a-proxy prompt', () => {
-  // We need host + apitoken + proxyURL to trigger the suppression path.
-  // Use --skipAuth so we do not actually connect.
-  const args = [
-    '--skipAuth',
-    '--overwrite',
-    '--id',
-    uuid(),
-    '--author',
-    uuid(),
-    '--title',
-    uuid(),
-    '--description',
-    uuid(),
-    '--host',
-    'demo-eu.leanix.net',
-    '--apitoken',
-    uuid(),
-    '--proxyURL',
-    'http://proxy.example.com:8080'
-  ];
-
-  const { stdout } = run([projectName, ...args], { cwd: tempDir });
-
-  expect((stdout as string)?.includes('Are you behind a proxy?')).toBe(false);
-});
-
-// ---------------------------------------------------------------------------
-// F. Omitting a required flag still triggers its prompt (interactive fallback)
-// ---------------------------------------------------------------------------
 
 it('omitting --title still prompts for it', () => {
-  // Provide everything except --title; the CLI will pause at that prompt.
-  const { stdout } = run(
-    [
-      projectName,
-      '--skipAuth',
-      '--id',
-      uuid(),
-      '--author',
-      uuid(),
-      '--description',
-      uuid()
-    ],
-    { cwd: tempDir }
-  );
+  const { stdout } = run([projectName, '--skipAuth', '--description', uuid()], {
+    cwd: tempDir
+  });
   expect((stdout as string)?.includes('Report title')).toBe(true);
 });
 
@@ -324,106 +142,48 @@ it('--help prints usage and exits with code 0', () => {
   expect(exitCode).toBe(0);
 
   const flags = [
-    '--id',
-    '--author',
     '--title',
     '--description',
-    '--packageName',
-    '--host',
-    '--apitoken',
     '--proxyURL',
     '--overwrite',
     '--skipAuth',
-    '--v2',
     '--help'
   ];
   for (const flag of flags) {
     expect((stdout as string)?.includes(flag)).toBe(true);
   }
-});
 
-// ---------------------------------------------------------------------------
-// H. --v2: no report ID prompt or field, new wording, identity warning
-// ---------------------------------------------------------------------------
-
-it('--v2 skips the id prompt and does not write id to leanixReport', () => {
-  const author = uuid();
-  const title = uuid();
-  const description = uuid();
-
-  const args = [
-    '--v2',
-    '--skipAuth',
-    '--overwrite',
+  // v1-only flags must NOT appear
+  const removedFlags = [
+    '--id',
     '--author',
-    author,
-    '--title',
-    title,
-    '--description',
-    description
+    '--host',
+    '--apitoken',
+    '--packageName',
+    '--v2',
+    '--setupMcpServers'
   ];
-
-  const { exitCode, stdout } = run([projectName, ...args], { cwd: tempDir });
-  expect(exitCode).toBe(0);
-
-  expect((stdout as string)?.includes('Unique id for this report')).toBe(false);
-
-  const pkg = getPackageJson(join(tempDir, projectName));
-  expect(pkg.name).toEqual(projectName);
-  expect(pkg?.leanixReport?.id).toBeUndefined();
-  expect(pkg?.leanixReport?.title).toEqual(title);
+  for (const flag of removedFlags) {
+    expect((stdout as string)?.includes(flag)).toBe(false);
+  }
 });
 
-it('--v2 does not show "Author of the report" prompt', () => {
+// ---------------------------------------------------------------------------
+// H. Author and report ID are never prompted or written
+// ---------------------------------------------------------------------------
+
+it('does not prompt for author', () => {
   const { stdout } = run(
-    [
-      projectName,
-      '--v2',
-      '--skipAuth',
-      '--packageName',
-      'some-report',
-      '--title',
-      uuid(),
-      '--description',
-      uuid()
-    ],
+    [projectName, '--skipAuth', '--title', uuid(), '--description', uuid()],
     { cwd: tempDir }
   );
   expect((stdout as string)?.includes('Author of the report')).toBe(false);
 });
 
-it('--v2 uses "Report title" prompt wording', () => {
+it('does not prompt for report id', () => {
   const { stdout } = run(
-    [
-      projectName,
-      '--v2',
-      '--skipAuth',
-      '--packageName',
-      'some-report',
-      '--author',
-      uuid(),
-      '--description',
-      uuid()
-    ],
+    [projectName, '--skipAuth', '--title', uuid(), '--description', uuid()],
     { cwd: tempDir }
   );
-  expect((stdout as string)?.includes('Report title')).toBe(true);
-});
-
-it('--v2 uses "Report description" prompt wording', () => {
-  const { stdout } = run(
-    [
-      projectName,
-      '--v2',
-      '--skipAuth',
-      '--packageName',
-      'some-report',
-      '--author',
-      uuid(),
-      '--title',
-      uuid()
-    ],
-    { cwd: tempDir }
-  );
-  expect((stdout as string)?.includes('Report description')).toBe(true);
+  expect((stdout as string)?.includes('Unique id for this report')).toBe(false);
 });

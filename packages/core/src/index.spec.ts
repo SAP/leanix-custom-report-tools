@@ -13,8 +13,8 @@ import {
   npmPackBundle,
   pollReportState,
   ReportStateError,
-  uploadBundle,
-  uploadReportV2,
+  uploadToExtensionHub,
+  uploadToWorkspace,
   validateDocument,
   writeReportMetadata
 } from '@lxr/core/index';
@@ -23,12 +23,10 @@ import { t as tarT } from 'tar';
 import { getGlobalDispatcher, setGlobalDispatcher } from 'undici';
 
 const getDummyReportMetadata = (): CustomReportMetadata => ({
-  id: 'net.testReport',
   name: 'custom-report-name',
   title: 'Test Report',
   version: '0.1.0',
   description: 'Custom Report Description',
-  author: 'John Doe',
   defaultConfig: {}
 });
 
@@ -141,7 +139,7 @@ describe('the lxr core package', () => {
     rmSync(outDir, { recursive: true });
   });
 
-  it('uploadBundle posts multipart form and returns response data', async () => {
+  it('uploadToExtensionHub posts multipart form to torg assetversions endpoint', async () => {
     let receivedAuth: string | undefined;
     let receivedMethod: string | undefined;
     const server = createHttpServer((req, res) => {
@@ -176,7 +174,12 @@ describe('the lxr core package', () => {
     ].join('.');
 
     const bundle = new Blob([new Uint8Array([1, 2, 3])]);
-    const result = await uploadBundle({ bundle, bearerToken: fakeToken });
+    const result = await uploadToExtensionHub({
+      bundle,
+      bearerToken: fakeToken,
+      assetId: 'asset-uuid-1',
+      host: `http://127.0.0.1:${port}`
+    });
 
     expect(result.status).toBe('OK');
     expect(result.type).toBe('ReportUploadResponseData');
@@ -220,7 +223,7 @@ describe('the lxr core package', () => {
       rmSync(pkgDir, { recursive: true });
     }, 30000);
 
-    it('uploadReportV2 posts raw gzip body and parses customReportVersionId', async () => {
+    it('uploadToWorkspace posts raw gzip body and parses customReportVersionId', async () => {
       let receivedAuth: string | undefined;
       let receivedContentType: string | undefined;
       let receivedBody = Buffer.alloc(0);
@@ -241,7 +244,7 @@ describe('the lxr core package', () => {
 
       const bundleBytes = new Uint8Array([1, 2, 3, 4]);
       const blob = new Blob([bundleBytes]);
-      const result = await uploadReportV2({
+      const result = await uploadToWorkspace({
         host: 'unused',
         bearerToken: 'test-token',
         bundle: blob,
@@ -256,7 +259,7 @@ describe('the lxr core package', () => {
       await new Promise<void>((r) => server.close(() => r()));
     });
 
-    it('uploadReportV2 throws on non-2xx', async () => {
+    it('uploadToWorkspace throws on non-2xx', async () => {
       server = createHttpServer((_req, res) => {
         res.statusCode = 401;
         res.setHeader('content-type', 'application/json');
@@ -267,7 +270,7 @@ describe('the lxr core package', () => {
 
       const blob = new Blob([new Uint8Array([1])]);
       await expect(
-        uploadReportV2({
+        uploadToWorkspace({
           host: 'unused',
           bearerToken: 't',
           bundle: blob,

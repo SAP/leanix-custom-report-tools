@@ -57,11 +57,10 @@ export function readMetadataJson(path: string): CustomReportMetadata {
   const pkg: PackageJsonLXR = packageJsonLxrSchema.parse(
     JSON.parse(readFileSync(path, 'utf8'))
   );
-  const { name, version, author, description, leanixReport } = pkg;
+  const { name, version, description, leanixReport } = pkg;
   return customReportMetadataSchema.parse({
     name,
     version,
-    author,
     description,
     ...leanixReport
   });
@@ -94,6 +93,9 @@ export function writeReportMetadata(
   writeFileSync(resolve(outDir, 'lxreport.json'), JSON.stringify(metadata));
 }
 
+// CURRENTLY NOT USED - may be used for direct uploads to Extension Hub in the future
+// Creates a bundle.tgz from a compiled dist directory.
+// Used for Extension Hub (Store) uploads via uploadToExtensionHub({ store: { assetId } }).
 export async function createBundle(outDir: string): Promise<string> {
   const bundleFilename = 'bundle.tgz';
   const targetFilePath = resolve(outDir, bundleFilename);
@@ -113,23 +115,23 @@ export async function createBundle(outDir: string): Promise<string> {
   return targetFilePath;
 }
 
-export async function uploadBundle(params: {
+// CURRENTLY NOT USED
+// Posts a bundle to torg (Extension Hub).
+// store.host accepts either a bare hostname (default: 'store.leanix.net')
+// or a full URL with scheme
+export async function uploadToExtensionHub(params: {
   bundle: Blob;
   bearerToken: string;
-  proxyURL?: string;
-  store?: {
-    host?: string;
-    assetId: string;
-  };
+  host?: string;
+  assetId: string;
 }): Promise<ReportUploadResponseData> {
-  const { bundle, bearerToken, store } = params;
-  const storeHost = store?.host ?? 'store.leanix.net';
-  const assetId = store?.assetId ?? null;
-  const decodedToken: JwtClaims = jwtDecode(bearerToken);
-  const url =
-    assetId !== null
-      ? `https://${storeHost}/services/torg/v1/assetversions/${assetId}/payload`
-      : `${decodedToken.instanceUrl}/services/pathfinder/v1/reports/upload`;
+  const { bundle, bearerToken, host, assetId } = params;
+  const storeHost = host ?? 'store.leanix.net';
+  const baseURL = storeHost.startsWith('http')
+    ? storeHost
+    : `https://${storeHost}`;
+  const url = `${baseURL}/services/torg/v1/assetversions/${assetId}/payload`;
+
   const form = new FormData();
   form.append('file', bundle);
   const res = await fetch(url, {
@@ -145,8 +147,6 @@ export async function uploadBundle(params: {
   }
   return content as ReportUploadResponseData;
 }
-
-// --- v2 upload (Reports Service) ---
 
 export async function npmPackBundle(cwd: string): Promise<string> {
   const packDir = mkdtempSync(join(tmpdir(), 'lxr-npm-pack-'));
@@ -175,7 +175,7 @@ function reportsServiceClient(params: {
   });
 }
 
-export async function uploadReportV2(params: {
+export async function uploadToWorkspace(params: {
   host: string;
   bearerToken: string;
   bundle: Blob;

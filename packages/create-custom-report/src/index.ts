@@ -5,12 +5,8 @@ import { join, relative } from 'node:path';
 import { red } from 'kolorist';
 import minimist from 'minimist';
 import prompts from 'prompts';
-import {
-  isValidPackageName,
-  toValidPackageName,
-  INVALID_PROJECT_NAME_CHARS
-} from './helpers';
-import { exchangeApiToken, authenticate } from '@lxr/core/auth';
+import { isValidPackageName, INVALID_PROJECT_NAME_CHARS } from './helpers';
+import { authenticate } from '@lxr/core/auth';
 import { getWorkspaceNameFromAccessToken } from '@lxr/core/oauth';
 import {
   clearConnectionConfig,
@@ -19,18 +15,12 @@ import {
 import type { ConnectionConfigFile } from '@lxr/core/connection-config';
 import banner from './utils/banner';
 import { deployTemplate } from './utils/deployTemplate';
-import { generateLeanIXFiles } from './utils/leanix';
+import { generatePackageJson } from './utils/leanix';
 import { generateMcpConfig } from './utils/generateMcpConfig';
-import type {
-  LeanIXOptions,
-  ProjectOptions,
-  PromptResult
-} from './models/project-options';
 import { initProxy } from '@lxr/core/proxy';
 import { getUserLxrJsonPath } from '@lxr/core/constants';
 import semver from 'semver';
 import pkg from '../package.json' with { type: 'json' };
-export type { LeanIXOptions, ProjectOptions, PromptResult };
 
 if (!semver.satisfies(process.versions.node, pkg.engines.node)) {
   console.error(
@@ -43,96 +33,6 @@ const cwd = process.cwd();
 
 // Fixed template: React with TypeScript
 const TEMPLATE = 'react-ts';
-
-// ---------------------------------------------------------------------------
-// V1 helpers (unchanged)
-// ---------------------------------------------------------------------------
-
-const getCredentialQuestions = (options?: {
-  host?: string;
-  apitoken?: string;
-  proxyURL?: string;
-  skipIfProvided?: boolean;
-}): Array<
-  prompts.PromptObject<'host' | 'apitoken' | 'behindProxy' | 'proxyURL'>
-> => [
-  {
-    type:
-      options?.skipIfProvided && options?.host !== undefined ? null : 'text',
-    name: 'host',
-    initial: options?.host ?? 'demo-eu.leanix.net',
-    message: 'Which workspace instance? (e.g. demo-eu-1.leanix.net)'
-  },
-  {
-    type:
-      options?.skipIfProvided && options?.apitoken !== undefined
-        ? null
-        : 'text',
-    name: 'apitoken',
-    message:
-      'Technical User Token (see: https://help.sap.com/docs/leanix/ea/technical-users)\n  ⚠️  Security notice: Technical User Token will be persisted in the report config file'
-  },
-  {
-    type:
-      options?.skipIfProvided && options?.proxyURL !== undefined
-        ? null
-        : options?.skipIfProvided &&
-            options?.host !== undefined &&
-            options?.apitoken !== undefined
-          ? null // full auth provided without proxy — skip toggle
-          : 'toggle',
-    name: 'behindProxy',
-    message: 'Are you behind a proxy?',
-    initial: !!options?.proxyURL,
-    active: 'Yes',
-    inactive: 'No'
-  },
-  {
-    type: (prev: boolean) => prev && 'text',
-    name: 'proxyURL',
-    message: 'Proxy URL?',
-    initial: options?.proxyURL
-  }
-];
-
-const getLeanIXQuestions = (
-  argv: minimist.ParsedArgs,
-  isV2: boolean
-): Array<prompts.PromptObject<keyof LeanIXOptions | 'behindProxy'>> => [
-  ...(isV2
-    ? []
-    : [
-        {
-          type: (argv?.id === undefined ? 'text' : null) as 'text' | null,
-          name: 'id' as const,
-          message:
-            'Unique id for this report in Java package notation (e.g. net.leanix.barcharts)'
-        }
-      ]),
-  {
-    type: argv?.author === undefined ? 'text' : null,
-    name: 'author',
-    message: 'Author of the report (e.g. Jane Doe)'
-  },
-  {
-    type: argv?.title === undefined ? 'text' : null,
-    name: 'title',
-    message: 'Report title'
-  },
-  {
-    type: argv?.description === undefined ? 'text' : null,
-    name: 'description',
-    message: 'Report description'
-  },
-  ...(argv.skipAuth
-    ? []
-    : getCredentialQuestions({
-        host: argv?.host,
-        apitoken: argv?.apitoken,
-        proxyURL: argv?.proxyURL,
-        skipIfProvided: true
-      }))
-];
 
 // ---------------------------------------------------------------------------
 // V2 auth flow
@@ -171,25 +71,13 @@ async function runV2Auth(file: ConnectionConfigFile | null): Promise<{
 export async function init(): Promise<void> {
   console.log(`\n${banner}\n`);
   const argv = minimist(process.argv.slice(2), {
-    string: [
-      'id',
-      'author',
-      'title',
-      'description',
-      'host',
-      'apitoken',
-      'proxyURL',
-      'packageName'
-    ],
-    boolean: ['overwrite', 'skipAuth', 'help', 'v2'],
+    string: ['title', 'description', 'proxyURL'],
+    boolean: ['overwrite', 'skipAuth', 'help'],
     default: {
-      v2: false,
       overwrite: false,
       skipAuth: false
     }
   });
-
-  const isV2: boolean = argv.v2;
 
   if (argv.help) {
     console.log(`
@@ -199,276 +87,98 @@ Arguments:
   project-name            Directory name for the new project (default: leanix-custom-report)
 
 Options:
-  --id <string>           Unique report id in Java package notation (e.g. net.leanix.barcharts)
-  --author <string>       Report author (e.g. SAP LeanIX)
   --title <string>        Title shown in SAP LeanIX when the report is installed
   --description <string>  Short description of the report
-  --packageName <string>  npm package name (default: derived from project-name)
-  --host <string>         SAP LeanIX host (default: demo-eu.leanix.net)
-  --apitoken <string>     API token for authentication
   --proxyURL <string>     HTTP/S proxy URL to use for requests to SAP LeanIX
   --overwrite             Overwrite target directory if it exists (default: false)
   --skipAuth              Skip SAP LeanIX authentication entirely (default: false)
-  --v2                    Use new creation UX (package name as report identity, no report ID)
   --help                  Show this help message and exit
 `);
     process.exit(0);
   }
 
-  let targetDir = argv._[0] ?? null;
+  // Parse CLI args
+  let { title, description, proxyURL, overwrite = false } = argv;
 
-  const defaultProjectName = targetDir ?? 'leanix-custom-report';
+  let projectName: string | null = argv._[0] ?? null;
 
-  // leanix-specific answers
-  let {
-    id,
-    author,
-    title,
-    description,
-    host,
-    apitoken,
-    proxyURL,
-    packageName,
-    overwrite = false
-  } = argv;
-
-  // -------------------------------------------------------------------------
-  // V2 path
-  // -------------------------------------------------------------------------
-  if (isV2) {
-    // TODO: when v1 is dropped, remove these flags from argv parsing: --packageName, --id, --host, --apitoken
-    // All are v1-only and intentionally ignored in v2.
-
-    let projectName: string | null = argv._[0] ?? null;
-
-    if (projectName !== null && !isValidPackageName(projectName)) {
-      throw new Error(
-        `Invalid project name "${projectName}": ${INVALID_PROJECT_NAME_CHARS}`
-      );
-    }
-
-    // Read user-level config before prompting — proxy may already be configured
-    let configFile = readConnectionConfig(true);
-
-    let result: PromptResult = {};
-    try {
-      console.log(
-        "  The project name is your report's permanent identity in the workspace — choose it carefully.\n  Use lowercase letters, digits, dots, hyphens, or underscores (e.g. my-custom-report)."
-      );
-      result = await prompts(
-        [
-          {
-            name: 'projectName',
-            type: () => (projectName !== null ? null : 'text'),
-            message: 'Project name:',
-            validate: (v) => isValidPackageName(v) || INVALID_PROJECT_NAME_CHARS
-          },
-          {
-            name: 'overwrite',
-            type: (_, prev: { projectName?: string }) => {
-              const name = projectName ?? prev.projectName ?? '';
-              return !existsSync(name) || overwrite ? null : 'confirm';
-            },
-            message: (_, prev: { projectName?: string }) => {
-              const name = projectName ?? prev.projectName ?? '';
-              return `Target directory "${name}" is not empty. Remove existing files and continue?`;
-            }
-          },
-          {
-            name: 'overwriteChecker',
-            type: (_, { overwrite }: { overwrite?: boolean }) => {
-              if (overwrite === false) {
-                throw new Error(`${red('✖')} Operation cancelled`);
-              }
-              return null;
-            }
-          },
-          {
-            type: argv?.title === undefined ? 'text' : null,
-            name: 'title',
-            message: 'Report title'
-          },
-          {
-            type: argv?.description === undefined ? 'text' : null,
-            name: 'description',
-            message: 'Report description'
-          },
-          {
-            type:
-              argv?.proxyURL !== undefined ||
-              configFile !== null ||
-              argv.skipAuth
-                ? null
-                : 'toggle',
-            name: 'behindProxy',
-            message: 'Are you behind a proxy?',
-            initial: false,
-            active: 'Yes',
-            inactive: 'No'
-          },
-          {
-            type: (prev: boolean | null) => (prev === true ? 'text' : null),
-            name: 'proxyURL',
-            message: 'Proxy URL?',
-            initial: argv?.proxyURL
-          }
-        ],
-        {
-          onCancel: () => {
-            throw new Error(`${red('✖')} Operation cancelled`);
-          }
-        }
-      );
-    } catch (cancelled: unknown) {
-      console.log(
-        cancelled instanceof Error ? cancelled.message : String(cancelled)
-      );
-      process.exit(1);
-    }
-
-    ({
-      title = title,
-      description = description,
-      proxyURL = proxyURL,
-      overwrite = overwrite
-    } = result);
-
-    projectName = result.projectName ?? projectName;
-
-    console.log();
-
-    const savedProxyURL = configFile?.config.proxyURL;
-    proxyURL = proxyURL ?? savedProxyURL;
-    initProxy(proxyURL);
-
-    // Auth — run OAuth flow automatically, no prompts (skipped when --skipAuth)
-    if (!argv.skipAuth) {
-      if (!configFile && proxyURL) {
-        configFile = { config: { proxyURL }, path: getUserLxrJsonPath() };
-      }
-      const {
-        host: oauthHost,
-        workspaceName,
-        configPath
-      } = await runV2Auth(configFile);
-
-      console.log(`  Config:    ${configPath}`);
-      console.log(`  Proxy:     ${proxyURL ?? 'none'}`);
-      if (oauthHost) {
-        host = oauthHost;
-        console.log(`  Host:      ${host}`);
-        console.log(`  Workspace: ${workspaceName}`);
-      }
-    }
-
-    // Scaffold project
-    const root = join(cwd, projectName);
-    console.log(`\nCreating project in ${root}\n`);
-
-    if (overwrite === true) {
-      rmSync(root, { recursive: true, force: true });
-    }
-    if (!existsSync(root)) {
-      mkdirSync(root);
-    }
-
-    deployTemplate({
-      targetDir: root,
-      template: TEMPLATE,
-      result: { title, description, overwrite }
-    });
-
-    await generateLeanIXFiles({
-      targetDir: root,
-      result: {
-        packageName: projectName,
-        title,
-        description,
-        overwrite
-      },
-      isV2: true
-    });
-
-    generateMcpConfig({ targetDir: root });
-    console.log(
-      '✓ MCP servers configured for GitHub Copilot (VS Code) and Claude Code:'
+  if (projectName !== null && !isValidPackageName(projectName)) {
+    throw new Error(
+      `Invalid project name "${projectName}": ${INVALID_PROJECT_NAME_CHARS}`
     );
-    console.log('  - Playwright MCP (AI report verification)');
-    console.log('  - SAP LeanIX MCP Server (workspace data access)');
-    console.log('    The SAP LeanIX MCP Server uses its own OAuth session.');
-    console.log('    When your AI tool first connects to it, a second browser');
-    console.log('    login will open to authorize MCP workspace access.');
-    console.log();
-
-    // Done
-    console.log();
-    console.log('Done ✅');
-    console.log();
-    console.log(
-      '  Now open the project in your IDE, install dependencies, and run it locally:'
-    );
-    console.log();
-    console.log(`  cd ${relative(cwd, root)} && code .`);
-    console.log('  (or open the folder in your IDE via File > Open Folder');
-    console.log(
-      '  and open the integrated terminal via Terminal > New Terminal)'
-    );
-    console.log();
-    console.log('  npm install');
-    console.log('  npm run dev\n');
-    return;
   }
 
-  // -------------------------------------------------------------------------
-  // V1 path (unchanged)
-  // -------------------------------------------------------------------------
+  // Read user-level config before prompting — proxy may already be configured
+  let configFile = readConnectionConfig(true);
 
-  let result: PromptResult = {};
+  // Prompt for missing values
+  let result: {
+    projectName?: string;
+    overwrite?: boolean;
+    title?: string;
+    description?: string;
+    proxyURL?: string;
+  } = {};
+
   try {
+    console.log(
+      "  The project name is your report's permanent identity in the workspace — choose it carefully.\n  Use lowercase letters, digits, dots, hyphens, or underscores (e.g. my-custom-report)."
+    );
     result = await prompts(
       [
         {
-          type: targetDir !== null ? null : 'text',
           name: 'projectName',
+          type: () => (projectName !== null ? null : 'text'),
           message: 'Project name:',
-          initial: defaultProjectName,
-          onState: (state) =>
-            (targetDir = state.value.trim() ?? defaultProjectName)
+          validate: (v) => isValidPackageName(v) || INVALID_PROJECT_NAME_CHARS
         },
         {
           name: 'overwrite',
-          type: () =>
-            !existsSync(targetDir ?? '') || overwrite ? null : 'confirm',
-          message: () => {
-            const dirForPrompt =
-              targetDir === '.'
-                ? 'Current directory'
-                : `Target directory "${targetDir}"`;
-            return `${dirForPrompt} is not empty. Remove existing files and continue?`;
+          type: (prev) => {
+            const name = projectName ?? prev ?? '';
+            return !existsSync(name) || overwrite ? null : 'confirm';
+          },
+          message: (prev) => {
+            const name = projectName ?? prev ?? '';
+            return `Target directory "${name}" is not empty. Remove existing files and continue?`;
           }
         },
         {
           name: 'overwriteChecker',
-          type: (_, { overwrite }: { overwrite?: boolean }) => {
-            if (overwrite === false) {
+          type: (prev) => {
+            if (prev === false) {
               throw new Error(`${red('✖')} Operation cancelled`);
             }
             return null;
           }
         },
         {
-          name: 'packageName',
-          type: () => {
-            if (packageName !== undefined) return null;
-            if (isValidPackageName(targetDir ?? '')) return null;
-            return 'text';
-          },
-          message: 'Package name:',
-          initial: () => toValidPackageName(targetDir ?? ''),
-          validate: (dir) =>
-            isValidPackageName(dir) || 'Invalid package.json name'
+          type: argv?.title === undefined ? 'text' : null,
+          name: 'title',
+          message: 'Report title'
         },
-        ...getLeanIXQuestions(argv, false)
+        {
+          type: argv?.description === undefined ? 'text' : null,
+          name: 'description',
+          message: 'Report description'
+        },
+        {
+          type:
+            argv?.proxyURL !== undefined || configFile !== null || argv.skipAuth
+              ? null
+              : 'toggle',
+          name: 'behindProxy',
+          message: 'Are you behind a proxy?',
+          initial: false,
+          active: 'Yes',
+          inactive: 'No'
+        },
+        {
+          type: (prev) => (prev === true ? 'text' : null),
+          name: 'proxyURL',
+          message: 'Proxy URL?',
+          initial: argv?.proxyURL
+        }
       ],
       {
         onCancel: () => {
@@ -483,106 +193,71 @@ Options:
     process.exit(1);
   }
 
-  // leanix-specific answers
-  ({
-    id = id,
-    author = author,
-    title = title,
-    description = description,
-    host = host,
-    apitoken = apitoken,
-    proxyURL = proxyURL,
-    packageName = packageName,
-    overwrite = overwrite
-  } = result);
+  // Merge prompt answers over CLI args
+  title = result.title ?? title;
+  description = result.description ?? description;
+  proxyURL = result.proxyURL ?? proxyURL;
+  overwrite = result.overwrite ?? overwrite;
+  projectName = result.projectName ?? projectName;
 
+  console.log();
+
+  const savedProxyURL = configFile?.config.proxyURL;
+  proxyURL = proxyURL ?? savedProxyURL;
   initProxy(proxyURL);
 
-  let accessToken: string | null = null;
-
+  // Auth — run OAuth flow automatically, no prompts (skipped when --skipAuth)
   if (!argv.skipAuth) {
-    // Validate credentials by getting access token, retry if invalid
-    while (!accessToken) {
-      try {
-        if (!host || !apitoken) {
-          throw new Error('Host and API token are required');
-        }
-        accessToken = await exchangeApiToken(host, apitoken);
-        console.log('✓ Successfully authenticated with SAP LeanIX');
-      } catch (error) {
-        console.log(
-          `${red('✖')} ${error instanceof Error ? error.message : 'Authentication failed: unknown error'}`
-        );
-        console.log(
-          'Please check your host, API token, and proxy settings and try again.\n'
-        );
+    if (!configFile && proxyURL) {
+      configFile = { config: { proxyURL }, path: getUserLxrJsonPath() };
+    }
+    const { host, workspaceName, configPath } = await runV2Auth(configFile);
 
-        const retryResult = await prompts(
-          getCredentialQuestions({ host, apitoken, proxyURL }),
-          {
-            onCancel: () => {
-              throw new Error(`${red('✖')} Operation cancelled`);
-            }
-          }
-        );
-
-        host = retryResult.host;
-        apitoken = retryResult.apitoken;
-        proxyURL = retryResult.proxyURL;
-      }
+    console.log(`  Config:    ${configPath}`);
+    console.log(`  Proxy:     ${proxyURL ?? 'none'}`);
+    if (host) {
+      console.log(`  Host:      ${host}`);
+      console.log(`  Workspace: ${workspaceName}`);
     }
   }
 
-  const root = join(cwd, targetDir ?? '');
-
-  console.log(`\nCreating project in ${root}...`);
-  console.log(`Using React + TypeScript template`);
+  // Scaffold project
+  const targetDir = join(cwd, projectName);
+  console.log(`\nCreating project in ${targetDir}\n`);
 
   if (overwrite === true) {
-    rmSync(root, { recursive: true, force: true });
+    rmSync(targetDir, { recursive: true, force: true });
   }
-  if (!existsSync(root)) {
-    mkdirSync(root);
+  if (!existsSync(targetDir)) {
+    mkdirSync(targetDir);
   }
 
   deployTemplate({
-    targetDir: root,
-    template: TEMPLATE,
+    targetDir,
+    template: TEMPLATE
+  });
+
+  await generatePackageJson({
+    targetDir,
     result: {
-      id,
-      author,
+      packageName: projectName,
       title,
-      description,
-      host,
-      apitoken,
-      proxyURL,
-      overwrite
+      description
     }
   });
-  await generateLeanIXFiles({
-    targetDir: root,
-    result: {
-      packageName: packageName ?? defaultProjectName,
-      id,
-      author,
-      title,
-      description,
-      host,
-      apitoken,
-      proxyURL,
-      overwrite
-    },
-    isV2: false
-  });
 
-  // Generate MCP configuration files
-  generateMcpConfig({ targetDir: root });
-  console.log('✓ MCP servers configured (.vscode/mcp.json, .mcp.json)');
-  console.log('  Supports: GitHub Copilot (VS Code) and Claude Code');
+  generateMcpConfig({ targetDir });
+  console.log(
+    '✓ MCP servers configured for GitHub Copilot (VS Code) and Claude Code:'
+  );
   console.log('  - Playwright MCP (AI report verification)');
   console.log('  - SAP LeanIX MCP Server (workspace data access)');
+  console.log('    The SAP LeanIX MCP Server uses its own OAuth session.');
+  console.log('    When your AI tool first connects to it, a second browser');
+  console.log('    login will open to authorize MCP workspace access.');
   console.log();
 
+  // Done
   console.log();
   console.log('Done ✅');
   console.log();
@@ -590,7 +265,7 @@ Options:
     '  Now open the project in your IDE, install dependencies, and run it locally:'
   );
   console.log();
-  console.log(`  cd ${relative(cwd, root)} && code .`);
+  console.log(`  cd ${relative(cwd, targetDir)} && code .`);
   console.log('  (or open the folder in your IDE via File > Open Folder');
   console.log(
     '  and open the integrated terminal via Terminal > New Terminal)'
