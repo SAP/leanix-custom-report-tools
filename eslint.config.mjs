@@ -1,5 +1,6 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
+import globals from 'globals';
 
 export default [
   eslint.configs.recommended,
@@ -11,6 +12,15 @@ export default [
       '**/node_modules/**',
       '**/templates/**'
     ]
+  },
+  {
+    files: ['**/*.cjs'],
+    languageOptions: {
+      globals: globals.node
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off'
+    }
   },
   {
     rules: {

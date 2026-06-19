@@ -1,49 +1,17 @@
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { mkdirpSync, readdirSync, statSync, writeFileSync } from 'fs-extra';
+import { readdirSync, statSync } from 'fs-extra';
 import { generate as uuid } from 'short-uuid';
-import pkg from '../package.json' with { type: 'json' };
+import { CLI_PATH, runCli } from '../test-helpers/cli-runner';
 
-const CLI_PATH = resolve(
-  __dirname,
-  '..',
-  Object.values(pkg.bin as Record<string, string>)[0]
-);
-const projectName = 'test-app';
 let tempDir: string;
-
-const run = (
-  args: string[],
-  options: { cwd?: string; input?: string; reject?: boolean } = {}
-) => {
-  try {
-    const stdout = execFileSync('node', [CLI_PATH, ...args], {
-      ...options,
-      encoding: 'utf8'
-    });
-    return { stdout, stderr: '', exitCode: 0, failed: false };
-  } catch (e: any) {
-    return {
-      stdout: e.stdout || '',
-      stderr: e.stderr || '',
-      exitCode: e.status || 1,
-      failed: true
-    };
-  }
-};
-
-// Helper to create a non-empty directory
-const createNonEmptyDir = (): void => {
-  const projectDir = join(tempDir, projectName);
-  // Create the temporary directory
-  mkdirpSync(projectDir);
-
-  // Create a package.json file
-  const pkgJson = join(projectDir, 'package.json');
-  writeFileSync(pkgJson, '{ "foo": "bar" }');
-};
 
 // Returns file paths relative to dir, recursively
 const getAllFiles = (dir: string): string[] =>
@@ -66,8 +34,32 @@ const expectedFiles = [
   .map((file) => (file === '_gitignore' ? '.gitignore' : file))
   .sort();
 
+// Shared assertion: scaffolded directory contains the expected files
+// and package.json reflects the supplied title/description.
+function assertScaffolded(
+  dir: string,
+  projectName: string,
+  title: string,
+  description: string
+): void {
+  const projectDir = join(dir, projectName);
+  const generatedFiles = getAllFiles(projectDir).sort();
+  expect(generatedFiles).toEqual(expectedFiles);
+
+  const generatedPkg = getPackageJson(projectDir);
+  expect(generatedPkg.name).toEqual(projectName);
+  expect(generatedPkg.author).toBeUndefined();
+  expect(generatedPkg.description).toEqual(description);
+  expect(generatedPkg.version).toEqual('0.0.0');
+  expect(generatedPkg?.leanixReport?.id).toBeUndefined();
+  expect(generatedPkg?.leanixReport?.title).toEqual(title);
+  expect(typeof generatedPkg?.leanixReport?.defaultConfig).toEqual('object');
+
+  expect(existsSync(join(projectDir, '.mcp.json'))).toBe(true);
+  expect(existsSync(join(projectDir, '.vscode', 'mcp.json'))).toBe(true);
+}
+
 beforeEach(() => {
-  // Create a fresh temp directory for each test
   tempDir = mkdtempSync(join(tmpdir(), 'create-custom-report-test-'));
 });
 
@@ -77,113 +69,144 @@ afterEach(() => {
   }
 });
 
-it('prompts for the project name if none supplied', () => {
-  const { stdout } = run([]);
-  expect((stdout as string)?.includes('Project name:')).toBe(true);
-});
+describe('scaffolding', () => {
+  it('CLI flags (non-interactive)', () => {
+    const projectName = `test-${uuid().toLowerCase()}`;
+    const title = uuid();
+    const description = uuid();
 
-it('asks to overwrite non-empty target directory', () => {
-  createNonEmptyDir();
-  const { stdout } = run([projectName], { cwd: tempDir });
-  expect(
-    (stdout as string)?.includes(
-      `Target directory "${projectName}" is not empty.`
-    )
-  ).toBe(true);
-});
+    const { exitCode } = runCli(
+      [
+        projectName,
+        '--overwrite',
+        '--skipAuth',
+        '--title',
+        title,
+        '--description',
+        description
+      ],
+      tempDir
+    );
 
-it('successfully creates a project based on react-ts template', async () => {
-  const title = uuid();
-  const description = uuid();
-
-  const args = [
-    '--overwrite',
-    '--skipAuth',
-    '--title',
-    title,
-    '--description',
-    description
-  ];
-
-  const { exitCode } = run([projectName, ...args], { cwd: tempDir });
-  expect(exitCode).toBe(0);
-
-  const projectDir = join(tempDir, projectName);
-  const generatedFiles = getAllFiles(projectDir).sort();
-  expect(generatedFiles).toEqual(expectedFiles);
-
-  const pkg = getPackageJson(projectDir);
-  expect(pkg.name).toEqual(projectName);
-  expect(pkg.author).toBeUndefined();
-  expect(pkg.description).toEqual(description);
-  expect(pkg.version).toEqual('0.0.0');
-  expect(pkg?.leanixReport?.id).toBeUndefined();
-  expect(pkg?.leanixReport?.title).toEqual(title);
-  expect(typeof pkg?.leanixReport.defaultConfig).toEqual('object');
-
-  expect(existsSync(join(projectDir, '.vscode', 'mcp.json'))).toBe(true);
-  expect(existsSync(join(projectDir, '.mcp.json'))).toBe(true);
-});
-
-it('omitting --title still prompts for it', () => {
-  const { stdout } = run([projectName, '--skipAuth', '--description', uuid()], {
-    cwd: tempDir
+    expect(exitCode).toBe(0);
+    assertScaffolded(tempDir, projectName, title, description);
   });
-  expect((stdout as string)?.includes('Report title')).toBe(true);
+
+  it('interactive prompts via prompts.inject', () => {
+    const projectName = `test-${uuid().toLowerCase()}`;
+    const title = uuid();
+    const description = uuid();
+
+    // Pre-create the target dir so the overwrite prompt fires.
+    mkdirSync(join(tempDir, projectName));
+
+    // Answer order matches the prompts in src/index.ts:
+    //   1. Project name
+    //   2. Overwrite confirmation (true — dir exists)
+    //   3. Report title
+    //   4. Report description
+    // The proxy prompt is skipped (--skipAuth set).
+    const { exitCode } = runCli(['--skipAuth'], tempDir, [
+      projectName,
+      true,
+      title,
+      description
+    ]);
+
+    expect(exitCode).toBe(0);
+    assertScaffolded(tempDir, projectName, title, description);
+  });
 });
 
-// ---------------------------------------------------------------------------
-// G. --help prints usage reference and exits with code 0
-// ---------------------------------------------------------------------------
+describe('overwrite', () => {
+  it('--overwrite flag scaffolds over an existing directory', () => {
+    const projectName = `test-${uuid().toLowerCase()}`;
+    const title = uuid();
+    const description = uuid();
 
-it('--help prints usage and exits with code 0', () => {
-  const { exitCode, stdout } = run(['--help']);
+    mkdirSync(join(tempDir, projectName));
 
-  expect(exitCode).toBe(0);
+    const { exitCode } = runCli(
+      [
+        projectName,
+        '--overwrite',
+        '--skipAuth',
+        '--title',
+        title,
+        '--description',
+        description
+      ],
+      tempDir
+    );
 
-  const flags = [
-    '--title',
-    '--description',
-    '--proxyURL',
-    '--overwrite',
-    '--skipAuth',
-    '--help'
-  ];
-  for (const flag of flags) {
-    expect((stdout as string)?.includes(flag)).toBe(true);
-  }
+    expect(exitCode).toBe(0);
+    assertScaffolded(tempDir, projectName, title, description);
+  });
 
-  // v1-only flags must NOT appear
-  const removedFlags = [
-    '--id',
-    '--author',
-    '--host',
-    '--apitoken',
-    '--packageName',
-    '--v2',
-    '--setupMcpServers'
-  ];
-  for (const flag of removedFlags) {
-    expect((stdout as string)?.includes(flag)).toBe(false);
-  }
+  it('prompt: user accepts → project scaffolded', () => {
+    const projectName = `test-${uuid().toLowerCase()}`;
+    const title = uuid();
+    const description = uuid();
+
+    mkdirSync(join(tempDir, projectName));
+
+    const { exitCode } = runCli(
+      [
+        projectName,
+        '--skipAuth',
+        '--title',
+        title,
+        '--description',
+        description
+      ],
+      tempDir,
+      [true]
+    );
+
+    expect(exitCode).toBe(0);
+    assertScaffolded(tempDir, projectName, title, description);
+  });
+
+  it('prompt: user declines → exits with code 1', () => {
+    const projectName = `test-${uuid().toLowerCase()}`;
+    mkdirSync(join(tempDir, projectName));
+
+    const { exitCode } = runCli([projectName, '--skipAuth'], tempDir, [false]);
+
+    expect(exitCode).toBe(1);
+  });
 });
 
-// ---------------------------------------------------------------------------
-// H. Author and report ID are never prompted or written
-// ---------------------------------------------------------------------------
+describe('--help', () => {
+  it('prints usage and exits with code 0', () => {
+    const { exitCode, stdout } = runCli(['--help']);
 
-it('does not prompt for author', () => {
-  const { stdout } = run(
-    [projectName, '--skipAuth', '--title', uuid(), '--description', uuid()],
-    { cwd: tempDir }
-  );
-  expect((stdout as string)?.includes('Author of the report')).toBe(false);
-});
+    expect(exitCode).toBe(0);
 
-it('does not prompt for report id', () => {
-  const { stdout } = run(
-    [projectName, '--skipAuth', '--title', uuid(), '--description', uuid()],
-    { cwd: tempDir }
-  );
-  expect((stdout as string)?.includes('Unique id for this report')).toBe(false);
+    const flags = [
+      '--title',
+      '--description',
+      '--proxyURL',
+      '--overwrite',
+      '--skipAuth',
+      '--help'
+    ];
+    for (const flag of flags) {
+      expect((stdout as string)?.includes(flag)).toBe(true);
+    }
+
+    // v1-only flags must NOT appear
+    const removedFlags = [
+      '--id',
+      '--author',
+      '--host',
+      '--apitoken',
+      '--packageName',
+      '--v2',
+      '--setupMcpServers'
+    ];
+    for (const flag of removedFlags) {
+      expect((stdout as string)?.includes(flag)).toBe(false);
+    }
+  });
 });
