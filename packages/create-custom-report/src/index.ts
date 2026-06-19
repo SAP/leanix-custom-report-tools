@@ -28,7 +28,16 @@ import type {
 } from './models/project-options';
 import { initProxy } from '@lxr/core/proxy';
 import { getUserLxrJsonPath } from '@lxr/core/constants';
+import semver from 'semver';
+import pkg from '../package.json' with { type: 'json' };
 export type { LeanIXOptions, ProjectOptions, PromptResult };
+
+if (!semver.satisfies(process.versions.node, pkg.engines.node)) {
+  console.error(
+    `${red('✖')} Node.js ${process.versions.node} is not supported.\nRequired: ${pkg.engines.node}`
+  );
+  process.exit(1);
+}
 
 const cwd = process.cwd();
 

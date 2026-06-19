@@ -13,7 +13,7 @@ if ! BUILD_OUTPUT=$(npm run build 2>&1); then
     exit 1
 fi
 
-# Create global link for vite-plugin
+# Create global link for vite-plugin and create-custom-report
 cd packages/vite-plugin
 if ! LINK_OUTPUT=$(npm link 2>&1); then
     echo "$LINK_OUTPUT"
@@ -21,18 +21,24 @@ if ! LINK_OUTPUT=$(npm link 2>&1); then
 fi
 cd ../..
 
-echo "Running creation tool..."
-echo "-----------------------------------------------------------------"
+cd packages/create-custom-report
+if ! LINK_OUTPUT=$(npm link 2>&1); then
+    echo "$LINK_OUTPUT"
+    exit 1
+fi
+cd ../..
 
-# Run creation tool in parent directory (v2 flow)
+echo "Running creation tool..."
+
+# Run creation tool in parent directory via npm exec to mimic npm create
 cd ..
 TMPOUT=$(mktemp)
-node "$TOOL_DIR/packages/create-custom-report/dist/index.cjs" --v2 "$@" | tee "$TMPOUT"
-EXIT_CODE=${PIPESTATUS[0]}
-PROJECT_DIR=$(grep "^Creating project in" "$TMPOUT" | sed 's/^Creating project in //')
-rm "$TMPOUT"
-
+EXIT_CODE=0
 echo "-----------------------------------------------------------------"
+npm exec --yes -- create-leanix-custom-report "$@" | tee "$TMPOUT" || EXIT_CODE=$?
+echo "-----------------------------------------------------------------"
+PROJECT_DIR=$(grep "^Creating project in" "$TMPOUT" | sed 's/^Creating project in //' || true)
+rm "$TMPOUT"
 
 if [ "$EXIT_CODE" -ne 0 ] || [ -z "$PROJECT_DIR" ]; then
     echo "Error: project creation failed."

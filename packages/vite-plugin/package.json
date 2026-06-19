@@ -35,7 +35,7 @@
     "vite": "^8.0.5"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.0.0 <26.0.0 || >=26.1.0"
   },
   "dependencies": {
     "http-proxy-middleware": "4.1.1"
