@@ -148,13 +148,19 @@ export async function uploadToExtensionHub(params: {
   return content as ReportUploadResponseData;
 }
 
+// On Windows, `npm` is a `.cmd` shim that execFile can't invoke directly.
+// Resolving the platform-specific binary lets us drop `shell: true`, which in
+// turn silences DEP0190 (Node warns about shell + args because the args get
+// concatenated into the command line without escaping).
+const NPM_BIN = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+
 export async function npmPackBundle(cwd: string): Promise<string> {
   const packDir = mkdtempSync(join(tmpdir(), 'lxr-npm-pack-'));
-  await execFileAsync('npm', ['shrinkwrap'], { cwd, shell: true });
+  await execFileAsync(NPM_BIN, ['shrinkwrap'], { cwd });
   const { stdout } = await execFileAsync(
-    'npm',
+    NPM_BIN,
     ['pack', '--pack-destination', packDir, '--json'],
-    { cwd, shell: true }
+    { cwd }
   );
   const parsed = JSON.parse(stdout) as Array<{ filename: string }>;
   if (!Array.isArray(parsed) || parsed.length === 0 || !parsed[0]?.filename) {
