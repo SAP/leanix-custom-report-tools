@@ -84,7 +84,7 @@ export async function init(): Promise<void> {
 Usage: npm create @sap/leanix-custom-report [project-name] [options]
 
 Arguments:
-  project-name            Directory name for the new project (default: leanix-custom-report)
+  project-name            Directory name for the new project
 
 Options:
   --title <string>        Title shown in SAP LeanIX when the report is installed
