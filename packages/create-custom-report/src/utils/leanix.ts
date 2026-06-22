@@ -4,7 +4,7 @@ import { join } from 'node:path';
 export async function generatePackageJson(params: {
   targetDir: string;
   result: {
-    packageName?: string;
+    packageName: string;
     description?: string;
     title?: string;
   };
