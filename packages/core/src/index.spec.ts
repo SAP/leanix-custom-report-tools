@@ -202,7 +202,6 @@ describe('the lxr core package', () => {
           name: 'lxr-test-pack-fixture',
           version: '0.0.0',
           description: 'fixture',
-          author: 'tests',
           files: ['index.js']
         })
       );

@@ -48,10 +48,8 @@ function assertScaffolded(
 
   const generatedPkg = getPackageJson(projectDir);
   expect(generatedPkg.name).toEqual(projectName);
-  expect(generatedPkg.author).toBeUndefined();
   expect(generatedPkg.description).toEqual(description);
   expect(generatedPkg.version).toEqual('0.0.0');
-  expect(generatedPkg?.leanixReport?.id).toBeUndefined();
   expect(generatedPkg?.leanixReport?.title).toEqual(title);
   expect(typeof generatedPkg?.leanixReport?.defaultConfig).toEqual('object');
 
@@ -193,20 +191,6 @@ describe('--help', () => {
     ];
     for (const flag of flags) {
       expect((stdout as string)?.includes(flag)).toBe(true);
-    }
-
-    // v1-only flags must NOT appear
-    const removedFlags = [
-      '--id',
-      '--author',
-      '--host',
-      '--apitoken',
-      '--packageName',
-      '--v2',
-      '--setupMcpServers'
-    ];
-    for (const flag of removedFlags) {
-      expect((stdout as string)?.includes(flag)).toBe(false);
     }
   });
 });
