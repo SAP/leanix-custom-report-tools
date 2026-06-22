@@ -5,7 +5,6 @@ export const packageJsonLxrSchema = zod.object({
   version: zod.string(),
   description: zod.string(),
   leanixReport: zod.object({
-    id: zod.string().optional(),
     title: zod.string(),
     aiAssisted: zod.boolean().optional(),
     defaultConfig: zod.record(zod.string(), zod.any()).optional()
