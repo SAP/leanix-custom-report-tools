@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import pkg from '../package.json' with { type: 'json' };
 
@@ -7,11 +8,11 @@ const CLI_PATH = resolve(
   '..',
   Object.values(pkg.bin as Record<string, string>)[0]
 );
-const INJECT_HELPER = resolve(__dirname, 'inject-prompts.cjs');
+const INJECT_HELPER = resolve(__dirname, 'inject-prompts.mjs');
 
 /**
  * Run the built CLI in a child process. Pass `answers` to pre-queue
- * interactive prompt responses via prompts.inject() (loaded as a --require
+ * interactive prompt responses via prompts.inject() (loaded as an --import
  * preload so the bundled CLI sees the same `prompts` module instance).
  */
 export function runCli(
@@ -22,7 +23,7 @@ export function runCli(
   const nodeArgs = [CLI_PATH, ...args];
   const env = { ...process.env };
   if (answers) {
-    nodeArgs.unshift('--require', INJECT_HELPER);
+    nodeArgs.unshift('--import', pathToFileURL(INJECT_HELPER).href);
     env.__TEST_PROMPTS_INJECT = JSON.stringify(answers);
   }
   try {

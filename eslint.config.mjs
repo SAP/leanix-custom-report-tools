@@ -1,6 +1,5 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
-import globals from 'globals';
 
 export default [
   eslint.configs.recommended,
@@ -14,12 +13,10 @@ export default [
     ]
   },
   {
-    files: ['**/*.cjs'],
+    // Node test helper preloaded via `node --import`; needs Node globals.
+    files: ['packages/create-custom-report/test-helpers/*.mjs'],
     languageOptions: {
-      globals: globals.node
-    },
-    rules: {
-      '@typescript-eslint/no-require-imports': 'off'
+      globals: { process: 'readonly' }
     }
   },
   {
