@@ -2,7 +2,7 @@
 
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { red } from 'kolorist';
+import { red, yellow } from 'kolorist';
 import minimist from 'minimist';
 import prompts from 'prompts';
 import { isValidPackageName, INVALID_PROJECT_NAME_CHARS } from './helpers';
@@ -112,7 +112,7 @@ Options:
   let configFile = readConnectionConfig(true);
 
   // Prompt for missing values
-  let result: {
+  const result: {
     projectName?: string;
     overwrite?: boolean;
     title?: string;
@@ -124,34 +124,66 @@ Options:
     console.log(
       "  The project name is your report's permanent identity in the workspace — choose it carefully.\n  Use lowercase letters, digits, dots, hyphens, or underscores (e.g. my-custom-report)."
     );
-    result = await prompts(
-      [
-        {
-          name: 'projectName',
-          type: () => (projectName !== null ? null : 'text'),
-          message: 'Project name:',
-          validate: (v) => isValidPackageName(v) || INVALID_PROJECT_NAME_CHARS
-        },
-        {
-          name: 'overwrite',
-          type: (prev) => {
-            const name = projectName ?? prev ?? '';
-            return !existsSync(name) || overwrite ? null : 'confirm';
-          },
-          message: (prev) => {
-            const name = projectName ?? prev ?? '';
-            return `Target directory "${name}" is not empty. Remove existing files and continue?`;
-          }
-        },
-        {
-          name: 'overwriteChecker',
-          type: (prev) => {
-            if (prev === false) {
-              throw new Error(`${red('✖')} Operation cancelled`);
+
+    // Loop project-name + overwrite together: declining the overwrite prompt
+    // re-asks for a name instead of exiting.
+    while (true) {
+      const nameAnswers = await prompts(
+        [
+          {
+            name: 'projectName',
+            type: () => (projectName !== null ? null : 'text'),
+            message: 'Project name:',
+            validate: (v: string) => {
+              if (!v || v.trim() === '') return 'Project name is required.';
+              return isValidPackageName(v) || INVALID_PROJECT_NAME_CHARS;
             }
-            return null;
+          },
+          {
+            name: 'overwrite',
+            type: (prev) => {
+              const name = projectName ?? prev ?? '';
+              return !existsSync(name) || overwrite ? null : 'confirm';
+            },
+            message: (prev) => {
+              const name = projectName ?? prev ?? '';
+              return `Target directory "${name}" is not empty. Remove existing files and continue?`;
+            }
           }
-        },
+        ],
+        {
+          onCancel: () => {
+            throw new Error(`${red('✖')} Operation cancelled`);
+          }
+        }
+      );
+
+      const chosenName = nameAnswers.projectName ?? projectName;
+      const overwriteAnswer = nameAnswers.overwrite;
+
+      // overwrite prompt skipped (dir doesn't exist or --overwrite was passed)
+      // OR user accepted the overwrite
+      if (overwriteAnswer === undefined || overwriteAnswer === true) {
+        result.projectName = chosenName;
+        result.overwrite = overwriteAnswer ?? overwrite;
+        break;
+      }
+
+      // User declined → repaint the two ✔ marks on the completed prompts as
+      // red ✖ to signal "these answers will be discarded", then re-ask.
+      // We only overwrite the leading symbol char; the rest of each line is
+      // left intact, so the trick is safe even if the message wraps.
+      if (process.stdout.isTTY) {
+        process.stdout.write(
+          `\x1b[2A\x1b[0G${red('✖')}\x1b[1B\x1b[0G${red('✖')}\x1b[1B\x1b[0G`
+        );
+      }
+      console.log(`${yellow('↻')} Let's try a different name.`);
+      projectName = null;
+    }
+
+    const restAnswers = await prompts(
+      [
         {
           type: argv?.title === undefined ? 'text' : null,
           name: 'title',
@@ -186,6 +218,7 @@ Options:
         }
       }
     );
+    Object.assign(result, restAnswers);
   } catch (cancelled: unknown) {
     console.log(
       cancelled instanceof Error ? cancelled.message : String(cancelled)
@@ -198,7 +231,8 @@ Options:
   description = result.description ?? description;
   proxyURL = result.proxyURL ?? proxyURL;
   overwrite = result.overwrite ?? overwrite;
-  projectName = result.projectName ?? projectName;
+  // Non-null assertion: the prompt loop above only exits with a validated name.
+  projectName = (result.projectName ?? projectName)!;
 
   console.log();
 

@@ -165,13 +165,29 @@ describe('overwrite', () => {
     assertScaffolded(tempDir, projectName, title, description);
   });
 
-  it('prompt: user declines → exits with code 1', () => {
-    const projectName = `test-${uuid().toLowerCase()}`;
-    mkdirSync(join(tempDir, projectName));
+  it('prompt: user declines → re-prompted for a different name', () => {
+    const existingName = `test-${uuid().toLowerCase()}`;
+    const newName = `test-${uuid().toLowerCase()}`;
+    const title = uuid();
+    const description = uuid();
 
-    const { exitCode } = runCli([projectName, '--skipAuth'], tempDir, [false]);
+    // Pre-create the original target so the overwrite prompt fires.
+    mkdirSync(join(tempDir, existingName));
 
-    expect(exitCode).toBe(1);
+    // Answer order:
+    //   1. Overwrite confirmation (false — user declines)
+    //   2. Project name (loop re-asks since CLI-supplied name was cleared)
+    //   3. Report title
+    //   4. Report description
+    const { exitCode } = runCli([existingName, '--skipAuth'], tempDir, [
+      false,
+      newName,
+      title,
+      description
+    ]);
+
+    expect(exitCode).toBe(0);
+    assertScaffolded(tempDir, newName, title, description);
   });
 });
 
