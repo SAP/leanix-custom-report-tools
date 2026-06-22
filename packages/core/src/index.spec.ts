@@ -190,7 +190,7 @@ describe('the lxr core package', () => {
     await new Promise<void>((r) => server.close(() => r()));
   });
 
-  describe('v2 upload (Reports Service)', () => {
+  describe('upload', () => {
     let server: Server;
     let baseURL: string;
 

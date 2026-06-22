@@ -35,10 +35,10 @@ const cwd = process.cwd();
 const TEMPLATE = 'react-ts';
 
 // ---------------------------------------------------------------------------
-// V2 auth flow
+// Auth flow
 // ---------------------------------------------------------------------------
 
-async function runV2Auth(file: ConnectionConfigFile | null): Promise<{
+async function runAuth(file: ConnectionConfigFile | null): Promise<{
   host: string;
   workspaceName: string;
   configPath: string;
@@ -245,7 +245,7 @@ Options:
     if (!configFile && proxyURL) {
       configFile = { config: { proxyURL }, path: getUserLxrJsonPath() };
     }
-    const { host, workspaceName, configPath } = await runV2Auth(configFile);
+    const { host, workspaceName, configPath } = await runAuth(configFile);
 
     console.log(`  Config:    ${configPath}`);
     console.log(`  Proxy:     ${proxyURL ?? 'none'}`);
