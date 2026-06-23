@@ -1,4 +1,3 @@
-import type { DeployTemplateParams } from '../models/deploy-template-params';
 import {
   copyFileSync,
   mkdirSync,
@@ -31,7 +30,10 @@ function copy(src: string, dest: string): void {
   }
 }
 
-export function deployTemplate(params: DeployTemplateParams): void {
+export function deployTemplate(params: {
+  targetDir: string;
+  template: string;
+}): void {
   const { targetDir, template } = params;
   if (targetDir === null) {
     throw new Error('invalid target dir');

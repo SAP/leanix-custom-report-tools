@@ -1,53 +1,43 @@
-import type { AddLeanIXMetadataToPackageJson } from '../models/leanix-metadata';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { validateDocument } from '@lxr/core/index';
 
-export async function generateLeanIXFiles(
-  params: AddLeanIXMetadataToPackageJson
-): Promise<void> {
-  const { targetDir, result, isV2 = false } = params;
-  const {
-    author,
-    description,
-    id,
-    title,
-    host,
-    apitoken,
-    proxyURL,
-    packageName
-  } = result;
-  let pkg = JSON.parse(
+export async function generatePackageJson(params: {
+  targetDir: string;
+  result: {
+    packageName: string;
+    description?: string;
+    title?: string;
+  };
+}): Promise<void> {
+  const { targetDir, result } = params;
+  const { description, title, packageName } = result;
+
+  const pkg = JSON.parse(
     await readFile(join(targetDir, 'package.json'), 'utf-8')
   );
-  const name =
-    packageName ??
-    pkg.name ??
-    pathToFileURL(targetDir ?? '')
-      .pathname.split('/')
-      .at(-1);
-  const version = pkg.version ?? '0.0.0';
-  const pkgMetadataFields = isV2
-    ? { name, description, version }
-    : { name, author, description, version };
-  const leanixReport = isV2
-    ? { title, aiAssisted: false, defaultConfig: {}, uploadVersion: 2 as const }
-    : { id, title, aiAssisted: false, defaultConfig: {} };
-  pkg = { ...pkg, ...pkgMetadataFields, name, leanixReport };
-  const lxreportJson = { ...leanixReport, ...pkgMetadataFields };
-  if (!isV2) {
-    validateDocument(lxreportJson, 'lxreport.json');
-  }
-  if (!isV2 && (host || apitoken || proxyURL)) {
-    const lxrJson = { host, apitoken, proxyURL };
-    await writeFile(
-      join(targetDir, 'lxr.json'),
-      JSON.stringify(lxrJson, null, 2) + '\n'
-    );
-  }
+
+  // Strip ordered fields so we can re-emit them in canonical order at the top
+  const {
+    name: _name,
+    version: _version,
+    description: _description,
+    leanixReport: _leanixReport,
+    ...rest
+  } = pkg;
+
+  const merged = {
+    name: packageName,
+    version: '0.0.0',
+    description,
+    leanixReport: {
+      title,
+      aiAssisted: false,
+      defaultConfig: {}
+    },
+    ...rest
+  };
   await writeFile(
     join(targetDir, 'package.json'),
-    JSON.stringify(pkg, null, 2) + '\n'
+    JSON.stringify(merged, null, 2) + '\n'
   );
 }

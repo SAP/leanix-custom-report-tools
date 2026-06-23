@@ -13,11 +13,22 @@ export default [
     ]
   },
   {
+    // Node test helper preloaded via `node --import`; needs Node globals.
+    files: ['packages/create-custom-report/test-helpers/*.mjs'],
+    languageOptions: {
+      globals: { process: 'readonly' }
+    }
+  },
+  {
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
-        { argsIgnorePattern: '^_' }
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_'
+        }
       ],
       '@typescript-eslint/no-unused-expressions': 'off'
     }
