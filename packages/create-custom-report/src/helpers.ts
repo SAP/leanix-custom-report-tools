@@ -20,7 +20,7 @@ function copy(src: string, dest: string): void {
 }
 
 export const INVALID_PROJECT_NAME_CHARS =
-  'Only lowercase letters (a-z), digits (0-9), dots (.), underscores (_), and hyphens (-) are allowed';
+  'Only a-z, 0-9, and . _ - are allowed';
 
 export function isValidPackageName(projectName: string): boolean {
   return /^(?:@[a-z0-9-][a-z0-9-._]*\/)?[a-z0-9][a-z0-9._-]*$/.test(
