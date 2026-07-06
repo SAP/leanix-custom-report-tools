@@ -43,6 +43,6 @@
     "@types/minimist": "1.2.5",
     "@types/prompts": "2.4.9",
     "@types/semver": "7.7.1",
-    "fs-extra": "11.3.5"
+    "fs-extra": "11.3.6"
   }
 }
