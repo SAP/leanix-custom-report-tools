@@ -133,6 +133,7 @@ function App() {
       setCriticalityConfig(config);
 
       lx.ready({
+        reportViewFactSheetType: FACT_SHEET_TYPE,
         facets: [
           {
             key: 'main',
