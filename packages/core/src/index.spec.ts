@@ -47,6 +47,36 @@ describe('the lxr core package', () => {
     ).rejects.toThrow();
   });
 
+  it('lxreport.json schema accepts an optional `id` field', () => {
+    const withId = {
+      ...getDummyReportMetadata(),
+      id: 'net.leanix.myreport'
+    };
+    expect(() => validateDocument(withId, 'lxreport.json')).not.toThrow();
+  });
+
+  it('package.json schema accepts an optional `leanixReport.id` field', () => {
+    const withId = {
+      name: 'custom-report-name',
+      version: '0.1.0',
+      description: 'Custom Report Description',
+      leanixReport: {
+        title: 'Test Report',
+        id: 'net.leanix.myreport'
+      }
+    };
+    const withoutId = {
+      name: 'custom-report-name',
+      version: '0.1.0',
+      description: 'Custom Report Description',
+      leanixReport: {
+        title: 'Test Report'
+      }
+    };
+    expect(() => validateDocument(withId, 'package.json')).not.toThrow();
+    expect(() => validateDocument(withoutId, 'package.json')).not.toThrow();
+  });
+
   it('readLxrJson sets global proxy dispatcher when proxyURL is present', async () => {
     const originalDispatcher = getGlobalDispatcher();
     initProxy('http://proxy.example.com:8080');
