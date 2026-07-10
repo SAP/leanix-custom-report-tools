@@ -5,13 +5,19 @@ import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 
+// On Windows, `npm` is a `.cmd` shim that execFile can't invoke directly.
+// Resolving the platform-specific binary lets us drop `shell: true`, which in
+// turn silences DEP0190 (Node warns about shell + args because the args get
+// concatenated into the command line without escaping).
+const NPM_BIN = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+
 const PACKAGES = [
   '@sap/vite-plugin-leanix-custom-report',
   '@leanix/reporting'
 ] as const;
 
 async function runNpmView(pkg: string, field: string): Promise<string> {
-  const { stdout } = await execFileAsync('npm', ['view', pkg, field], {
+  const { stdout } = await execFileAsync(NPM_BIN, ['view', pkg, field], {
     timeout: 10_000
   });
   return stdout.trim();
