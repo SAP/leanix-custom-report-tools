@@ -127,7 +127,7 @@ npm run dev
 
 ## Internal-only: `lxr store-upload`
 
-> ⚠️ **INTERNAL SAP LeanIX USE ONLY.** Regular customers publish reports with `vite build --mode upload` (see step 5 above). The `store-upload` command exists so LeanIX-internal reports can be published to the Extension Hub (torg store) and is documented here only for internal contributors — it is confusing and misleading in customer workflows.
+> ⚠️ **INTERNAL SAP LeanIX USE ONLY.** Regular customers publish reports with `vite build --mode upload` (see step 5 above). The `store-upload` command exists so LeanIX-internal reports can be published to the Extension Hub and is documented here only for internal contributors.
 
 Publishes a compiled report bundle to the Extension Hub for a given store asset id:
 
