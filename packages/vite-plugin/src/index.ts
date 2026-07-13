@@ -21,6 +21,8 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import { ZodError } from 'zod';
 import { checkPackageVersions } from './helpers/check-packages';
 import { resolveHostname } from './helpers/resolve-hostname';
+import { printScanTable } from './helpers/render-scan-table';
+import type { Scan } from '@lxr/core/models/custom-report-row';
 
 export default function leanixPlugin(): Plugin[] {
   let logger: Logger;
@@ -240,12 +242,16 @@ export default function leanixPlugin(): Plugin[] {
           bearerToken,
           bundle
         });
-        await pollReportState({
+        const finalRow = await pollReportState({
           host,
           customReportVersionId,
           bearerToken,
           onUpdate: (state) => logger?.info(`  state: ${state}`)
         });
+        if (finalRow.securityScan !== null) {
+          const scan = finalRow.securityScan as Scan;
+          printScanTable(logger.info, scan);
+        }
         logger?.info('');
         logger?.info('Upload complete 🚀');
         logger?.info(
@@ -255,16 +261,12 @@ export default function leanixPlugin(): Plugin[] {
       } catch (err: any) {
         logger?.error('💥 Upload failed.');
         if (err instanceof ReportStateError) {
-          if (err.status === 'VULNERABLE' && err.securityScan !== null) {
-            logger?.error('Scan result:');
-            logger?.error(
-              '--------------------------------------------------------------------------'
-            );
-            logger?.error(JSON.stringify(err.securityScan, null, 2));
-            logger?.error(
-              '--------------------------------------------------------------------------'
-            );
-          } else if (err.buildLog) {
+          if (err.securityScan !== null) {
+            const scan = err.securityScan as Scan;
+            printScanTable(logger.info, scan);
+          }
+
+          if (err.status === 'FAILED' && err.buildLog) {
             const lines = err.buildLog.split('\n');
             logger?.error('Build log:');
             logger?.error(

@@ -10,7 +10,12 @@ export type CustomReportState = GeneratedMetadata['status'];
 
 // The security scan block returned on GET /customReportVersions/:id.
 export type SecurityScan =
-  components['schemas']['CustomReportVersionMetadataDtoSecurityScan'];
+  components['schemas']['CustomReportVersionMetadataDtoScan'];
+
+export type PackageFinding =
+  components['schemas']['CustomReportVersionMetadataDtoPackageFinding'];
+
+export type Scan = components['schemas']['CustomReportVersionMetadataDtoScan'];
 
 export interface CustomReportRow {
   id: string;
@@ -18,6 +23,13 @@ export interface CustomReportRow {
   buildLog: string | null;
   securityScan: SecurityScan | null;
 }
+
+export const PACKAGE_FINDING_SEVERITIES = [
+  'critical',
+  'high',
+  'moderate',
+  'low'
+] as const satisfies NonNullable<PackageFinding['severity']>[];
 
 // Happy path for an upload: SCANNING -> BUILDING -> READY.
 // Terminal failures: VULNERABLE (scan found issues), FAILED (build failed).
