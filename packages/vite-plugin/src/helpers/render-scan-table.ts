@@ -10,7 +10,13 @@ const SEVERITY_COLUMN_VALUES = [
 const SEVERITY_WIDTH = Math.max(...SEVERITY_COLUMN_VALUES.map((s) => s.length));
 const PADDING = 2;
 const FALLBACK_TERMINAL_WIDTH = 80;
-const HEADERS = ['Severity', 'URL', 'Package', 'Title', 'Path'];
+const HEADERS = [
+  'Severity',
+  'Advisory',
+  'Vulnerable Package',
+  'Vulnerability',
+  'Dependency Chain'
+];
 
 function severityLabel(severity: PackageFinding['severity']): string {
   return (severity ?? 'unknown').toUpperCase();
@@ -68,7 +74,9 @@ function renderScanTable(scan: Scan, terminalWidth?: number): string[] {
       f.url ?? '',
       `${f.packageName}@${f.packageVersion}`,
       f.title ?? '(no title)',
-      f.dependencyPath.join(' > ')
+      f.dependencyPath.length > 0
+        ? [...f.dependencyPath, f.packageName].join(' > ')
+        : ''
     ]);
   }
 
