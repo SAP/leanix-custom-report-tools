@@ -129,7 +129,7 @@ export async function uploadToExtensionHub(params: {
   const baseURL = storeHost.startsWith('http')
     ? storeHost
     : `https://${storeHost}`;
-  const url = `${baseURL}/services/torg/v1/assetversions/${assetId}/payload`;
+  const url = `${baseURL}/services/torg/v1/assetversions/${encodeURIComponent(assetId)}/payload`;
 
   const form = new FormData();
   form.append('file', bundle);
