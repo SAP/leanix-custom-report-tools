@@ -1,5 +1,6 @@
 import type { PackageFinding, Scan } from '@lxr/core/models/custom-report-row';
 import { describe, expect, it, vi } from 'vitest';
+import type { Logger } from 'vite';
 import { printScanTable } from './render-scan-table';
 
 function makeFinding(overrides: Partial<PackageFinding> = {}): PackageFinding {
@@ -18,6 +19,25 @@ function makeScan(findings: PackageFinding[]): Scan {
   return { schemaVersion: '1', packageFindings: findings };
 }
 
+function makeLogger(): {
+  logger: Logger;
+  infoLines: string[];
+  warnLines: string[];
+} {
+  const infoLines: string[] = [];
+  const warnLines: string[] = [];
+  const logger = {
+    info: (msg: string) => infoLines.push(msg),
+    warn: (msg: string) => warnLines.push(msg),
+    error: vi.fn(),
+    clearScreen: vi.fn(),
+    hasWarnings: false,
+    hasErrorLogged: vi.fn(),
+    warnOnce: vi.fn()
+  } as unknown as Logger;
+  return { logger, infoLines, warnLines };
+}
+
 /**
  * Capture every line printScanTable emits to its logInfo callback.
  * printScanTable is the only exported surface; renderScanTable and
@@ -27,14 +47,20 @@ function makeScan(findings: PackageFinding[]): Scan {
  * rendered plain by design, so any escape byte in the output is itself a
  * regression worth catching.
  */
-function capture(scan: Scan): {
+function capture(scan: unknown): {
   lines: string[];
   joined: string;
   header: string;
+  warnLines: string[];
 } {
-  const lines: string[] = [];
-  printScanTable((msg) => lines.push(msg), scan);
-  return { lines, joined: lines.join('\n'), header: lines[0] };
+  const { logger, infoLines, warnLines } = makeLogger();
+  printScanTable(logger, scan);
+  return {
+    lines: infoLines,
+    joined: infoLines.join('\n'),
+    header: infoLines[0],
+    warnLines
+  };
 }
 
 describe('printScanTable', () => {
@@ -104,5 +130,12 @@ describe('printScanTable', () => {
       }
       vi.unstubAllEnvs();
     }
+  });
+
+  it('warns and pretty-prints JSON when schemaVersion is unexpected', () => {
+    const unknownScan = { schemaVersion: '2', packageFindings: [] };
+    const { warnLines, lines } = capture(unknownScan);
+    expect(warnLines[0]).toContain('"1"');
+    expect(lines[0]).toContain('"schemaVersion": "2"');
   });
 });

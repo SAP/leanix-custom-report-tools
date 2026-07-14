@@ -1,7 +1,9 @@
 import type { PackageFinding, Scan } from '@lxr/core/models/custom-report-row';
 import { PACKAGE_FINDING_SEVERITIES } from '@lxr/core/models/custom-report-row';
+import type { Logger } from 'vite';
 import Table from 'cli-table3';
 
+const EXPECTED_SCHEMA_VERSION = '1';
 const SEVERITY_COLUMN_VALUES = [
   'Severity',
   ...PACKAGE_FINDING_SEVERITIES,
@@ -83,10 +85,19 @@ function renderScanTable(scan: Scan, terminalWidth?: number): string[] {
   return table.toString().split('\n');
 }
 
-export function printScanTable(
-  logInfo: (msg: string) => void,
-  scan: Scan
-): void {
-  logInfo(buildScanHeader(scan));
-  renderScanTable(scan).forEach(logInfo);
+export function printScanTable(logger: Logger, scan: unknown): void {
+  if (
+    typeof scan !== 'object' ||
+    scan === null ||
+    (scan as Record<string, unknown>).schemaVersion !== EXPECTED_SCHEMA_VERSION
+  ) {
+    logger.warn(
+      `Security scan has an unexpected schema version (expected "${EXPECTED_SCHEMA_VERSION}"). Raw scan data:`
+    );
+    logger.info(JSON.stringify(scan, null, 2));
+    return;
+  }
+  const typedScan = scan as Scan;
+  logger.info(buildScanHeader(typedScan));
+  renderScanTable(typedScan).forEach((line) => logger.info(line));
 }

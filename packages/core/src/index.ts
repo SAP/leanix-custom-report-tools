@@ -240,7 +240,9 @@ export async function pollReportState(params: {
   while (Date.now() < deadline) {
     const { data, error, response } = await client.GET(
       '/customReportVersions/{customReportVersionId}',
-      { params: { path: { customReportVersionId } } }
+      {
+        params: { path: { customReportVersionId }, query: { scanVersion: '1' } }
+      }
     );
     if (error !== undefined || data === undefined) {
       throw new Error(

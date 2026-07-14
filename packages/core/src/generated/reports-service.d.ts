@@ -220,12 +220,7 @@ export interface components {
        * @enum {string}
        */
       status:
-        | 'SCANNING'
-        | 'BUILDING'
-        | 'READY'
-        | 'VULNERABLE'
-        | 'REVOKED'
-        | 'FAILED';
+        'SCANNING' | 'BUILDING' | 'READY' | 'VULNERABLE' | 'REVOKED' | 'FAILED';
       /**
        * Format: date-time
        * @example 2026-05-01T12:00:00.000Z
@@ -243,8 +238,7 @@ export interface components {
       buildLog: string | null;
       /** @example null */
       securityScan:
-        | components['schemas']['CustomReportVersionMetadataDtoScan']
-        | null;
+        components['schemas']['CustomReportVersionMetadataDtoScan'] | null;
       creator: components['schemas']['CustomReportVersionMetadataDtoVersionCreator'];
     };
     CustomReportResponseDto__schema0:
@@ -271,12 +265,7 @@ export interface components {
        * @enum {string}
        */
       status:
-        | 'SCANNING'
-        | 'BUILDING'
-        | 'READY'
-        | 'VULNERABLE'
-        | 'REVOKED'
-        | 'FAILED';
+        'SCANNING' | 'BUILDING' | 'READY' | 'VULNERABLE' | 'REVOKED' | 'FAILED';
       /**
        * Format: date-time
        * @example 2026-05-01T12:00:00.000Z
@@ -435,7 +424,10 @@ export interface operations {
   };
   CustomReportVersionsController_getMetadata: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description Scan schema version the caller understands (e.g. "1"). Ignored by the server — reserved for future content negotiation. */
+        scanVersion?: string;
+      };
       header?: never;
       path: {
         customReportVersionId: string;

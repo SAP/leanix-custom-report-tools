@@ -22,7 +22,6 @@ import { ZodError } from 'zod';
 import { checkPackageVersions } from './helpers/check-packages';
 import { resolveHostname } from './helpers/resolve-hostname';
 import { printScanTable } from './helpers/render-scan-table';
-import type { Scan } from '@lxr/core/models/custom-report-row';
 
 export default function leanixPlugin(): Plugin[] {
   let logger: Logger;
@@ -249,8 +248,7 @@ export default function leanixPlugin(): Plugin[] {
           onUpdate: (state) => logger?.info(`  state: ${state}`)
         });
         if (finalRow.securityScan !== null) {
-          const scan = finalRow.securityScan as Scan;
-          printScanTable(logger.info, scan);
+          printScanTable(logger, finalRow.securityScan);
         }
         logger?.info('');
         logger?.info('Upload complete 🚀');
@@ -262,8 +260,7 @@ export default function leanixPlugin(): Plugin[] {
         logger?.error('💥 Upload failed.');
         if (err instanceof ReportStateError) {
           if (err.securityScan !== null) {
-            const scan = err.securityScan as Scan;
-            printScanTable(logger.info, scan);
+            printScanTable(logger, err.securityScan);
           }
 
           if (err.status === 'FAILED' && err.buildLog) {
