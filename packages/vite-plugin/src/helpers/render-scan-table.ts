@@ -31,7 +31,7 @@ function buildScanHeader(scan: Scan): string {
   const countBySeverity = scan.packageFindings.reduce<Map<string, number>>(
     (counts, finding) => {
       const severity = finding.severity ?? 'unknown';
-      return counts.set(severity, counts.getOrInsert(severity, 0) + 1);
+      return counts.set(severity, (counts.get(severity) ?? 0) + 1);
     },
     new Map()
   );
