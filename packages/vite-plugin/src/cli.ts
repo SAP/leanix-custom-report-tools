@@ -98,14 +98,13 @@ async function storeUpload(assetId: string): Promise<void> {
   console.log(`Building "${metadata.name}" v${metadata.version}...`);
   let outDir: string;
   try {
-    const { build } = await import('vite');
-    const output = await build({ root: cwd, logLevel: 'info' });
-    // build() returns RollupOutput | RollupOutput[] | RollupWatcher; we only
-    // need the dist directory. The default is `<root>/dist` and generated
-    // projects never override it — hard-code that here and revisit if a
-    // consumer needs otherwise.
-    void output;
-    outDir = resolve(cwd, 'dist');
+    const { build, resolveConfig } = await import('vite');
+    const resolvedConfig = await resolveConfig({ root: cwd }, 'build');
+    await build({ root: cwd, logLevel: 'info' });
+    // Use the resolved build.outDir rather than assuming `dist`, so a consumer
+    // that overrides build.outDir packs the same directory the plugin's
+    // writeBundle hook wrote lxreport.json into.
+    outDir = resolve(cwd, resolvedConfig.build.outDir);
   } catch (err: any) {
     console.error(`💥 Build failed: ${err?.message ?? err}`);
     process.exit(1);
