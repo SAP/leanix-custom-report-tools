@@ -32,7 +32,7 @@
     "lint": "eslint --fix",
     "format": "prettier --write .",
     "update": "npx npm-check-updates@latest -u",
-    "create-custom-report-local": "./scripts/create-custom-report-local.sh",
+    "create-custom-report-local": "node ./scripts/create-custom-report-local.mjs",
     "prepare": "lefthook install"
   },
   "dependencies": {
