@@ -19,8 +19,9 @@ import {
   writeFileSync
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, resolve, dirname } from 'node:path';
 import { promisify } from 'node:util';
+import { execPath } from 'node:process';
 import { customReportMetadataSchema } from '@lxr/core/models/custom-report-metadata';
 import { CUSTOM_REPORT_TERMINAL_FAILURE_STATES } from '@lxr/core/models/custom-report-row';
 import { packageJsonLxrSchema } from '@lxr/core/models/package-json';
@@ -148,18 +149,37 @@ export async function uploadToExtensionHub(params: {
   return content as ReportUploadResponseData;
 }
 
-// On Windows, `npm` is a `.cmd` shim that execFile can't invoke directly.
-// Resolving the platform-specific binary lets us drop `shell: true`, which in
-// turn silences DEP0190 (Node warns about shell + args because the args get
-// concatenated into the command line without escaping).
-const NPM_BIN = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+// Node v24 on Windows cannot spawn .cmd shims (like npm.cmd) via execFile
+// without shell:true, which triggers DEP0190. Invoking npm-cli.js directly
+// via the current node binary works cross-platform without either issue.
+// On Windows: <node-dir>\node_modules\npm\bin\npm-cli.js
+// On Unix (e.g. Volta): <node-dir>/lib/node_modules/npm/bin/npm-cli.js
+function resolveNpmCli(): string {
+  const binDir = dirname(execPath);
+  const winPath = join(binDir, 'node_modules', 'npm', 'bin', 'npm-cli.js');
+  const unixPath = join(
+    binDir,
+    '..',
+    'lib',
+    'node_modules',
+    'npm',
+    'bin',
+    'npm-cli.js'
+  );
+  if (existsSync(winPath)) return winPath;
+  if (existsSync(unixPath)) return unixPath;
+  throw new Error(
+    `Cannot locate npm-cli.js (tried ${winPath} and ${unixPath})`
+  );
+}
+const NPM_CLI = resolveNpmCli();
 
 export async function npmPackBundle(cwd: string): Promise<string> {
   const packDir = mkdtempSync(join(tmpdir(), 'lxr-npm-pack-'));
-  await execFileAsync(NPM_BIN, ['shrinkwrap'], { cwd });
+  await execFileAsync(execPath, [NPM_CLI, 'shrinkwrap'], { cwd });
   const { stdout } = await execFileAsync(
-    NPM_BIN,
-    ['pack', '--pack-destination', packDir, '--json'],
+    execPath,
+    [NPM_CLI, 'pack', '--pack-destination', packDir, '--json'],
     { cwd }
   );
   const parsed = JSON.parse(stdout) as Array<{ filename: string }>;
