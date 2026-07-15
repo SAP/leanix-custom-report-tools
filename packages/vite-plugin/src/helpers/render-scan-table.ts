@@ -71,11 +71,15 @@ function renderScanTable(scan: Scan, terminalWidth?: number): string[] {
   });
 
   for (const f of scan.packageFindings) {
+    const vulnerablePackage =
+      f.packageVersion != null
+        ? `${f.packageName}@${f.packageVersion}`
+        : f.packageName;
     table.push([
       severityLabel(f.severity),
       f.url ?? '',
-      `${f.packageName}@${f.packageVersion}`,
-      f.title ?? '(no title)',
+      vulnerablePackage,
+      f.title ?? '---',
       f.dependencyPath.length > 0
         ? [...f.dependencyPath, f.packageName].join(' > ')
         : ''
