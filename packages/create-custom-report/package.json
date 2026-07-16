@@ -1,7 +1,7 @@
 {
   "name": "@sap/create-leanix-custom-report",
   "type": "module",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "description": "Creation tool to quickly create new SAP LeanIX custom reports",
   "license": "Apache-2.0",
   "repository": {
