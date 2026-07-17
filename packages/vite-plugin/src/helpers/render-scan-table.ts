@@ -1,4 +1,7 @@
-import type { PackageFinding, Scan } from '@lxr/core/models/custom-report-row';
+import type {
+  PackageFinding,
+  SecurityScan
+} from '@lxr/core/models/custom-report-row';
 import { PACKAGE_FINDING_SEVERITIES } from '@lxr/core/models/custom-report-row';
 import type { Logger } from 'vite';
 import Table from 'cli-table3';
@@ -24,7 +27,7 @@ function severityLabel(severity: PackageFinding['severity']): string {
   return (severity ?? 'unknown').toUpperCase();
 }
 
-function buildScanHeader(scan: Scan): string {
+function buildScanHeader(scan: SecurityScan): string {
   if (scan.packageFindings.length === 0)
     return 'Scan result: clean — no package findings.';
 
@@ -43,7 +46,7 @@ function buildScanHeader(scan: Scan): string {
   return `Scan result: ${parts.join(', ')}`;
 }
 
-function renderScanTable(scan: Scan, terminalWidth?: number): string[] {
+function renderScanTable(scan: SecurityScan, terminalWidth?: number): string[] {
   if (scan.packageFindings.length === 0) return [];
 
   const availableWidth =
@@ -70,6 +73,7 @@ function renderScanTable(scan: Scan, terminalWidth?: number): string[] {
     wrapOnWordBoundary: false
   });
 
+  // packageFindings are received sorted by Severity (critical -> low) from the api
   for (const f of scan.packageFindings) {
     const vulnerablePackage =
       f.packageVersion != null
@@ -101,7 +105,7 @@ export function printScanTable(logger: Logger, scan: unknown): void {
     logger.info(JSON.stringify(scan, null, 2));
     return;
   }
-  const typedScan = scan as Scan;
+  const typedScan = scan as SecurityScan;
   logger.info(buildScanHeader(typedScan));
   renderScanTable(typedScan).forEach((line) => logger.info(line));
 }

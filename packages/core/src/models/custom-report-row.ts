@@ -15,8 +15,6 @@ export type SecurityScan =
 export type PackageFinding =
   components['schemas']['CustomReportVersionMetadataDtoPackageFinding'];
 
-export type Scan = components['schemas']['CustomReportVersionMetadataDtoScan'];
-
 export interface CustomReportRow {
   id: string;
   status: CustomReportState;

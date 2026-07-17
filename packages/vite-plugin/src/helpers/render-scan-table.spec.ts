@@ -1,4 +1,7 @@
-import type { PackageFinding, Scan } from '@lxr/core/models/custom-report-row';
+import type {
+  PackageFinding,
+  SecurityScan
+} from '@lxr/core/models/custom-report-row';
 import { describe, expect, it, vi } from 'vitest';
 import type { Logger } from 'vite';
 import { printScanTable } from './render-scan-table';
@@ -15,7 +18,7 @@ function makeFinding(overrides: Partial<PackageFinding> = {}): PackageFinding {
   };
 }
 
-function makeScan(findings: PackageFinding[]): Scan {
+function makeScan(findings: PackageFinding[]): SecurityScan {
   return { schemaVersion: '1', packageFindings: findings };
 }
 
