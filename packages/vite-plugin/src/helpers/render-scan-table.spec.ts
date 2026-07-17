@@ -100,11 +100,11 @@ describe('printScanTable', () => {
     expect(joined).toContain('lib-b@3.1.0');
   });
 
-  it('null title renders (no title); undefined url renders empty (never "undefined")', () => {
+  it('null title renders ---; undefined url renders empty (never "undefined")', () => {
     const { joined } = capture(
       makeScan([makeFinding({ title: null, url: undefined })])
     );
-    expect(joined).toContain('(no title)');
+    expect(joined).toContain('---');
     expect(joined).not.toContain('undefined');
   });
 
