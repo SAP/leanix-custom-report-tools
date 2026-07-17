@@ -9,7 +9,8 @@ export default [
       '**/test-app/**',
       '**/dist/**',
       '**/node_modules/**',
-      '**/templates/**'
+      '**/templates/**',
+      '**/test-fixtures/**'
     ]
   },
   {
