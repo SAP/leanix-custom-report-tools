@@ -1,6 +1,6 @@
 {
   "name": "@sap/leanix-custom-report-tools",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "private": true,
   "description": "Monorepo for SAP LeanIX custom report development tools",
   "license": "Apache-2.0",
@@ -32,7 +32,7 @@
     "lint": "eslint --fix",
     "format": "prettier --write .",
     "update": "npx npm-check-updates@latest -u",
-    "create-custom-report-local": "./scripts/create-custom-report-local.sh",
+    "create-custom-report-local": "node ./scripts/create-custom-report-local.mjs",
     "prepare": "lefthook install"
   },
   "dependencies": {
