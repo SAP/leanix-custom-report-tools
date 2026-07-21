@@ -38,7 +38,8 @@
     "node": ">=22.0.0 <26.0.0 || >=26.1.0"
   },
   "dependencies": {
-    "http-proxy-middleware": "4.1.1"
+    "http-proxy-middleware": "4.2.0",
+    "cli-table3": "0.6.5"
   },
   "devDependencies": {}
 }

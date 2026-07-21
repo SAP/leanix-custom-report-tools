@@ -314,7 +314,7 @@ describe('the lxr core package', () => {
       const statuses = ['SCANNING', 'BUILDING', 'READY'];
       let i = 0;
       server = createHttpServer((req, res) => {
-        expect(req.url).toBe('/customReportVersions/uuid-123');
+        expect(req.url).toBe('/customReportVersions/uuid-123?scanVersion=1');
         const status = statuses[Math.min(i, statuses.length - 1)];
         i++;
         res.statusCode = 200;

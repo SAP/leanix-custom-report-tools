@@ -84,23 +84,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/customReportVersions/{customReportVersionId}/dist/{path}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Download individual dist file */
-    get: operations['CustomReportVersionsController_getDistFile'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   '/customReportVersions/{id}': {
     parameters: {
       query?: never;
@@ -113,57 +96,6 @@ export interface paths {
     post?: never;
     /** Delete a custom report version */
     delete: operations['CustomReportVersionsController_deleteVersion'];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/builder/src': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Download source archive for this build job */
-    get: operations['BuilderController_getSrc'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/builder/scan': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Submit security scan results for this build job */
-    post: operations['BuilderController_uploadScan'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/builder/dist': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Upload built distribution archive */
-    post: operations['BuilderController_uploadDist'];
-    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -204,20 +136,68 @@ export interface paths {
     patch: operations['CustomReportsController_patch'];
     trace?: never;
   };
+  '/customReports/{ws_id}/{cr_id}/dist/{path}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Download dist file for the active version of a report */
+    get: operations['CustomReportsController_getActiveDistFile'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/customReports/{ws_id}/{cr_id}/versions/{crv_id}/dist/{path}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Download dist file for a specific version */
+    get: operations['CustomReportsController_getVersionDistFile'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
-    CustomReportVersionMetadataDtoSecurityScan: {
-      blackduck?: {
-        [key: string]: unknown;
-      };
-      cxone?: {
-        [key: string]: unknown;
-      };
-      npmAudit?: {
-        [key: string]: unknown;
-      };
+    CustomReportVersionMetadataDtoScan: {
+      /** @enum {string} */
+      schemaVersion: '1';
+      packageFindings: components['schemas']['CustomReportVersionMetadataDtoPackageFinding'][];
+    };
+    CustomReportVersionMetadataDtoPackageFinding: {
+      packageName: string;
+      packageVersion: string | null;
+      /** @enum {string|null} */
+      severity: 'critical' | 'high' | 'moderate' | 'low' | null;
+      title: string | null;
+      url?: string;
+      dependencyPath: string[];
+    };
+    CustomReportVersionMetadataDtoVersionCreator: {
+      /**
+       * Format: uuid
+       * @example d4e5f6a7-b8c9-0123-defa-123456789012
+       */
+      id: string;
+      /** @example John Doe */
+      displayName?: string;
+      /** @example false */
+      technicalUser?: boolean;
     };
     CustomReportVersionMetadataDto: {
       /**
@@ -240,35 +220,26 @@ export interface components {
        * @enum {string}
        */
       status:
-        | 'SCANNING'
-        | 'BUILDING'
-        | 'READY'
-        | 'VULNERABLE'
-        | 'REVOKED'
-        | 'FAILED';
+        'SCANNING' | 'BUILDING' | 'READY' | 'VULNERABLE' | 'REVOKED' | 'FAILED';
       /**
        * Format: date-time
        * @example 2026-05-01T12:00:00.000Z
        */
       createdAt: string;
+      /** @example my-fancy-barchart */
+      packageName: string;
+      /** @example My Custom Report */
+      title: string;
+      /** @example A nice report */
+      description: string;
+      /** @example 1.2.3 */
+      version: string;
       /** @example null */
       buildLog: string | null;
       /** @example null */
       securityScan:
-        | components['schemas']['CustomReportVersionMetadataDtoSecurityScan']
-        | null;
-    };
-    ScanCallbackBody: {
-      vulnerable: boolean;
-      blackduck: {
-        [key: string]: unknown;
-      };
-      cxone: {
-        [key: string]: unknown;
-      };
-      npmAudit: {
-        [key: string]: unknown;
-      };
+        components['schemas']['CustomReportVersionMetadataDtoScan'] | null;
+      creator: components['schemas']['CustomReportVersionMetadataDtoVersionCreator'];
     };
     CustomReportResponseDto__schema0:
       | (
@@ -294,12 +265,7 @@ export interface components {
        * @enum {string}
        */
       status:
-        | 'SCANNING'
-        | 'BUILDING'
-        | 'READY'
-        | 'VULNERABLE'
-        | 'REVOKED'
-        | 'FAILED';
+        'SCANNING' | 'BUILDING' | 'READY' | 'VULNERABLE' | 'REVOKED' | 'FAILED';
       /**
        * Format: date-time
        * @example 2026-05-01T12:00:00.000Z
@@ -322,9 +288,9 @@ export interface components {
        */
       id: string;
       /** @example John Doe */
-      displayName: string;
+      displayName?: string;
       /** @example false */
-      technicalUser: boolean;
+      technicalUser?: boolean;
     };
     CustomReportResponseDto: {
       /**
@@ -341,8 +307,8 @@ export interface components {
        * Format: uuid
        * @example a1b2c3d4-e5f6-7890-abcd-ef1234567890
        */
-      originWorkspaceId: string;
-      /** @example net.mycompany.myreport */
+      customReportVersionWorkspaceId: string;
+      /** @example my-fancy-barchart */
       packageName: string;
       /** @example false */
       enabled: boolean;
@@ -458,7 +424,10 @@ export interface operations {
   };
   CustomReportVersionsController_getMetadata: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description Scan schema version the caller understands (e.g. "1"). Ignored by the server — reserved for future content negotiation. */
+        scanVersion?: string;
+      };
       header?: never;
       path: {
         customReportVersionId: string;
@@ -596,55 +565,6 @@ export interface operations {
       };
     };
   };
-  CustomReportVersionsController_getDistFile: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        customReportVersionId: string;
-        path: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description File stream with inferred Content-Type */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Missing or invalid JWT */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Insufficient role or permissions */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Version or file not found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Report is VULNERABLE or REVOKED */
-      410: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
   CustomReportVersionsController_deleteVersion: {
     parameters: {
       query?: never;
@@ -683,98 +603,6 @@ export interface operations {
       };
       /** @description Version not found */
       404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  BuilderController_getSrc: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Source archive (.tgz) */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/gzip': Blob;
-        };
-      };
-      /** @description Invalid or expired builder token */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  BuilderController_uploadScan: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['ScanCallbackBody'];
-      };
-    };
-    responses: {
-      /** @description Scan result recorded — job proceeds to build (clean) or is marked VULNERABLE */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Invalid scan result payload */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Invalid or expired builder token */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  BuilderController_uploadDist: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/gzip': Blob;
-      };
-    };
-    responses: {
-      /** @description Distribution stored — custom report marked READY */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Invalid or expired builder token */
-      401: {
         headers: {
           [name: string]: unknown;
         };
@@ -899,6 +727,86 @@ export interface operations {
       };
       /** @description Version not eligible for activation */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  CustomReportsController_getActiveDistFile: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        ws_id: string;
+        cr_id: string;
+        path: string[];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description File stream */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Report is disabled */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Active version is VULNERABLE or REVOKED */
+      410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  CustomReportsController_getVersionDistFile: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        ws_id: string;
+        cr_id: string;
+        crv_id: string;
+        path: string[];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description File stream */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Version is VULNERABLE or REVOKED */
+      410: {
         headers: {
           [name: string]: unknown;
         };
