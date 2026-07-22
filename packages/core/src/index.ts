@@ -118,7 +118,7 @@ export async function createBundle(outDir: string): Promise<string> {
 
 // Posts a bundle to torg (Extension Hub). Used by the internal
 // `lxr store-upload` command. `host` accepts either a bare hostname
-// (default: 'store.leanix.net') or a full URL with scheme.
+// (default: 'exthub.leanix.net') or a full URL with scheme.
 export async function uploadToExtensionHub(params: {
   bundle: Blob;
   bearerToken: string;
@@ -126,7 +126,7 @@ export async function uploadToExtensionHub(params: {
   assetId: string;
 }): Promise<ReportUploadResponseData> {
   const { bundle, bearerToken, host, assetId } = params;
-  const storeHost = host ?? 'store.leanix.net';
+  const storeHost = host ?? 'exthub.leanix.net';
   const baseURL = storeHost.startsWith('http')
     ? storeHost
     : `https://${storeHost}`;
