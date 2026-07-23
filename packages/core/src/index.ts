@@ -94,9 +94,9 @@ export function writeReportMetadata(
   writeFileSync(resolve(outDir, 'lxreport.json'), JSON.stringify(metadata));
 }
 
-// CURRENTLY NOT USED - may be used for direct uploads to Extension Hub in the future
 // Creates a bundle.tgz from a compiled dist directory.
-// Used for Extension Hub (Store) uploads via uploadToExtensionHub({ store: { assetId } }).
+// Used by the internal `lxr store-upload` command to package a built
+// custom report for Extension Hub (torg store) uploads.
 export async function createBundle(outDir: string): Promise<string> {
   const bundleFilename = 'bundle.tgz';
   const targetFilePath = resolve(outDir, bundleFilename);
@@ -116,10 +116,9 @@ export async function createBundle(outDir: string): Promise<string> {
   return targetFilePath;
 }
 
-// CURRENTLY NOT USED
-// Posts a bundle to torg (Extension Hub).
-// store.host accepts either a bare hostname (default: 'store.leanix.net')
-// or a full URL with scheme
+// Posts a bundle to torg (Extension Hub). Used by the internal
+// `lxr store-upload` command. `host` accepts either a bare hostname
+// (default: 'exthub.leanix.net') or a full URL with scheme.
 export async function uploadToExtensionHub(params: {
   bundle: Blob;
   bearerToken: string;
@@ -127,11 +126,11 @@ export async function uploadToExtensionHub(params: {
   assetId: string;
 }): Promise<ReportUploadResponseData> {
   const { bundle, bearerToken, host, assetId } = params;
-  const storeHost = host ?? 'store.leanix.net';
+  const storeHost = host ?? 'exthub.leanix.net';
   const baseURL = storeHost.startsWith('http')
     ? storeHost
     : `https://${storeHost}`;
-  const url = `${baseURL}/services/torg/v1/assetversions/${assetId}/payload`;
+  const url = `${baseURL}/services/torg/v1/assetversions/${encodeURIComponent(assetId)}/payload`;
 
   const form = new FormData();
   form.append('file', bundle);

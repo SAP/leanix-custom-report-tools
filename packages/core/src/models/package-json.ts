@@ -6,6 +6,7 @@ export const packageJsonLxrSchema = zod.object({
   description: zod.string(),
   leanixReport: zod.object({
     title: zod.string(),
+    id: zod.string().optional(), // optional report id (e.g. "net.leanix.myreport"); required by `lxr store-upload`
     aiAssisted: zod.boolean().optional(),
     defaultConfig: zod.record(zod.string(), zod.any()).optional()
   })
