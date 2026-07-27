@@ -13,8 +13,8 @@
   "dependencies": {
     "@leanix/reporting": "^0.4.176",
     "chart.js": "4.5.1",
-    "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
