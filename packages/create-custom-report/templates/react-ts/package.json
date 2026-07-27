@@ -21,10 +21,10 @@
     "@sap/vite-plugin-leanix-custom-report": "^9.1.0",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "6.0.3",
+    "@vitejs/plugin-react": "6.0.4",
     "eslint": "10.7.0",
     "eslint-plugin-react-hooks": "7.1.1",
-    "prettier": "3.9.5",
+    "prettier": "3.9.6",
     "typescript": "6.0.3",
     "typescript-eslint": "8.64.0",
     "vite": "8.1.5"
