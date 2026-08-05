@@ -18,6 +18,7 @@ import {
 } from '@lxr/core/index';
 import { authenticate } from '@lxr/core/auth';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import { ZodError } from 'zod';
 import { checkPackageVersions } from './helpers/check-packages';
 import { resolveHostname } from './helpers/resolve-hostname';
@@ -122,11 +123,16 @@ export default function leanixPlugin(): Plugin[] {
       // The launch URL includes the workspace name in the path (e.g., localhost/{workspaceName}/reporting/dev)
       // so that the remote nginx correctly sets <base href="/{workspaceName}/">.
       // For requests without workspace prefix (e.g., /reporting/...), we prepend the workspace name.
+      const proxyAgent = resolvedAuth?.proxyURL
+        ? new HttpsProxyAgent(resolvedAuth.proxyURL)
+        : undefined;
+
       relayServer = createHttpServer(
         createProxyMiddleware({
           target: targetOrigin,
           changeOrigin: true,
           secure: true,
+          ...(proxyAgent ? { agent: proxyAgent } : {}),
           on: {
             proxyReq: (proxyReq, req) => {
               // Rewrite Origin header: localhost -> LeanIX host
