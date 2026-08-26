@@ -17,6 +17,7 @@ import {
   writeReportMetadata
 } from '@lxr/core/index';
 import { authenticate } from '@lxr/core/auth';
+import { HttpError } from '@lxr/core/errors';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { ZodError } from 'zod';
@@ -99,7 +100,9 @@ export default function leanixPlugin(): Plugin[] {
           }
         } catch (err) {
           logger?.error(
-            err === 401 ? '💥 Invalid SAP LeanIX API token' : `${err}`
+            err instanceof HttpError && err.status === 401
+              ? '💥 Invalid SAP LeanIX API token'
+              : `${err}`
           );
           process.exit(1);
         }

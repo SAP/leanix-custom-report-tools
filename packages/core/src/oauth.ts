@@ -6,6 +6,7 @@ import { URL } from 'node:url';
 import { jwtDecode } from 'jwt-decode';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
 import { OAUTH_BASE_URL } from './constants';
+import { describeError } from './errors';
 
 export function getHostFromAccessToken(accessToken: string): string {
   const claims: JwtClaims = jwtDecode(accessToken);
@@ -66,16 +67,16 @@ export async function startCallbackServer(): Promise<{
  * Wraps a single OAuth step so any failure is reported as
  *   `Authentication failed on <step>: <reason>`
  *
- * The <reason> is the underlying error's `message` — typically
- * `<status> <statusText>` for HTTP failures, or a short library message
- * from oauth4webapi for parsing/validation issues.
+ * The <reason> is the full error `cause` chain (see {@link describeError}) —
+ * for HTTP failures typically `<status> <statusText>`, for network failures the
+ * underlying `fetch` cause (e.g. `getaddrinfo ENOTFOUND ...`, `ECONNREFUSED`),
+ * and for oauth4webapi issues its short parsing/validation message.
  */
 async function authStep<T>(step: string, fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
-    throw new Error(`Authentication failed on ${step}: ${reason}`, {
+    throw new Error(`Authentication failed on ${step}: ${describeError(err)}`, {
       cause: err
     });
   }
@@ -155,8 +156,7 @@ export async function runOAuthFlow(
     }
     const client_secret = reg.client_secret;
     const registration_access_token = reg.registration_access_token as
-      | string
-      | undefined;
+      string | undefined;
 
     // 3. Open browser for user login
     const codeVerifier = oauth.generateRandomCodeVerifier();
