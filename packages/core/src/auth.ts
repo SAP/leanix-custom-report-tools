@@ -47,7 +47,10 @@ export async function exchangeApiToken(
     }
   });
   if (!res.ok) {
-    throw new HttpError(res.status, res.statusText);
+    const body = await res
+      .json()
+      .catch(() => res.text().catch(() => undefined));
+    throw new HttpError(res.status, body);
   }
   const { access_token } = (await res.json()) as { access_token: string };
   return access_token;

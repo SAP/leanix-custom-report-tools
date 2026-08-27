@@ -6,7 +6,7 @@ import { URL } from 'node:url';
 import { jwtDecode } from 'jwt-decode';
 import type { JwtClaims } from '@lxr/core/models/jwt-claims';
 import { OAUTH_BASE_URL } from './constants';
-import { describeError } from './errors';
+import { describeError, HttpError } from './errors';
 
 export function getHostFromAccessToken(accessToken: string): string {
   const claims: JwtClaims = jwtDecode(accessToken);
@@ -87,7 +87,10 @@ async function discover(issuer: string): Promise<oauth.AuthorizationServer> {
   const url = `${issuer}/.well-known/oauth-authorization-server/services/mcp-server/v1`;
   const res = await fetch(url);
   if (!res.ok) {
-    throw new Error(`${res.status} ${res.statusText}`);
+    const body = await res
+      .json()
+      .catch(() => res.text().catch(() => undefined));
+    throw new HttpError(res.status, body);
   }
   return oauth.processDiscoveryResponse(issuerUrl, res);
 }
