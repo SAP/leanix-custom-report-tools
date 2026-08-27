@@ -7,6 +7,8 @@ import {
 } from './connection-config';
 import { getUserLxrJsonPath } from './constants';
 import { refreshAccessToken, runOAuthFlow } from './oauth';
+import { fetchOrThrow } from './fetch';
+import { HttpError } from './errors';
 
 export type ResolvedAuth = {
   bearerToken: string;
@@ -37,7 +39,7 @@ export async function exchangeApiToken(
 ): Promise<string> {
   // LeanIX MTM requires grant_type as a query parameter, not in the request body.
   const url = `https://${host}/services/mtm/v1/oauth2/token?grant_type=client_credentials`;
-  const res = await fetch(url, {
+  const res = await fetchOrThrow(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -45,7 +47,10 @@ export async function exchangeApiToken(
     }
   });
   if (!res.ok) {
-    throw new Error(`Authentication failed: ${res.status} ${res.statusText}`);
+    const body = await res
+      .json()
+      .catch(() => res.text().catch(() => undefined));
+    throw new HttpError(res.status, body);
   }
   const { access_token } = (await res.json()) as { access_token: string };
   return access_token;

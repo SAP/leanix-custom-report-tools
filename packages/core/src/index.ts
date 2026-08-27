@@ -28,6 +28,8 @@ import { packageJsonLxrSchema } from '@lxr/core/models/package-json';
 import { jwtDecode } from 'jwt-decode';
 import createClient from 'openapi-fetch';
 import { c } from 'tar';
+import { fetchOrThrow } from './fetch';
+import { HttpError } from './errors';
 
 const execFileAsync = promisify(execFile);
 
@@ -134,7 +136,7 @@ export async function uploadToExtensionHub(params: {
 
   const form = new FormData();
   form.append('file', bundle);
-  const res = await fetch(url, {
+  const res = await fetchOrThrow(url, {
     method: 'POST',
     headers: { Authorization: `Bearer ${bearerToken}` },
     body: form
@@ -143,7 +145,7 @@ export async function uploadToExtensionHub(params: {
   const content =
     contentType === 'application/json' ? await res.json() : await res.text();
   if (!res.ok) {
-    throw new Error(JSON.stringify({ status: res.status, message: content }));
+    throw new HttpError(res.status, content);
   }
   return content as ReportUploadResponseData;
 }
@@ -206,7 +208,8 @@ function reportsServiceClient(params: {
   const { host, bearerToken, baseURL } = params;
   return createClient<paths>({
     baseUrl: baseURL ?? `https://${host}/services/reports/v1`,
-    headers: { Authorization: `Bearer ${bearerToken}` }
+    headers: { Authorization: `Bearer ${bearerToken}` },
+    fetch: fetchOrThrow
   });
 }
 
@@ -227,9 +230,7 @@ export async function uploadToWorkspace(params: {
     }
   );
   if (error !== undefined || !response.ok || data === undefined) {
-    throw new Error(
-      JSON.stringify({ status: response.status, message: error ?? data })
-    );
+    throw new HttpError(response.status, error ?? data);
   }
   return data;
 }
@@ -274,9 +275,7 @@ export async function pollReportState(params: {
       }
     );
     if (error !== undefined || data === undefined) {
-      throw new Error(
-        JSON.stringify({ status: response.status, message: error })
-      );
+      throw new HttpError(response.status, error);
     }
     const row: CustomReportRow = {
       id: data.id,

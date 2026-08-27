@@ -7,6 +7,7 @@ import {
   logout as coreLogout
 } from '@lxr/core/auth';
 import { getWorkspaceNameFromAccessToken } from '@lxr/core/oauth';
+import { HttpError } from '@lxr/core/errors';
 import {
   createBundle,
   readMetadataJson,
@@ -85,7 +86,7 @@ async function storeUpload(assetId: string): Promise<void> {
     bearerToken = auth.bearerToken;
   } catch (err) {
     console.error(
-      err === 401
+      err instanceof HttpError && err.status === 401
         ? '💥 Invalid SAP LeanIX credentials'
         : `💥 Authentication failed: ${err}`
     );
