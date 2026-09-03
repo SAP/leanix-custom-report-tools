@@ -12,14 +12,14 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@leanix/reporting": "^0.4.176",
+    "@leanix/reporting": "^0.4.186",
     "chart.js": "4.5.1",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "@sap/vite-plugin-leanix-custom-report": "^9.1.3",
+    "@sap/vite-plugin-leanix-custom-report": "^9.2.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "@vitejs/plugin-react": "6.1.1",
