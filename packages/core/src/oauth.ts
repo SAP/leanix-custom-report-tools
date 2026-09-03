@@ -84,7 +84,7 @@ async function authStep<T>(step: string, fn: () => Promise<T>): Promise<T> {
 
 async function discover(issuer: string): Promise<oauth.AuthorizationServer> {
   const issuerUrl = new URL(issuer);
-  const res = await oauth.discoveryRequest(issuerUrl);
+  const res = await oauth.discoveryRequest(issuerUrl, { algorithm: 'oauth2' });
   if (!res.ok) {
     const body = await res
       .json()
