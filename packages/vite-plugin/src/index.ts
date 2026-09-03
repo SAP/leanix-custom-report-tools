@@ -47,6 +47,15 @@ export default function leanixPlugin(): Plugin[] {
       // is served from a sub-path (e.g. .../dist/index.html).
       config.base = './';
 
+      // Custom reports are delivered and loaded as a single self-contained
+      // bundle, so Vite's default 500 kB code-splitting warning doesn't apply
+      // (React + a charting lib already exceed it). Raise the limit so a
+      // standard report builds without noise; a report can still override it.
+      config.build = {
+        ...(config.build ?? {}),
+        chunkSizeWarningLimit: config.build?.chunkSizeWarningLimit ?? 2000
+      };
+
       shouldUpload = env.mode === 'upload';
       requiresServerConnection = env.command === 'serve' || shouldUpload;
 
