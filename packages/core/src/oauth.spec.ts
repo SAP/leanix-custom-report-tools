@@ -191,7 +191,7 @@ describe('workspace config storage', () => {
 // ── refreshAccessToken ─────────────────────────────────────────────────────
 
 describe('refreshAccessToken', () => {
-  const ISSUER = 'https://mcp.leanix.net';
+  const ISSUER = 'https://mcp.leanix.net/services/mcp-server/v1';
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {

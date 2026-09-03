@@ -84,8 +84,7 @@ async function authStep<T>(step: string, fn: () => Promise<T>): Promise<T> {
 
 async function discover(issuer: string): Promise<oauth.AuthorizationServer> {
   const issuerUrl = new URL(issuer);
-  const url = `${issuer}/.well-known/oauth-authorization-server/services/mcp-server/v1`;
-  const res = await fetch(url);
+  const res = await oauth.discoveryRequest(issuerUrl);
   if (!res.ok) {
     const body = await res
       .json()
