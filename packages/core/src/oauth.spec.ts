@@ -263,6 +263,29 @@ describe('refreshAccessToken', () => {
     const discoveryCall = fetchMock.mock.calls[0][0] as string;
     expect(discoveryCall).toContain('staging.leanix.net');
   });
+
+  it('requests the RFC8414 oauth-authorization-server discovery endpoint', async () => {
+    const newToken = makeFakeJwt({ instanceUrl: 'https://test.leanix.net' });
+    fetchMock
+      .mockResolvedValueOnce(makeDiscoveryResponse(ISSUER))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            access_token: newToken,
+            refresh_token: 'new-refresh',
+            token_type: 'Bearer',
+            expires_in: 3600
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      );
+
+    await refreshAccessToken(makeConnectionConfig());
+
+    const discoveryUrl = fetchMock.mock.calls[0][0] as string;
+    expect(discoveryUrl).toContain('.well-known/oauth-authorization-server');
+    expect(discoveryUrl).not.toContain('openid-configuration');
+  });
 });
 
 // ── authenticate auth resolution order ───────────────────────────────
