@@ -14,6 +14,7 @@ import {
 } from '@lxr/core/connection-config';
 import type { ConnectionConfigFile } from '@lxr/core/connection-config';
 import banner from './utils/banner';
+import { migrate } from './migrate';
 import { deployTemplate } from './utils/deployTemplate';
 import { generatePackageJson } from './utils/leanix';
 import { generateMcpConfig } from './utils/generateMcpConfig';
@@ -69,7 +70,6 @@ async function runAuth(file: ConnectionConfigFile | null): Promise<{
 // ---------------------------------------------------------------------------
 
 export async function init(): Promise<void> {
-  console.log(`\n${banner}\n`);
   const argv = minimist(process.argv.slice(2), {
     string: ['title', 'description', 'proxyURL'],
     boolean: ['overwrite', 'skipAuth', 'help'],
@@ -78,6 +78,13 @@ export async function init(): Promise<void> {
       skipAuth: false
     }
   });
+
+  if (argv._[0] === 'migrate') {
+    await migrate(argv);
+    return;
+  }
+
+  console.log(`\n${banner}\n`);
 
   if (argv.help) {
     console.log(`
