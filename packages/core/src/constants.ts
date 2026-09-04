@@ -16,4 +16,4 @@ export const getProjectLxrJsonPath = (): string =>
 export const getUserLxrJsonPath = (): string =>
   join(getConfigDir(), LXR_JSON_FILENAME);
 
-export const OAUTH_BASE_URL = 'https://mcp.leanix.net';
+export const OAUTH_BASE_URL = 'https://mcp.leanix.net/services/mcp-server/v1';

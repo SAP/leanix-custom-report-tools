@@ -5,17 +5,29 @@ export default defineConfig([
     name: 'vite-plugin',
     entry: ['src/index.ts'],
     format: ['cjs', 'esm'],
+    platform: 'node',
     clean: true,
     splitting: false,
     dts: true,
-    esbuildOptions: (options) => {
-      options.footer = {
-        // This will ensure we can continue writing this plugin
-        // as a modern ECMA module, while still publishing this as a CommonJS
-        // library with a default export, as that's how ESLint expects plugins to look.
+    esbuildOptions: (options, context) => {
+      if (context.format === 'cjs') {
+        // Flatten the default export onto module.exports for the CommonJS
+        // build only. Applying this footer to the ESM output produces an
+        // invalid ES module (a stray `module.exports` alongside real `export`
+        // statements), which breaks any ESM consumer of the plugin.
         // @see https://github.com/evanw/esbuild/issues/1182#issuecomment-1011414271
-        js: 'module.exports = module.exports.default;'
-      };
+        options.footer = {
+          js: 'module.exports = module.exports.default;'
+        };
+      }
+      if (context.format === 'esm') {
+        // Bundled dependencies use dynamic `require()`, which is undefined in a
+        // native ES module. Re-create it from import.meta.url so those calls
+        // resolve at runtime instead of hitting esbuild's throwing shim.
+        options.banner = {
+          js: "import { createRequire as __lxrCreateRequire } from 'module'; const require = __lxrCreateRequire(import.meta.url);"
+        };
+      }
     }
   },
   {
