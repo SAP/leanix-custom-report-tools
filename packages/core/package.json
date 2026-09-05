@@ -11,10 +11,10 @@
   "dependencies": {
     "jwt-decode": "4.0.0",
     "oauth4webapi": "3.8.7",
-    "open": "11.0.1",
+    "open": "11.0.2",
     "openapi-fetch": "0.17.0",
     "tar": "7.5.22",
-    "undici": "8.10.0"
+    "undici": "8.10.1"
   },
   "devDependencies": {
     "app-root-path": "3.1.0",
