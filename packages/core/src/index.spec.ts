@@ -252,6 +252,50 @@ describe('the lxr core package', () => {
       rmSync(pkgDir, { recursive: true });
     }, 30000);
 
+    it('npmPackBundle bundles package-lock.json into the tarball', async () => {
+      const pkgDir = mkdtempSync(join(tmpdir(), 'npmPackBundle-lock-'));
+      writeFileSync(
+        resolve(pkgDir, 'package.json'),
+        JSON.stringify({
+          name: 'lxr-test-pack-lock-fixture',
+          version: '0.0.0',
+          description: 'fixture',
+          files: ['index.js']
+        })
+      );
+      writeFileSync(resolve(pkgDir, 'index.js'), '// fixture');
+      // npm pack strict-excludes lockfiles, so npmPackBundle must inject this
+      // itself — the builder's `npm ci` / `npm audit --package-lock-only`
+      // depend on it being present in the tarball.
+      writeFileSync(
+        resolve(pkgDir, 'package-lock.json'),
+        JSON.stringify({
+          name: 'lxr-test-pack-lock-fixture',
+          version: '0.0.0',
+          lockfileVersion: 3,
+          requires: true,
+          packages: {}
+        })
+      );
+      const tarballPath = await npmPackBundle(pkgDir);
+      const entries: string[] = [];
+      await new Promise<void>((res, rej) => {
+        createReadStream(tarballPath)
+          .pipe(tarT())
+          .on('entry', (e: ReadEntry) => entries.push(e.path))
+          .on('end', () => res())
+          .on('error', rej);
+      });
+      expect(entries).toEqual(
+        expect.arrayContaining([
+          'package/package.json',
+          'package/index.js',
+          'package/package-lock.json'
+        ])
+      );
+      rmSync(pkgDir, { recursive: true });
+    }, 30000);
+
     it('uploadToWorkspace posts raw gzip body and parses customReportVersionId', async () => {
       let receivedAuth: string | undefined;
       let receivedContentType: string | undefined;
