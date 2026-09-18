@@ -184,20 +184,54 @@ function resolveNpmCli(): string {
   return found;
 }
 
+// Extracts the packed file list from `npm pack --dry-run --json`, tolerating
+// both shapes: the legacy array `[{ files }]` (npm <12) and the object keyed
+// by package name `{ "<name>": { files } }` introduced in npm 12.
+export function parsePackFileList(stdout: string): string[] {
+  const parsed: unknown = JSON.parse(stdout);
+  const entry = Array.isArray(parsed)
+    ? parsed[0]
+    : parsed && typeof parsed === 'object'
+      ? Object.values(parsed)[0]
+      : undefined;
+  const files = (entry as { files?: unknown } | undefined)?.files;
+  if (!Array.isArray(files) || files.length === 0) {
+    throw new Error(`unexpected npm pack output: ${stdout}`);
+  }
+  return files.map((file) => {
+    const path = (file as { path?: unknown } | undefined)?.path;
+    if (typeof path !== 'string' || path.length === 0) {
+      throw new Error(`unexpected npm pack output: ${stdout}`);
+    }
+    return path;
+  });
+}
+
 export async function npmPackBundle(cwd: string): Promise<string> {
   const npmCli = resolveNpmCli();
   const packDir = mkdtempSync(join(tmpdir(), 'lxr-npm-pack-'));
-  await execFileAsync(execPath, [npmCli, 'shrinkwrap'], { cwd });
+  // Ask npm which files it would pack (honouring `files`/`.npmignore`) without
+  // writing a tarball, then build the tarball ourselves. We cannot let `npm
+  // pack` produce it directly: npm-packlist@11 (bundled with npm 12)
+  // strict-excludes package-lock.json, yet the reports builder needs it inside
+  // the tarball for `npm ci` and `npm audit --package-lock-only`.
   const { stdout } = await execFileAsync(
     execPath,
-    [npmCli, 'pack', '--pack-destination', packDir, '--json'],
+    [npmCli, 'pack', '--dry-run', '--json'],
     { cwd }
   );
-  const parsed = JSON.parse(stdout) as Array<{ filename: string }>;
-  if (!Array.isArray(parsed) || parsed.length === 0 || !parsed[0]?.filename) {
-    throw new Error(`unexpected npm pack output: ${stdout}`);
+  const files = parsePackFileList(stdout);
+  if (
+    existsSync(resolve(cwd, 'package-lock.json')) &&
+    !files.includes('package-lock.json')
+  ) {
+    files.push('package-lock.json');
   }
-  return resolve(packDir, parsed[0].filename);
+  const tarballPath = resolve(packDir, 'bundle.tgz');
+  // `prefix: 'package'` reproduces the `package/` top level that `npm pack`
+  // emits and that the builder strips with `tar --strip-components=1`.
+  await c({ gzip: true, cwd, file: tarballPath, prefix: 'package' }, files);
+  return tarballPath;
 }
 
 function reportsServiceClient(params: {
