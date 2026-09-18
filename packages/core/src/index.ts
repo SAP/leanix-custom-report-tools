@@ -187,7 +187,7 @@ function resolveNpmCli(): string {
 // Extracts the packed file list from `npm pack --dry-run --json`, tolerating
 // both shapes: the legacy array `[{ files }]` (npm <12) and the object keyed
 // by package name `{ "<name>": { files } }` introduced in npm 12.
-function parsePackFileList(stdout: string): string[] {
+export function parsePackFileList(stdout: string): string[] {
   const parsed: unknown = JSON.parse(stdout);
   const entry = Array.isArray(parsed)
     ? parsed[0]

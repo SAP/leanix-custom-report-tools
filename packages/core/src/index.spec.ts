@@ -11,6 +11,7 @@ import {
   createBundle,
   getLaunchUrl,
   npmPackBundle,
+  parsePackFileList,
   pollReportState,
   ReportStateError,
   uploadToExtensionHub,
@@ -224,6 +225,36 @@ describe('the lxr core package', () => {
     let server: Server;
     let baseURL: string;
 
+    describe('parsePackFileList', () => {
+      it('handles the legacy array shape (npm <12)', () => {
+        const stdout = JSON.stringify([
+          { files: [{ path: 'index.js' }, { path: 'package.json' }] }
+        ]);
+        expect(parsePackFileList(stdout)).toEqual(['index.js', 'package.json']);
+      });
+
+      it('handles the npm 12 object shape keyed by package name', () => {
+        const stdout = JSON.stringify({
+          'my-package': {
+            files: [{ path: 'index.js' }, { path: 'package.json' }]
+          }
+        });
+        expect(parsePackFileList(stdout)).toEqual(['index.js', 'package.json']);
+      });
+
+      it('throws on an empty files array', () => {
+        expect(() =>
+          parsePackFileList(JSON.stringify([{ files: [] }]))
+        ).toThrow('unexpected npm pack output');
+      });
+
+      it('throws when a file entry has no path', () => {
+        expect(() =>
+          parsePackFileList(JSON.stringify([{ files: [{ size: 5 }] }]))
+        ).toThrow('unexpected npm pack output');
+      });
+    });
+
     it('npmPackBundle produces a tarball for a package directory', async () => {
       const pkgDir = mkdtempSync(join(tmpdir(), 'npmPackBundle-'));
       writeFileSync(
@@ -249,6 +280,7 @@ describe('the lxr core package', () => {
       expect(entries).toEqual(
         expect.arrayContaining(['package/package.json', 'package/index.js'])
       );
+      expect(entries).not.toContain('package/package-lock.json');
       rmSync(pkgDir, { recursive: true });
     }, 30000);
 
