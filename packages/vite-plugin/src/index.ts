@@ -188,7 +188,17 @@ export default function leanixPlugin(): Plugin[] {
       });
 
       relayServer = createHttpServer(async (req, res) => {
-        await proxyRelay.web(req, res);
+        try {
+          await proxyRelay.web(req, res);
+        } catch (err) {
+          // Transport-level errors (ECONNREFUSED, ECONNRESET, ENOTFOUND) reject here.
+          // Handle them so a failed upstream request does not crash the relay server.
+          logger?.error(`💥 Proxy relay error: ${err}`);
+          if (!res.headersSent) {
+            res.statusCode = 502;
+            res.end('Proxy relay error');
+          }
+        }
       });
 
       // Port 4200 is explicitly listed in backend services' corsAllowlist, which is required so that
