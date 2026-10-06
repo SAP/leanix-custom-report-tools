@@ -18,7 +18,7 @@ import {
 } from '@lxr/core/index';
 import { authenticate } from '@lxr/core/auth';
 import { HttpError } from '@lxr/core/errors';
-import { createProxyMiddleware } from 'http-proxy-middleware';
+import { createProxyServer } from 'httpxy';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { ZodError } from 'zod';
 import { checkPackageVersions } from './helpers/check-packages';
@@ -139,57 +139,57 @@ export default function leanixPlugin(): Plugin[] {
         ? new HttpsProxyAgent(resolvedAuth.proxyURL)
         : undefined;
 
-      relayServer = createHttpServer(
-        createProxyMiddleware({
-          target: targetOrigin,
-          changeOrigin: true,
-          secure: true,
-          ...(proxyAgent ? { agent: proxyAgent } : {}),
-          on: {
-            proxyReq: (proxyReq, req) => {
-              // Rewrite Origin header: localhost -> LeanIX host
-              proxyReq.setHeader('Origin', targetOrigin);
+      const proxyRelay = createProxyServer({
+        target: targetOrigin,
+        changeOrigin: true,
+        secure: true,
+        ...(proxyAgent ? { agent: proxyAgent } : {})
+      });
 
-              // Rewrite Referer header: replace localhost prefix with LeanIX host
-              const referer = req.headers.referer;
-              if (referer) {
-                const refererUrl = new URL(referer);
-                const newReferer = `${targetOrigin}${refererUrl.pathname}${refererUrl.search}`;
-                proxyReq.setHeader('Referer', newReferer);
-              }
+      proxyRelay.on('proxyReq', (proxyReq, req) => {
+        // Rewrite Origin header: localhost -> LeanIX host
+        proxyReq.setHeader('Origin', targetOrigin);
 
-              // Pathfinder-web on localhost unfortunately sometimes generates URLs without the workspace prefix
-              // So we prepend the workspace name to paths that need it
-              // Root-level paths like /frontends/, /services/, /favicon, etc. should pass through unchanged
-              const originalPath = proxyReq.path;
-              const rootPaths = [
-                '/frontends/',
-                '/services/',
-                '/favicon.ico',
-                '/lx-frontend-meta.json',
-                '/Shibboleth.sso/'
-              ];
-              const isRootPath = rootPaths.some((p) =>
-                originalPath.startsWith(p)
-              );
-              const hasWorkspacePrefix = originalPath.startsWith(
-                `/${workspaceName}/`
-              );
-              if (!isRootPath && !hasWorkspacePrefix && req.method === 'GET') {
-                proxyReq.path = `/${workspaceName}${originalPath}`;
-              }
-            },
-            proxyRes: (proxyRes, req) => {
-              // Rewrite CORS headers to allow localhost origin
-              const requestOrigin = req.headers.origin;
-              if (requestOrigin) {
-                proxyRes.headers['access-control-allow-origin'] = requestOrigin;
-                proxyRes.headers['access-control-allow-credentials'] = 'true';
-              }
-            }
-          }
-        })
-      );
+        // Rewrite Referer header: replace localhost prefix with LeanIX host
+        const referer = req.headers.referer;
+        if (referer) {
+          const refererUrl = new URL(referer);
+          const newReferer = `${targetOrigin}${refererUrl.pathname}${refererUrl.search}`;
+          proxyReq.setHeader('Referer', newReferer);
+        }
+
+        // Pathfinder-web on localhost unfortunately sometimes generates URLs without the workspace prefix
+        // So we prepend the workspace name to paths that need it
+        // Root-level paths like /frontends/, /services/, /favicon, etc. should pass through unchanged
+        const originalPath = proxyReq.path;
+        const rootPaths = [
+          '/frontends/',
+          '/services/',
+          '/favicon.ico',
+          '/lx-frontend-meta.json',
+          '/Shibboleth.sso/'
+        ];
+        const isRootPath = rootPaths.some((p) => originalPath.startsWith(p));
+        const hasWorkspacePrefix = originalPath.startsWith(
+          `/${workspaceName}/`
+        );
+        if (!isRootPath && !hasWorkspacePrefix && req.method === 'GET') {
+          proxyReq.path = `/${workspaceName}${originalPath}`;
+        }
+      });
+
+      proxyRelay.on('proxyRes', (proxyRes, req) => {
+        // Rewrite CORS headers to allow localhost origin
+        const requestOrigin = req.headers.origin;
+        if (requestOrigin) {
+          proxyRes.headers['access-control-allow-origin'] = requestOrigin;
+          proxyRes.headers['access-control-allow-credentials'] = 'true';
+        }
+      });
+
+      relayServer = createHttpServer(async (req, res) => {
+        await proxyRelay.web(req, res);
+      });
 
       // Port 4200 is explicitly listed in backend services' corsAllowlist, which is required so that
       // pathfinder-web can call them directly (absolute URLs bypass the relay proxy).
