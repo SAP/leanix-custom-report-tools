@@ -1,0 +1,27 @@
+{
+  "name": "fixture-react",
+  "version": "1.0.0",
+  "description": "react fixture",
+  "leanixReport": {
+    "id": "net.example.react",
+    "title": "React",
+    "defaultConfig": {}
+  },
+  "leanixReportingCli": {
+    "distPath": "dist",
+    "buildCommand": "webpack"
+  },
+  "scripts": {
+    "build": "webpack",
+    "start": "lxr start"
+  },
+  "dependencies": {
+    "@leanix/reporting": "^0.4.148",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "webpack": "^5.104.1",
+    "webpack-cli": "^5.1.4"
+  }
+}
