@@ -1,0 +1,25 @@
+{
+  "name": "fixture-vanilla",
+  "version": "1.0.0",
+  "description": "vanilla fixture",
+  "leanixReport": {
+    "id": "net.example.vanilla",
+    "title": "Vanilla",
+    "defaultConfig": {}
+  },
+  "leanixReportingCli": {
+    "distPath": "dist",
+    "buildCommand": "webpack"
+  },
+  "scripts": {
+    "build": "webpack",
+    "start": "lxr start"
+  },
+  "dependencies": {
+    "@leanix/reporting": "^0.4.148"
+  },
+  "devDependencies": {
+    "webpack": "^5.104.1",
+    "webpack-cli": "^5.1.4"
+  }
+}
