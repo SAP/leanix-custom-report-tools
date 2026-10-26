@@ -1,5 +1,6 @@
 import { openAsBlob } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { parseArgs } from 'node:util';
 import { ZodError } from 'zod';
 import {
   authenticate,
@@ -39,7 +40,7 @@ async function logout(): Promise<void> {
 // distributed as a store asset.
 //
 // Requires `leanixReport.id` in the project's package.json.
-async function storeUpload(assetId: string): Promise<void> {
+async function storeUpload(assetId: string, storeHost?: string): Promise<void> {
   console.warn(
     '⚠️  `lxr store-upload` is intended for INTERNAL SAP LeanIX use only.'
   );
@@ -127,7 +128,8 @@ async function storeUpload(assetId: string): Promise<void> {
     const result = await uploadToExtensionHub({
       bundle,
       bearerToken,
-      assetId
+      assetId,
+      host: storeHost
     });
     console.log('');
     console.log('Store upload complete 🚀');
@@ -142,7 +144,9 @@ async function storeUpload(assetId: string): Promise<void> {
 }
 
 function printUsageAndExit(): never {
-  console.error('Usage: lxr <login | logout | store-upload <asset-id>>');
+  console.error(
+    'Usage: lxr <login | logout | store-upload <asset-id> [--store-host <hostname-or-url>]>'
+  );
   process.exit(1);
 }
 
@@ -158,15 +162,26 @@ if (command === 'login') {
     process.exit(1);
   });
 } else if (command === 'store-upload') {
-  const assetId = process.argv[3];
-  if (!assetId) {
-    console.error('💥 Missing <asset-id> argument.');
+  try {
+    const { values, positionals } = parseArgs({
+      args: process.argv.slice(3),
+      allowPositionals: true,
+      options: { 'store-host': { type: 'string' } }
+    });
+    const [assetId, ...unexpected] = positionals;
+    if (!assetId) throw new Error('Missing <asset-id> argument.');
+    if (unexpected.length) {
+      throw new Error(`Unexpected argument: "${unexpected[0]}".`);
+    }
+    const storeHost = values['store-host'];
+    storeUpload(assetId, storeHost).catch((err) => {
+      console.error(`Store upload failed: ${err?.message ?? err}`);
+      process.exit(1);
+    });
+  } catch (err) {
+    console.error(`💥 ${err instanceof Error ? err.message : err}`);
     printUsageAndExit();
   }
-  storeUpload(assetId).catch((err) => {
-    console.error(`Store upload failed: ${err?.message ?? err}`);
-    process.exit(1);
-  });
 } else {
   printUsageAndExit();
 }
