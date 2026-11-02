@@ -174,6 +174,9 @@ if (command === 'login') {
       throw new Error(`Unexpected argument: "${unexpected[0]}".`);
     }
     const storeHost = values['store-host'];
+    if (storeHost !== undefined && storeHost.trim() === '') {
+      throw new Error('--store-host must not be empty.');
+    }
     storeUpload(assetId, storeHost).catch((err) => {
       console.error(`Store upload failed: ${err?.message ?? err}`);
       process.exit(1);
