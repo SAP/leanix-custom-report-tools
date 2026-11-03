@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@leanix/reporting": "^0.4.186",
-    "chart.js": "4.5.1",
+    "chart.js": "4.6.1",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
@@ -28,6 +28,6 @@
     "prettier": "3.9.10",
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.2",
-    "vite": "8.3.4"
+    "vite": "8.3.5"
   }
 }
