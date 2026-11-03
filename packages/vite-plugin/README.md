@@ -132,12 +132,13 @@ npm run dev
 Publishes a compiled report bundle to the Extension Hub for a given store asset id:
 
 ```bash
-npx lxr store-upload <asset-id>
+npx lxr store-upload <asset-id> [--store-host <hostname-or-url>]
 ```
 
 Prerequisites:
 
 - You must be authenticated (`npx lxr login` or a project-level `lxr.json` with an API token).
+- `lxr.json`'s `host` is the workspace host used for authentication. For example, use `test-app-1.leanix.net` when exchanging an API token for the test cluster.
 - `package.json` must include a `leanixReport.id` (in addition to the fields required for regular uploads):
 
 ```json
@@ -150,7 +151,13 @@ Prerequisites:
 }
 ```
 
-The command runs `vite build` from the project root, packages `dist/` into `bundle.tgz`, and POSTs it to `https://store.leanix.net/services/torg/v1/assetversions/<asset-id>/payload`. It reuses the same credentials as the reports-service upload (OAuth or apitoken from `lxr.json`).
+The command runs `vite build` from the project root, packages `dist/` into `bundle.tgz`, and POSTs it to `https://exthub.leanix.net/services/torg/v1/assetversions/<asset-id>/payload`. It reuses the same credentials as the reports-service upload (OAuth or apitoken from `lxr.json`).
+
+To upload to another Extension Hub environment, pass its host separately from the authentication host:
+
+```bash
+npx lxr store-upload <asset-id> --store-host test-exthub.leanix.net
+```
 
 ## Learn More
 
