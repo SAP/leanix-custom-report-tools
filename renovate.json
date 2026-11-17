@@ -1,13 +1,28 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["group:allNonMajor", "github>leanix/.github"],
+  "extends": ["group:allNonMajor"],
   "addLabels": ["renovate"],
   "timezone": "Europe/Berlin",
+  "automergeType": "pr",
+  "automergeStrategy": "auto",
+  "internalChecksFilter": "strict",
+  "platformAutomerge": true,
+  "prCreation": "not-pending",
+  "prNotPendingHours": 0,
+  "rebaseWhen": "conflicted",
+  "updateNotScheduled": false,
+  "schedule": ["* 7-15 * * 1-5"],
+  "automergeSchedule": ["* 7-15 * * 1-5"],
+  "automerge": false,
+  "prConcurrentLimit": 2,
   "packageRules": [
     {
-      "matchUpdateTypes": ["minor", "patch"],
-      "automerge": true,
-      "automergeSchedule": ["after 10am and before 4pm every weekday"]
+      "matchUpdateTypes": ["minor", "patch", "digest", "lockFileMaintenance"],
+      "automerge": true
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "automerge": false
     },
     {
       "description": "Keep caret ranges for reporting & vite-plugin packages in the project template. Deprecation mechanism relies on them so users get plugin/SDK updates automatically.",
@@ -20,6 +35,5 @@
       ],
       "rangeStrategy": "replace"
     }
-  ],
-  "prConcurrentLimit": 2
+  ]
 }
