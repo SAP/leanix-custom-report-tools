@@ -43,11 +43,6 @@
       "minimumReleaseAge": null
     },
     {
-      "matchManagers": ["github-actions"],
-      "matchPackageNames": ["leanix/*"],
-      "minimumReleaseAge": null
-    },
-    {
       "matchUpdateTypes": ["minor", "patch", "digest", "lockFileMaintenance"],
       "automerge": true
     },
