@@ -3,6 +3,23 @@
   "extends": ["group:allNonMajor"],
   "addLabels": ["renovate"],
   "timezone": "Europe/Berlin",
+  "osvVulnerabilityAlerts": true,
+  "dependencyDashboardOSVVulnerabilitySummary": "all",
+  "minimumReleaseAge": "5 days",
+  "minimumReleaseAgeBehaviour": "timestamp-optional",
+  "vulnerabilityAlerts": {
+    "automerge": true,
+    "platformAutomerge": true,
+    "prCreation": "not-pending",
+    "internalChecksFilter": "strict",
+    "groupName": null,
+    "schedule": [],
+    "dependencyDashboardApproval": false,
+    "minimumReleaseAge": "5 days",
+    "addLabels": ["SEVERITY:{{vulnerabilitySeverity}}"],
+    "commitMessageSuffix": "[SECURITY] [SEVERITY: {{vulnerabilitySeverity}}{{#if (or (equals vulnerabilitySeverity 'MEDIUM') (equals vulnerabilitySeverity 'MODERATE'))}} 🟡{{else if (or (equals vulnerabilitySeverity 'HIGH') (equals vulnerabilitySeverity 'CRITICAL'))}} 🔴{{/if}}]",
+    "vulnerabilityFixStrategy": "lowest"
+  },
   "automergeType": "pr",
   "automergeStrategy": "auto",
   "internalChecksFilter": "strict",
@@ -16,6 +33,20 @@
   "automerge": false,
   "prConcurrentLimit": 2,
   "packageRules": [
+    {
+      "matchDatasources": ["npm"],
+      "minimumReleaseAge": "5 days"
+    },
+    {
+      "matchDatasources": ["npm"],
+      "matchPackageNames": ["@leanix/*"],
+      "minimumReleaseAge": null
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["leanix/*"],
+      "minimumReleaseAge": null
+    },
     {
       "matchUpdateTypes": ["minor", "patch", "digest", "lockFileMaintenance"],
       "automerge": true
